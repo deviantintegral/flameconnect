@@ -510,7 +510,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Enable debug logging",
     )
 
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="command")
 
     # list
     subparsers.add_parser("list", help="List registered fireplaces")
@@ -625,7 +625,7 @@ async def _cli_auth_prompt(auth_uri: str, redirect_uri: str) -> str:
 
 async def async_main(args: argparse.Namespace) -> None:
     """Run the appropriate subcommand."""
-    if args.command == "tui":
+    if args.command in (None, "tui"):
         await cmd_tui()
         return
 
