@@ -157,10 +157,27 @@ async def run_tui() -> None:
     Creates an authenticated client and runs the Textual application.
     The client session is managed via an async context manager.
     """
+    import asyncio
+
     from flameconnect.auth import MsalAuth
     from flameconnect.client import FlameConnectClient
 
-    auth = MsalAuth()
+    async def _tui_auth_prompt(auth_uri: str, redirect_uri: str) -> str:
+        """Prompt the user for login before the TUI starts."""
+        print()
+        print("=" * 60)
+        print("AUTHENTICATION REQUIRED")
+        print("=" * 60)
+        print()
+        print("Open this URL in your browser:")
+        print(f"  {auth_uri}")
+        print()
+        print("After login, copy the redirect URL and paste below.")
+        print("=" * 60)
+        result: str = await asyncio.to_thread(input, "\nPaste the redirect URL here: ")
+        return result
+
+    auth = MsalAuth(prompt_callback=_tui_auth_prompt)
     async with FlameConnectClient(auth=auth) as client:
         app = FlameConnectApp(client)
         await app.run_async()

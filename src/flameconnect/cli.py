@@ -548,13 +548,41 @@ def build_parser() -> argparse.ArgumentParser:
 # ---------------------------------------------------------------------------
 
 
+async def _cli_auth_prompt(auth_uri: str, redirect_uri: str) -> str:
+    """Prompt the user to complete browser-based login."""
+    print()
+    print("=" * 60)
+    print("AUTHENTICATION REQUIRED")
+    print("=" * 60)
+    print()
+    print("1. Open this URL in your browser:")
+    print()
+    print(f"   {auth_uri}")
+    print()
+    print("2. Log in with your Flame Connect account.")
+    print()
+    print("3. After login, the browser will redirect to")
+    print(f"   {redirect_uri}?code=...")
+    print("   The page won't load — that's expected.")
+    print()
+    print("4. Copy the FULL URL from your browser's address bar")
+    print("   and paste it below.")
+    print()
+    print("   If the URL has '...' in the middle, it was truncated.")
+    print("   Use F12 > Console > copy(location.href) to get the full URL.")
+    print()
+    print("=" * 60)
+    result: str = await asyncio.to_thread(input, "\nPaste the redirect URL here: ")
+    return result
+
+
 async def async_main(args: argparse.Namespace) -> None:
     """Run the appropriate subcommand."""
     if args.command == "tui":
         await cmd_tui()
         return
 
-    auth = MsalAuth()
+    auth = MsalAuth(prompt_callback=_cli_auth_prompt)
     async with FlameConnectClient(auth=auth) as client:
         if args.command == "list":
             await cmd_list(client)

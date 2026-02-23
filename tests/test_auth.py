@@ -94,11 +94,12 @@ class TestMsalAuth:
         }
         mock_msal.PublicClientApplication.return_value = mock_app
 
-        auth = MsalAuth(cache_path=cache_path)
+        async def fake_prompt(auth_uri: str, redirect_uri: str) -> str:
+            return "https://redirect?code=abc123"
 
-        # Mock the input() call that happens in _interactive_flow
-        with patch("builtins.input", return_value="https://redirect?code=abc123"):
-            token = await auth.get_token()
+        auth = MsalAuth(cache_path=cache_path, prompt_callback=fake_prompt)
+
+        token = await auth.get_token()
 
         assert token == "interactive-token-abc"
 

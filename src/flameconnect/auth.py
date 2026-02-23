@@ -55,10 +55,22 @@ class MsalAuth:
     - Silent refresh (tries ``acquire_token_silent`` first)
     - Interactive auth code flow as fallback
     - All blocking MSAL calls wrapped in ``asyncio.to_thread()``
+
+    Args:
+        cache_path: Path to the persistent token cache file.
+        prompt_callback: An async callable that receives the auth URI
+            and the redirect URI, and must return the full redirect URL
+            pasted by the user. If not provided, raises
+            ``AuthenticationError`` when interactive login is needed.
     """
 
-    def __init__(self, cache_path: Path = _DEFAULT_CACHE_PATH) -> None:
+    def __init__(
+        self,
+        cache_path: Path = _DEFAULT_CACHE_PATH,
+        prompt_callback: Callable[[str, str], Awaitable[str]] | None = None,
+    ) -> None:
         self._cache_path = cache_path.expanduser()
+        self._prompt_callback = prompt_callback
         self._app: msal.PublicClientApplication | None = None
         self._cache: msal.SerializableTokenCache | None = None
 
@@ -132,23 +144,17 @@ class MsalAuth:
         if "auth_uri" not in flow:
             raise AuthenticationError(f"Failed to initiate auth flow: {flow}")
 
-        _LOGGER.info("Authentication required. Open this URL in a browser:")
-        _LOGGER.info("  %s", flow["auth_uri"])
-        _LOGGER.info(
-            "After login, the browser will redirect to %s?code=...",
-            _REDIRECT_URI,
-        )
-        _LOGGER.info(
-            "The page won't load — that's expected. "
-            "Copy the FULL URL from the address bar."
-        )
-        _LOGGER.info(
-            "If the URL has '...' in the middle, it was truncated. "
-            "Use F12 > Console > copy(location.href) to get the full URL."
-        )
+        auth_uri: str = flow["auth_uri"]
 
-        redirect_response: str = await asyncio.to_thread(
-            input, "\nPaste the redirect URL here: "
+        if self._prompt_callback is None:
+            raise AuthenticationError(
+                "Interactive login is required but no prompt_callback "
+                f"was provided. Auth URI: {auth_uri}"
+            )
+
+        redirect_response = await self._prompt_callback(
+            auth_uri,
+            _REDIRECT_URI,
         )
         redirect_response = redirect_response.strip()
 
