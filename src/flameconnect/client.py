@@ -184,14 +184,14 @@ class FlameConnectClient:
 
         fire = Fire(
             fire_id=fire_data["FireId"],
-            friendly_name=fire_data["FriendlyName"],
-            brand=fire_data["Brand"],
-            product_type=fire_data["ProductType"],
-            product_model=fire_data["ProductModel"],
-            item_code=fire_data["ItemCode"],
-            connection_state=ConnectionState(fire_data["IoTConnectionState"]),
-            with_heat=fire_data["WithHeat"],
-            is_iot_fire=fire_data["IsIotFire"],
+            friendly_name=fire_data.get("FriendlyName", fire_data["FireId"]),
+            brand=fire_data.get("Brand", ""),
+            product_type=fire_data.get("ProductType", ""),
+            product_model=fire_data.get("ProductModel", ""),
+            item_code=fire_data.get("ItemCode", ""),
+            connection_state=ConnectionState(fire_data.get("IoTConnectionState", 0)),
+            with_heat=fire_data.get("WithHeat", False),
+            is_iot_fire=fire_data.get("IsIotFire", False),
         )
 
         raw_params: list[dict[str, Any]] = wifi.get("Parameters", [])
