@@ -9,9 +9,12 @@ from textual.app import App, ComposeResult
 from textual.widgets import Footer, Header, OptionList, Static
 from textual.widgets.option_list import Option
 
+from flameconnect.tui.auth_screen import AuthScreen
 from flameconnect.tui.screens import DashboardScreen
 
 if TYPE_CHECKING:
+    import asyncio
+
     from flameconnect.client import FlameConnectClient
     from flameconnect.models import Fire
 
@@ -104,6 +107,29 @@ class FlameConnectApp(App[None]):
                 self._push_dashboard(fire)
                 break
 
+    def show_auth_screen(
+        self,
+        auth_uri: str,
+        redirect_uri: str,
+        future: asyncio.Future[str],
+    ) -> None:
+        """Push the authentication modal and resolve *future* on dismiss."""
+        from flameconnect.exceptions import AuthenticationError
+
+        screen = AuthScreen(auth_uri=auth_uri, redirect_uri=redirect_uri)
+
+        def _on_dismiss(result: str | None) -> None:
+            if future.done():
+                return
+            if result is None:
+                future.set_exception(
+                    AuthenticationError("Authentication cancelled")
+                )
+            else:
+                future.set_result(result)
+
+        self.push_screen(screen, callback=_on_dismiss)
+
     def _push_dashboard(self, fire: Fire) -> None:
         """Push the dashboard screen for the selected fireplace.
 
@@ -162,41 +188,19 @@ async def run_tui() -> None:
     from flameconnect.auth import MsalAuth
     from flameconnect.client import FlameConnectClient
 
+    app: FlameConnectApp | None = None
+
     async def _tui_auth_prompt(auth_uri: str, redirect_uri: str) -> str:
-        """Prompt the user for login before the TUI starts.
+        """Show a Textual modal for credential entry.
 
-        Asks for email + password and tries direct B2C credential submission.
-        Falls back to the manual browser flow if that fails.
+        Uses an asyncio.Future so the Textual event loop keeps running
+        while the user interacts with the auth dialog.
         """
-        import webbrowser
-
-        from flameconnect.b2c_login import b2c_login_with_credentials
-        from flameconnect.cli import _masked_input
-        from flameconnect.exceptions import AuthenticationError
-
-        print()
-        print("=" * 60)
-        print("AUTHENTICATION REQUIRED")
-        print("=" * 60)
-        print()
-        email: str = await asyncio.to_thread(input, "Email: ")
-        password: str = await asyncio.to_thread(_masked_input, "Password: ")
-
-        try:
-            redirect_url = await b2c_login_with_credentials(auth_uri, email, password)
-            print("Login successful.")
-            return redirect_url
-        except AuthenticationError as exc:
-            print(f"\nDirect login failed: {exc}")
-            print("Falling back to browser login.\n")
-
-        webbrowser.open(auth_uri)
-        print("A browser window has been opened. Log in with your account.")
-        print()
-        print("After login, copy the redirect URL and paste below.")
-        print("=" * 60)
-        result: str = await asyncio.to_thread(input, "\nPaste the redirect URL here: ")
-        return result
+        assert app is not None  # noqa: S101
+        loop = asyncio.get_running_loop()
+        future: asyncio.Future[str] = loop.create_future()
+        app.show_auth_screen(auth_uri, redirect_uri, future)
+        return await future
 
     auth = MsalAuth(prompt_callback=_tui_auth_prompt)
     async with FlameConnectClient(auth=auth) as client:
