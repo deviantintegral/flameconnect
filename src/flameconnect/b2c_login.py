@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import re
-from urllib.parse import urlencode, urljoin, urlparse
+from urllib.parse import urljoin, urlparse
 
 import aiohttp
 import yarl
@@ -237,11 +237,12 @@ async def b2c_login_with_credentials(
                 data=post_data,
             )
 
-            # Use a separate session without a cookie jar so it won't
-            # add its own (quoted) Cookie header on top of our manual
-            # unquoted one.  This session is used for both the POST and
-            # the subsequent confirmed-endpoint redirect chain.
+            # Use a separate session with DummyCookieJar so it won't
+            # store POST response cookies and then re-inject them
+            # (with quoted values) into the confirmed GET, overriding
+            # our manual unquoted Cookie header.
             async with aiohttp.ClientSession(
+                cookie_jar=aiohttp.DummyCookieJar(),
                 headers={"User-Agent": _USER_AGENT},
             ) as raw_session:
                 async with raw_session.post(
@@ -265,21 +266,42 @@ async def b2c_login_with_credentials(
                         raise AuthenticationError(
                             "Invalid email or password"
                         )
+                    # Merge cookies set by the POST response (e.g.
+                    # updated x-ms-cpim-cache and x-ms-cpim-trans)
+                    # into the cookie header for the confirmed GET.
+                    # Parse into dict so updated cookies replace old
+                    # values rather than creating duplicates.
+                    cookies: dict[str, str] = {}
+                    for part in cookie_header.split("; "):
+                        if "=" in part:
+                            n, v = part.split("=", 1)
+                            cookies[n] = v
+                    for raw_sc in resp.headers.getall(
+                        "Set-Cookie", []
+                    ):
+                        sc_pair = raw_sc.split(";", 1)[0]
+                        if "=" in sc_pair:
+                            n, v = sc_pair.split("=", 1)
+                            cookies[n] = v
+                    cookie_header = "; ".join(
+                        f"{n}={v}" for n, v in cookies.items()
+                    )
 
                 # Step 4: GET the confirmed endpoint — follows redirects
                 # until we hit the custom-scheme redirect
-                confirmed_params = {
-                    "rememberMe": "false",
-                    "csrf_token": fields["csrf"],
-                    "tx": fields["tx"],
-                    "p": fields["p"],
-                }
+                # Build query string without URL-encoding = in
+                # values; B2C expects literal = in base64 params
+                # (csrf_token, tx) as browsers send them.
+                confirmed_qs = (
+                    f"rememberMe=false"
+                    f"&csrf_token={fields['csrf']}"
+                    f"&tx={fields['tx']}"
+                    f"&p={fields['p']}"
+                )
 
                 # Follow redirects manually to catch custom-scheme one
                 next_url: str = (
-                    fields["confirmed_url"]
-                    + "?"
-                    + urlencode(confirmed_params)
+                    fields["confirmed_url"] + "?" + confirmed_qs
                 )
                 confirmed_headers = {
                     "Cookie": cookie_header,

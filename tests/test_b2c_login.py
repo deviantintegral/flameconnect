@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from multidict import CIMultiDict
 
 from flameconnect.b2c_login import (
     _parse_login_page,
@@ -122,7 +123,7 @@ def _make_mock_response(
     resp.status = status
     resp.text = AsyncMock(return_value=text)
     resp.url = url
-    resp.headers = headers or {}
+    resp.headers = CIMultiDict(headers or {})
     resp.__aenter__ = AsyncMock(return_value=resp)
     resp.__aexit__ = AsyncMock(return_value=False)
     return resp
