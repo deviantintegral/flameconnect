@@ -6,6 +6,7 @@ build-backend = "hatchling.build"
 name = "flameconnect"
 version = "0.1.0"
 description = "Async Python library for controlling Dimplex/Faber fireplaces via the Flame Connect cloud API"
+readme = "README.md"
 license = "MIT"
 requires-python = ">=3.13"
 dependencies = [
