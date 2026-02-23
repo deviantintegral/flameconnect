@@ -230,15 +230,22 @@ async def run_tui(*, verbose: bool = False) -> None:
             app = FlameConnectApp(client)
             await app.run_async()
     finally:
-        # Defensive terminal cleanup: Textual's LinuxDriver writes all
-        # escape codes to sys.__stderr__, so we must do the same to ensure
-        # the alternate screen is exited and the cursor is visible.
-        sys.__stderr__.write(
-            "\x1b[?1049l"  # exit alternate screen buffer
-            "\x1b[?25h"  # show cursor
-            "\x1b[?1004l"  # disable FocusIn/FocusOut reporting
-        )
-        sys.__stderr__.flush()
+        # Defensive terminal cleanup using terminfo.  Textual hardcodes
+        # xterm escape codes, but in GNU Screen / tmux without altscreen
+        # the alternate buffer is a no-op, so the TUI content stays on the
+        # main buffer.  Sending `clear` after rmcup/cnorm guarantees a
+        # clean exit in every environment.
+        import curses as _curses
+
+        try:
+            _curses.setupterm(fd=sys.__stderr__.fileno())
+            rmcup = _curses.tigetstr("rmcup") or b""
+            cnorm = _curses.tigetstr("cnorm") or b""
+            clear = _curses.tigetstr("clear") or b""
+            sys.__stderr__.buffer.write(rmcup + cnorm + clear)
+            sys.__stderr__.flush()
+        except Exception:  # noqa: BLE001
+            pass
 
         # Restore the logger state so post-TUI CLI output works normally.
         fc_logger.setLevel(prev_level)
