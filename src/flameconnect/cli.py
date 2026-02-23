@@ -548,6 +548,40 @@ def build_parser() -> argparse.ArgumentParser:
 # ---------------------------------------------------------------------------
 
 
+def _masked_input(prompt: str = "Password: ") -> str:
+    """Read a password from stdin, printing * for each character."""
+    import termios
+    import tty
+
+    sys.stdout.write(prompt)
+    sys.stdout.flush()
+    fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    chars: list[str] = []
+    try:
+        tty.setraw(fd)
+        while True:
+            ch = sys.stdin.read(1)
+            if ch in ("\r", "\n"):
+                break
+            if ch in ("\x7f", "\x08"):  # backspace / delete
+                if chars:
+                    chars.pop()
+                    sys.stdout.write("\b \b")
+                    sys.stdout.flush()
+                continue
+            if ch == "\x03":  # Ctrl-C
+                raise KeyboardInterrupt
+            chars.append(ch)
+            sys.stdout.write("*")
+            sys.stdout.flush()
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+    return "".join(chars)
+
+
 async def _cli_auth_prompt(auth_uri: str, redirect_uri: str) -> str:
     """Prompt the user to complete browser-based login."""
     print()
