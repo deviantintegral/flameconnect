@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import logging
 import sys
+import webbrowser
 from typing import overload
 
 from flameconnect.auth import MsalAuth
@@ -583,27 +584,39 @@ def _masked_input(prompt: str = "Password: ") -> str:
 
 
 async def _cli_auth_prompt(auth_uri: str, redirect_uri: str) -> str:
-    """Prompt the user to complete browser-based login."""
+    """Prompt the user to complete login.
+
+    Asks for email + password and tries direct B2C credential submission.
+    Falls back to the manual browser flow if that fails.
+    """
+    from flameconnect.b2c_login import b2c_login_with_credentials
+    from flameconnect.exceptions import AuthenticationError
+
     print()
     print("=" * 60)
     print("AUTHENTICATION REQUIRED")
     print("=" * 60)
     print()
-    print("1. Open this URL in your browser:")
+    email: str = await asyncio.to_thread(input, "Email: ")
+    password: str = await asyncio.to_thread(_masked_input, "Password: ")
+
+    try:
+        redirect_url = await b2c_login_with_credentials(auth_uri, email, password)
+        print("Login successful.")
+        return redirect_url
+    except AuthenticationError as exc:
+        print(f"\nDirect login failed: {exc}")
+        print("Falling back to browser login.\n")
+
+    webbrowser.open(auth_uri)
+    print("A browser window has been opened. Log in with your account.")
     print()
-    print(f"   {auth_uri}")
+    print(f"After login, the browser will redirect to {redirect_uri}?code=...")
+    print("The page won't load — that's expected.")
     print()
-    print("2. Log in with your Flame Connect account.")
-    print()
-    print("3. After login, the browser will redirect to")
-    print(f"   {redirect_uri}?code=...")
-    print("   The page won't load — that's expected.")
-    print()
-    print("4. Copy the FULL URL from your browser's address bar")
-    print("   and paste it below.")
-    print()
-    print("   If the URL has '...' in the middle, it was truncated.")
-    print("   Use F12 > Console > copy(location.href) to get the full URL.")
+    print("Copy the FULL URL from your browser's address bar and paste it below.")
+    print("If the URL has '...' in the middle, it was truncated.")
+    print("Use F12 > Console > copy(location.href) to get the full URL.")
     print()
     print("=" * 60)
     result: str = await asyncio.to_thread(input, "\nPaste the redirect URL here: ")
