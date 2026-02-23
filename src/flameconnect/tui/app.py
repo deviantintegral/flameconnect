@@ -230,15 +230,15 @@ async def run_tui(*, verbose: bool = False) -> None:
             app = FlameConnectApp(client)
             await app.run_async()
     finally:
-        # Defensive terminal cleanup: ensure the alternate screen is exited,
-        # the cursor is visible, and the terminal is in a sane state even if
-        # Textual's own shutdown did not fully complete.
-        sys.stdout.write(
+        # Defensive terminal cleanup: Textual's LinuxDriver writes all
+        # escape codes to sys.__stderr__, so we must do the same to ensure
+        # the alternate screen is exited and the cursor is visible.
+        sys.__stderr__.write(
             "\x1b[?1049l"  # exit alternate screen buffer
             "\x1b[?25h"  # show cursor
             "\x1b[?1004l"  # disable FocusIn/FocusOut reporting
         )
-        sys.stdout.flush()
+        sys.__stderr__.flush()
 
         # Restore the logger state so post-TUI CLI output works normally.
         fc_logger.setLevel(prev_level)
