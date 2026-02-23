@@ -2,10 +2,10 @@
 id: 7
 group: "interfaces"
 dependencies: [5]
-status: "pending"
 created: "2026-02-23"
 skills:
   - python
+status: "completed"
 ---
 # Implement CLI tool with argparse
 

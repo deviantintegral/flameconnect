@@ -315,7 +315,7 @@ def _encode_heat_settings(param: HeatParam) -> bytes:
     payload = (
         bytes([param.heat_status, param.heat_mode])
         + _encode_temperature(param.setpoint_temperature)
-        + bytes([boost_lo, boost_hi])
+        + bytes([boost_lo, boost_hi, 0x00])  # trailing padding byte
     )
     return _make_header(ParameterId.HEAT_SETTINGS, len(payload)) + payload
 

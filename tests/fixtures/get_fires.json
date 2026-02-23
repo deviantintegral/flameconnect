@@ -1,0 +1,13 @@
+[
+  {
+    "FireId": "test-fire-001",
+    "FriendlyName": "Living Room",
+    "Brand": "Dimplex",
+    "ProductType": "Bold Ignite XL",
+    "ProductModel": "BIX-50",
+    "ItemCode": "ABC123",
+    "IoTConnectionState": 2,
+    "WithHeat": true,
+    "IsIotFire": true
+  }
+]

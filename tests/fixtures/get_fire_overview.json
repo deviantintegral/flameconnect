@@ -1,0 +1,55 @@
+{
+  "WifiFireOverview": {
+    "FireId": "test-fire-001",
+    "FriendlyName": "Living Room",
+    "Brand": "Dimplex",
+    "ProductType": "Bold Ignite XL",
+    "ProductModel": "BIX-50",
+    "ItemCode": "ABC123",
+    "IoTConnectionState": 2,
+    "WithHeat": true,
+    "IsIotFire": true,
+    "Parameters": [
+      {
+        "ParameterId": 321,
+        "Value": "QQEDARYF"
+      },
+      {
+        "ParameterId": 322,
+        "Value": "QgEUAQLIBwFkMksZAAHIlq99AQAAAAA="
+      },
+      {
+        "ParameterId": 323,
+        "Value": "QwEHAQAWAAAAAA=="
+      },
+      {
+        "ParameterId": 325,
+        "Value": "RQEBAg=="
+      },
+      {
+        "ParameterId": 326,
+        "Value": "RgEDAAAA"
+      },
+      {
+        "ParameterId": 327,
+        "Value": "RwEJAQIDBAUGBwgJ"
+      },
+      {
+        "ParameterId": 329,
+        "Value": "SQEEAAAAAA=="
+      },
+      {
+        "ParameterId": 236,
+        "Value": "7AABAQ=="
+      },
+      {
+        "ParameterId": 369,
+        "Value": "cQECgAE="
+      },
+      {
+        "ParameterId": 370,
+        "Value": "cgEIAQD/gEAgAQA="
+      }
+    ]
+  }
+}
