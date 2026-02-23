@@ -2,11 +2,11 @@
 id: 5
 group: "core-library"
 dependencies: [3, 4]
-status: "pending"
 created: "2026-02-23"
 skills:
   - python
   - api-endpoints
+status: "completed"
 ---
 # Implement async API client (FlameConnectClient)
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 __version__ = "0.1.0"
 
+from flameconnect.auth import AbstractAuth, MsalAuth, TokenAuth
+from flameconnect.client import FlameConnectClient
 from flameconnect.exceptions import (
     ApiError,
     AuthenticationError,
@@ -41,6 +43,12 @@ from flameconnect.models import (
 
 __all__ = [
     "__version__",
+    # Auth
+    "AbstractAuth",
+    "MsalAuth",
+    "TokenAuth",
+    # Client
+    "FlameConnectClient",
     # Exceptions
     "ApiError",
     "AuthenticationError",
