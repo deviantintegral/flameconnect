@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """
-Flame Connect API Reader
-Connects to the GDHV IoT cloud API and reads the current state
-of a registered Dimplex Bold Ignite XL (or compatible) fireplace.
+Flame Connect API Controller
+Connects to the GDHV IoT cloud API to read state and control
+a registered Dimplex Bold Ignite XL (or compatible) fireplace.
 
 Usage:
-    pip install requests
+    pip install requests msal
     python3 flameconnect_reader.py
 """
 
 import base64
 import json
 import os
+import struct
 import sys
 from urllib.parse import unquote
 
@@ -282,6 +283,91 @@ def decode_parameter(param):
     return decoded
 
 
+def encode_temp(temp):
+    """Encode temperature as 2 bytes: [integer_part, decimal_part]."""
+    integer_part = int(temp)
+    decimal_str = str(temp).replace(str(integer_part), "", 1).replace(".", "").replace(",", "")
+    decimal_part = int(decimal_str) if decimal_str else 0
+    return bytes([integer_part & 0xFF, decimal_part & 0xFF])
+
+
+def encode_mode_param(mode, temperature=22.0):
+    """Encode Mode parameter (321) as base64 Value bytes."""
+    data = struct.pack("<HB", 321, 3) + bytes([mode]) + encode_temp(temperature)
+    return base64.b64encode(data).decode("ascii")
+
+
+def encode_flame_effect_param(flame_on=1, speed=3, brightness=200, flame_color=0,
+                              media_theme=7, media_light=1, media_r=0, media_b=0, media_g=0, media_w=0,
+                              overhead_light=1, overhead_r=0, overhead_b=0, overhead_g=0, overhead_w=0,
+                              light_status=1, ambient_sensor=0):
+    """Encode FlameEffect parameter (322) as base64 Value bytes."""
+    data = struct.pack("<HB", 322, 20)
+    data += bytes([
+        flame_on,
+        max(0, speed - 1),  # Wire is 0-indexed
+        brightness,
+        media_theme, media_light, media_r, media_b, media_g, media_w,
+        0x00,  # padding
+        overhead_light, overhead_r, overhead_b, overhead_g, overhead_w,
+        light_status,
+        flame_color,
+        0x00, 0x00,  # padding
+        ambient_sensor,
+    ])
+    return base64.b64encode(data).decode("ascii")
+
+
+def write_parameters(session, fire_id, parameters):
+    """Send control parameters to a fireplace using base64-encoded Values."""
+    payload = {
+        "FireId": fire_id,
+        "Parameters": parameters,
+    }
+    r = session.post(f"{API_BASE}/api/Fires/WriteWifiParameters", json=payload)
+    r.raise_for_status()
+    return r.json() if r.content else None
+
+
+def get_current_params(session, fire_id):
+    """Read current parameters and return a dict of {ParameterId: raw_base64_value}."""
+    overview = get_fire_overview(session, fire_id)
+    wifi = overview.get("WifiFireOverview", {})
+    raw_params = wifi.get("Parameters", [])
+    return {p["ParameterId"]: p["Value"] for p in raw_params}
+
+
+def turn_on(session, fire_id):
+    """Turn on the fireplace, preserving current flame effect settings."""
+    # Read current state so we can preserve existing settings
+    current = get_current_params(session, fire_id)
+
+    # Build Mode parameter: set Mode=1 (Manual), keep current temperature
+    current_mode_raw = base64.b64decode(current.get(321, ""))
+    current_temp = current_mode_raw[4:6] if len(current_mode_raw) >= 6 else encode_temp(22.0)
+    mode_bytes = struct.pack("<HB", 321, 3) + bytes([1]) + current_temp
+    mode_value = base64.b64encode(mode_bytes).decode("ascii")
+
+    # Build FlameEffect parameter: flip FlameEffect byte to 1, keep everything else
+    params_to_send = [{"ParameterId": 321, "Value": mode_value}]
+
+    if 322 in current:
+        flame_raw = bytearray(base64.b64decode(current[322]))
+        flame_raw[3] = 1  # FlameEffect = On
+        flame_value = base64.b64encode(bytes(flame_raw)).decode("ascii")
+        params_to_send.append({"ParameterId": 322, "Value": flame_value})
+
+    return write_parameters(session, fire_id, params_to_send)
+
+
+def turn_off(session, fire_id):
+    """Turn off the fireplace."""
+    mode_value = encode_mode_param(mode=0, temperature=0.0)
+    return write_parameters(session, fire_id, [
+        {"ParameterId": 321, "Value": mode_value},
+    ])
+
+
 def format_rgbw(theme):
     """Format an RGBW media theme dict for display."""
     if not theme:
@@ -415,39 +501,66 @@ def main():
         print(f"{'─' * 60}")
         display_fire_info(fire)
 
-    # Step 3: Read current state for each connected fire
+    # Step 3: Read current state
+    fire = fires[0]
+    fire_id = fire.get("FireId")
+    name = fire.get("FriendlyName", fire_id)
+
     print(f"\n{'=' * 60}")
-    print("Step 3: Reading fireplace state...")
+    print(f"Step 3: Reading current state of: {name}")
     print(f"{'=' * 60}")
 
-    for fire in fires:
-        fire_id = fire.get("FireId")
-        name = fire.get("FriendlyName", fire_id)
+    try:
+        overview = get_fire_overview(session, fire_id)
+        wifi = overview.get("WifiFireOverview", {})
+        raw_params = wifi.get("Parameters", [])
 
-        print(f"\n{'━' * 60}")
-        print(f"  FIREPLACE: {name}")
-        print(f"  ID: {fire_id}")
-        print(f"{'━' * 60}")
-
-        try:
-            overview = get_fire_overview(session, fire_id)
-            wifi = overview.get("WifiFireOverview", {})
-            raw_params = wifi.get("Parameters", [])
-
-            if not raw_params:
-                print("\n  No parameters returned (fireplace may be offline).")
-                continue
-
+        if not raw_params:
+            print("\n  No parameters returned (fireplace may be offline).")
+        else:
             print(f"\n  {len(raw_params)} parameter(s) reported:")
+            for rp in raw_params:
+                decoded = decode_parameter(rp)
+                display_parameter(decoded)
+    except requests.HTTPError as e:
+        print(f"\n  Error fetching overview: {e}")
 
+    # Step 4: Turn on the fireplace (preserving current flame settings)
+    print(f"\n{'=' * 60}")
+    print(f"Step 4: Turning on fireplace: {name}")
+    print(f"{'=' * 60}")
+
+    try:
+        result = turn_on(session, fire_id)
+        print(f"\n  Turn-on command sent successfully!")
+        if result:
+            print(f"  Response: {json.dumps(result, indent=2)}")
+    except requests.HTTPError as e:
+        print(f"\n  Error sending turn-on command: {e}")
+        if e.response is not None:
+            print(f"  Status: {e.response.status_code}")
+            print(f"  Body: {e.response.text[:1000]}")
+
+    # Step 5: Read back the state to confirm
+    print(f"\n{'=' * 60}")
+    print("Step 5: Reading back fireplace state...")
+    print(f"{'=' * 60}")
+
+    try:
+        overview = get_fire_overview(session, fire_id)
+        wifi = overview.get("WifiFireOverview", {})
+        raw_params = wifi.get("Parameters", [])
+
+        if not raw_params:
+            print("\n  No parameters returned (fireplace may be offline).")
+        else:
+            print(f"\n  {len(raw_params)} parameter(s) reported:")
             for rp in raw_params:
                 decoded = decode_parameter(rp)
                 display_parameter(decoded)
 
-        except requests.HTTPError as e:
-            print(f"\n  Error fetching overview: {e}")
-            if e.response is not None:
-                print(f"  Response: {e.response.text[:500]}")
+    except requests.HTTPError as e:
+        print(f"\n  Error fetching overview: {e}")
 
     print("\nDone.")
 
