@@ -104,5 +104,6 @@ The archive system provides several benefits:
 - All functions related to managing the fireplace exposed in the app should be available in this library.
 - Automated tests with fixtures that do not require live API access.
 - A high level of test coverage including mutation testing.
+- Live API calls are permitted during development for validation. Before making any live call: (1) explain what the call does and why, (2) get explicit user confirmation, (3) ask the user to verify the result. This ensures correctness while respecting the upstream API.
 - Respect for the upstream API systems. We should only make the API calls directly needed to meet a user's requests and not spam the remote servers.
 - The README should be written for humans, not AIs.

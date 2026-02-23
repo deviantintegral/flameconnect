@@ -21,6 +21,7 @@ created: 2026-02-23
 | TUI mode | Included in this plan using textual |
 | TUI dependency | Optional packaging extra: `pip install flameconnect[tui]` / `uv add flameconnect[tui]`. Keeps base library lightweight for HA consumers. |
 | Mutation testing | Runs in the main CI pipeline on every push/PR alongside ruff, mypy, and pytest. |
+| Live API testing | Permitted during development. Before making any live API call: explain what the call does, ask the user for confirmation, then ask if the result matched expectations. CI tests still use fixtures/mocks only. |
 
 ## Executive Summary
 
@@ -58,7 +59,8 @@ Key constraints:
 - **Minimal dependencies**: Prioritize packages already in Home Assistant (aiohttp is included, msal is not but is necessary for standalone auth)
 - **Azure AD B2C auth**: The upstream API uses Microsoft's B2C tenant, making msal the most reliable auth option
 - **Binary wire protocol**: Parameters use a base64-encoded binary format that must be carefully preserved during refactoring
-- **No live API access for tests**: All tests must use fixtures/mocks since we cannot make real API calls in CI
+- **Live API calls permitted during development**: To validate that the refactored code works against the real API, live calls are allowed during development. However, a strict protocol must be followed: (1) explain to the user what API call will be made and why, (2) get explicit user confirmation before making it, (3) ask the user to verify whether the result was correct. This respects the upstream API (no spam) while enabling real-world validation.
+- **CI tests use fixtures/mocks only**: Automated tests must never make live API calls. All CI test fixtures should be derived from real API responses captured during development.
 
 ## Architectural Approach
 
@@ -162,9 +164,16 @@ The TUI will be a textual `App` that displays:
 The TUI will be launched via `flameconnect tui` and requires the optional `tui` extra (`pip install flameconnect[tui]` or `uv add flameconnect[tui]`). The `textual` import is lazy — it only occurs when the `tui` command is invoked, so the base library remains lightweight for consumers like Home Assistant. If a user runs `flameconnect tui` without the extra installed, they will get a clear error message with installation instructions.
 
 ### Testing Strategy
-**Objective**: Achieve high test coverage with fixture-based tests that don't require live API access.
+**Objective**: Achieve high test coverage through two complementary approaches — automated fixture-based tests for CI, and live API validation during development.
 
-Tests will use `pytest` with `aiohttp` test utilities and `pytest-aiohttp` for async test support. All API responses will be captured as JSON fixtures. The test structure will mirror the source:
+**Automated tests (CI)**: Tests will use `pytest` with `aiohttp` test utilities and `pytest-aiohttp` for async test support. All API responses will be captured as JSON fixtures. Mutation testing with `mutmut` validates that tests catch real code changes.
+
+**Live API validation (development)**: During implementation, the developer may make real API calls to validate correctness. This follows a strict three-step protocol:
+1. **Explain**: Describe the API call (endpoint, parameters, expected effect)
+2. **Confirm**: Wait for explicit user approval before executing
+3. **Verify**: Ask the user to confirm whether the result matched expectations
+
+This enables capturing real API response shapes for fixtures and verifying that encoded parameters produce the expected fireplace behavior. Live validation is especially valuable for the wire protocol (Task 03), async client (Task 05), and CLI (Task 07).
 
 ```
 tests/
@@ -174,10 +183,8 @@ tests/
     test_models.py       # Dataclass construction and validation
     test_protocol.py     # Wire protocol encode/decode round-trip tests
     test_cli.py          # CLI argument parsing and command execution
-    fixtures/            # JSON response fixtures from API
+    fixtures/            # JSON response fixtures derived from real API responses
 ```
-
-Mutation testing with `mutmut` will validate that tests actually detect code changes, not just achieve line coverage.
 
 ### CI/CD Pipeline
 **Objective**: Automate linting, testing, and release management via GitHub Actions.
@@ -290,6 +297,62 @@ The token injection pattern ensures the library doesn't impose authentication de
 - The README should clearly document which endpoints are implemented and which are available for future contribution
 - Initial PyPI release version: **0.1.0**
 
+## Task Dependency Graph
+
+```mermaid
+graph TD
+    T01[Task 01: Project Scaffolding] --> T02[Task 02: Models/Constants/Exceptions]
+    T02 --> T03[Task 03: Wire Protocol]
+    T02 --> T04[Task 04: Auth Module]
+    T03 --> T05[Task 05: Async Client]
+    T04 --> T05
+    T05 --> T06[Task 06: Tests]
+    T05 --> T07[Task 07: CLI Tool]
+    T05 --> T08[Task 08: TUI Dashboard]
+    T06 --> T09[Task 09: CI/CD Workflows]
+    T07 --> T10[Task 10: README]
+    T08 --> T10
+```
+
+## Execution Blueprint
+
+**Validation Gates:**
+- Reference: `/config/hooks/POST_PHASE.md`
+
+### Phase 1: Project Foundation
+**Parallel Tasks:**
+- Task 01: Initialize project scaffolding with uv and configure tooling
+
+### Phase 2: Core Types
+**Parallel Tasks:**
+- Task 02: Implement models, enums, constants, and exceptions (depends on: 01)
+
+### Phase 3: Core Modules
+**Parallel Tasks:**
+- Task 03: Implement binary wire protocol encoding and decoding (depends on: 02)
+- Task 04: Implement authentication module with token injection and MSAL (depends on: 02)
+
+### Phase 4: API Client
+**Parallel Tasks:**
+- Task 05: Implement async API client (depends on: 03, 04)
+
+### Phase 5: Interfaces and Testing
+**Parallel Tasks:**
+- Task 06: Implement tests for protocol, client, and auth modules (depends on: 05)
+- Task 07: Implement CLI tool with argparse (depends on: 05)
+- Task 08: Implement textual TUI dashboard (depends on: 05)
+
+### Phase 6: Infrastructure and Documentation
+**Parallel Tasks:**
+- Task 09: Set up GitHub Actions CI/CD workflows (depends on: 06)
+- Task 10: Write human-oriented README (depends on: 07, 08)
+
+### Execution Summary
+- Total Phases: 6
+- Total Tasks: 10
+- Maximum Parallelism: 3 tasks (in Phase 5)
+- Critical Path Length: 6 phases (01 → 02 → 03 → 05 → 06 → 09)
+
 ### Refinement Changelog
 
 - 2026-02-23: Corrected API endpoint list — removed non-existent `ReadWifiParameters` endpoint (reading is via `GetFireOverview`)
@@ -301,3 +364,4 @@ The token injection pattern ensures the library doesn't impose authentication de
 - 2026-02-23: Added quality risk about incomplete Sound/Log Effect wire protocol decoders in existing code
 - 2026-02-23: Clarified mutmut runs in main CI pipeline per user preference
 - 2026-02-23: Added initial version 0.1.0 specification
+- 2026-02-23: Added live API testing policy — live calls permitted during development with explain/confirm/verify protocol; CI tests remain fixture-only
