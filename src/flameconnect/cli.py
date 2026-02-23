@@ -480,7 +480,7 @@ async def _set_timer(client: FlameConnectClient, fire_id: str, value: str) -> No
         print("Timer disabled.")
 
 
-async def cmd_tui() -> None:
+async def cmd_tui(*, verbose: bool = False) -> None:
     """Launch the TUI, showing install message if missing."""
     try:
         from flameconnect.tui import run_tui
@@ -489,7 +489,7 @@ async def cmd_tui() -> None:
         print("  pip install flameconnect[tui]")
         print("  # or: uv add flameconnect[tui]")
         sys.exit(1)
-    await run_tui()
+    await run_tui(verbose=verbose)
 
 
 # ---------------------------------------------------------------------------
@@ -626,7 +626,7 @@ async def _cli_auth_prompt(auth_uri: str, redirect_uri: str) -> str:
 async def async_main(args: argparse.Namespace) -> None:
     """Run the appropriate subcommand."""
     if args.command in (None, "tui"):
-        await cmd_tui()
+        await cmd_tui(verbose=args.verbose)
         return
 
     auth = MsalAuth(prompt_callback=_cli_auth_prompt)

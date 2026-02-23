@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from typing import TYPE_CHECKING
 
 from textual.app import App, ComposeResult
@@ -148,10 +149,12 @@ class FlameConnectApp(App[None]):
         screen = self.screen
         if isinstance(screen, DashboardScreen):
             await screen.refresh_state()
-            self.notify("Refreshed", timeout=2)
+            screen.log_message("Refreshed")
 
     async def action_toggle_power(self) -> None:
         """Handle the 'p' key binding to toggle fireplace power."""
+        import logging
+
         from flameconnect.models import FireMode
 
         screen = self.screen
@@ -159,29 +162,33 @@ class FlameConnectApp(App[None]):
             return
 
         if self.fire_id is None:
-            self.notify("No fireplace selected", severity="warning")
+            screen.log_message("No fireplace selected", level=logging.WARNING)
             return
 
         current_mode = screen.current_mode
         try:
             if current_mode is not None and current_mode.mode == FireMode.MANUAL:
                 await self.client.turn_off(self.fire_id)
-                self.notify("Turning off...", timeout=3)
+                screen.log_message("Turning off...")
             else:
                 await self.client.turn_on(self.fire_id)
-                self.notify("Turning on...", timeout=3)
+                screen.log_message("Turning on...")
             # Refresh after toggling
             await screen.refresh_state()
         except Exception as exc:
             _LOGGER.exception("Failed to toggle power")
-            self.notify(f"Power toggle failed: {exc}", severity="error")
+            screen.log_message(f"Power toggle failed: {exc}", level=logging.ERROR)
 
 
-async def run_tui() -> None:
+async def run_tui(*, verbose: bool = False) -> None:
     """Launch the FlameConnect TUI dashboard.
 
     Creates an authenticated client and runs the Textual application.
     The client session is managed via an async context manager.
+
+    Args:
+        verbose: When True, set the flameconnect logger to DEBUG so that
+            all log messages appear in the TUI messages panel.
     """
     import asyncio
 
@@ -202,7 +209,38 @@ async def run_tui() -> None:
         app.show_auth_screen(auth_uri, redirect_uri, future)
         return await future
 
+    # Suppress stderr log output so it doesn't corrupt the TUI rendering.
+    # The DashboardScreen installs its own handler to capture logs in-app.
+    root_logger = logging.getLogger()
+    saved_handlers: list[logging.Handler] = []
+    for handler in root_logger.handlers[:]:
+        if isinstance(handler, logging.StreamHandler):
+            root_logger.removeHandler(handler)
+            saved_handlers.append(handler)
+
+    # Only promote to DEBUG when the user passed -v/--verbose.
+    fc_logger = logging.getLogger("flameconnect")
+    prev_level = fc_logger.level
+    if verbose:
+        fc_logger.setLevel(logging.DEBUG)
+
     auth = MsalAuth(prompt_callback=_tui_auth_prompt)
-    async with FlameConnectClient(auth=auth) as client:
-        app = FlameConnectApp(client)
-        await app.run_async()
+    try:
+        async with FlameConnectClient(auth=auth) as client:
+            app = FlameConnectApp(client)
+            await app.run_async()
+    finally:
+        # Defensive terminal cleanup: ensure the alternate screen is exited,
+        # the cursor is visible, and the terminal is in a sane state even if
+        # Textual's own shutdown did not fully complete.
+        sys.stdout.write(
+            "\x1b[?1049l"  # exit alternate screen buffer
+            "\x1b[?25h"  # show cursor
+            "\x1b[?1004l"  # disable FocusIn/FocusOut reporting
+        )
+        sys.stdout.flush()
+
+        # Restore the logger state so post-TUI CLI output works normally.
+        fc_logger.setLevel(prev_level)
+        for handler in saved_handlers:
+            root_logger.addHandler(handler)

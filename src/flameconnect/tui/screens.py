@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from textual.containers import Vertical
 from textual.screen import Screen
-from textual.widgets import Footer, Header, Static
+from textual.widgets import Footer, Header, RichLog, Static
 
 from flameconnect.tui.widgets import (
     FireplaceInfo,
@@ -22,6 +23,14 @@ if TYPE_CHECKING:
     from flameconnect.models import FireOverview, ModeParam
 
 _LOGGER = logging.getLogger(__name__)
+
+_LEVEL_MARKUP: dict[int, tuple[str, str]] = {
+    logging.DEBUG: ("[dim]", "[/dim]"),
+    logging.INFO: ("", ""),
+    logging.WARNING: ("[yellow]", "[/yellow]"),
+    logging.ERROR: ("[red]", "[/red]"),
+    logging.CRITICAL: ("[bold red]", "[/bold red]"),
+}
 
 _DASHBOARD_CSS = """
 #dashboard-container {
@@ -38,6 +47,18 @@ _DASHBOARD_CSS = """
     padding: 1 2;
     border: solid $secondary;
 }
+#messages-label {
+    height: auto;
+    margin-top: 1;
+    padding: 0 2;
+    text-style: bold;
+}
+#messages-panel {
+    height: 1fr;
+    min-height: 4;
+    padding: 0 2;
+    border: solid $accent;
+}
 #status-bar {
     height: 1;
     dock: bottom;
@@ -46,6 +67,28 @@ _DASHBOARD_CSS = """
     padding: 0 2;
 }
 """
+
+
+class _TuiLogHandler(logging.Handler):
+    """Logging handler that writes records into a Textual RichLog widget."""
+
+    def __init__(self, rich_log: RichLog) -> None:
+        super().__init__()
+        self._rich_log = rich_log
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            ts = datetime.fromtimestamp(record.created).strftime("%H:%M:%S")
+            msg = self.format(record)
+            open_tag, close_tag = _LEVEL_MARKUP.get(
+                record.levelno, ("", "")
+            )
+            self._rich_log.write(
+                f"[dim]{ts}[/dim] {open_tag}{msg}{close_tag}",
+                shrink=False,
+            )
+        except Exception:  # noqa: BLE001
+            self.handleError(record)
 
 
 class DashboardScreen(Screen[None]):
@@ -69,6 +112,7 @@ class DashboardScreen(Screen[None]):
         self.fire_id = fire_id
         self.fire_name = fire_name
         self._current_mode: ModeParam | None = None
+        self._log_handler: _TuiLogHandler | None = None
 
     def compose(self) -> ComposeResult:
         """Compose the dashboard layout."""
@@ -76,13 +120,40 @@ class DashboardScreen(Screen[None]):
         with Vertical(id="dashboard-container"):
             yield FireplaceInfo(id="fire-info")
             yield ParameterPanel(id="param-panel")
+            yield Static("[bold]Messages[/bold]", id="messages-label")
+            yield RichLog(id="messages-panel", markup=True, wrap=True)
         yield Static("", id="status-bar")
         yield Footer()
 
     def on_mount(self) -> None:
-        """Set up auto-refresh and do initial data load."""
+        """Set up auto-refresh, install log handler, and do initial data load."""
+        rich_log = self.query_one("#messages-panel", RichLog)
+        self._log_handler = _TuiLogHandler(rich_log)
+        self._log_handler.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+        fc_logger = logging.getLogger("flameconnect")
+        fc_logger.addHandler(self._log_handler)
+
         self.set_interval(10, self.refresh_state)
         self.call_after_refresh(self._initial_load)
+
+    def on_unmount(self) -> None:
+        """Remove the TUI log handler when the screen is unmounted."""
+        if self._log_handler is not None:
+            fc_logger = logging.getLogger("flameconnect")
+            fc_logger.removeHandler(self._log_handler)
+            self._log_handler = None
+
+    def log_message(self, msg: str, level: int = logging.INFO) -> None:
+        """Write a timestamped, level-colored message to the messages panel.
+
+        Args:
+            msg: The message text (may contain Rich markup).
+            level: A :mod:`logging` level constant (DEBUG, INFO, WARNING, ERROR).
+        """
+        ts = datetime.now().strftime("%H:%M:%S")
+        open_tag, close_tag = _LEVEL_MARKUP.get(level, ("", ""))
+        rich_log = self.query_one("#messages-panel", RichLog)
+        rich_log.write(f"[dim]{ts}[/dim] {open_tag}{msg}{close_tag}", shrink=False)
 
     async def _initial_load(self) -> None:
         """Perform the initial data load."""
