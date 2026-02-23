@@ -2,10 +2,10 @@
 id: 3
 group: "core-library"
 dependencies: [2]
-status: "pending"
 created: "2026-02-23"
 skills:
   - python
+status: "completed"
 ---
 # Implement binary wire protocol encoding and decoding
 
