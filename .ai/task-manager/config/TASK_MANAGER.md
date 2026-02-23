@@ -77,8 +77,17 @@ The archive system provides several benefits:
 
 ## Technology Choices
 
-- python
+- python 3.13+
+- async-first design using aiohttp
 - uv for dependency management
+- ruff for linting and formatting
+- mypy for strict type checking
+- pytest for testing
+- mutmut for mutation testing
+- textual for the text UI (TUI) mode
+- stdlib logging module
+- Fully type-annotated codebase enforced by mypy in strict mode.
+- Use Python's stdlib logging module. No print() for library code. Follows Home Assistant's logging conventions.
 - github actions
 - conventional commits (validated by a github workflow)
 - googleapis/release-please for release management
@@ -87,7 +96,9 @@ The archive system provides several benefits:
 
 ## Project Philosophy
 
+- Async-first library design. Home Assistant is fully async, so the core API must be natively async (not sync wrapped in executors).
 - A clean API able to be consumed by other systems like Home Assistant.
+- Authentication supports both token injection (callers provide an access token or a callable that returns one) for integrations like Home Assistant, and built-in credential handling for CLI/standalone use.
 - A command line tool built on the API to make API calls.
 - The command line tool should have a text UI mode to display current statuses and execute commands.
 - All functions related to managing the fireplace exposed in the app should be available in this library.
