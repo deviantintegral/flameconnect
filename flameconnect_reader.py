@@ -9,12 +9,11 @@ Usage:
     python3 flameconnect_reader.py
 """
 
+import base64
 import json
 import os
-import re
 import sys
-import time
-from urllib.parse import urlencode, unquote, urlparse, parse_qs
+from urllib.parse import unquote
 
 import msal
 import requests
@@ -221,6 +220,68 @@ def get_fire_overview(session, fire_id):
 
 
 
+def decode_parameter(param):
+    """Decode a base64-encoded parameter Value into human-readable fields."""
+    pid = param.get("ParameterId", -1)
+    raw = base64.b64decode(param.get("Value", ""))
+    decoded = {"ParameterId": pid}
+
+    if pid == 321 and len(raw) >= 6:  # Mode
+        decoded["Mode"] = raw[3]
+        decoded["Temperature"] = float(raw[4]) + float(raw[5]) / 10.0
+
+    elif pid == 322 and len(raw) >= 23:  # Flame Effect
+        decoded["FlameEffect"] = raw[3]
+        decoded["FlameSpeed"] = raw[4] + 1  # Wire is 0-indexed, display is 1-5
+        decoded["Brightness"] = raw[5]
+        decoded["MediaTheme"] = {
+            "Theme": raw[6], "Light": raw[7],
+            "Red": raw[8], "Blue": raw[9], "Green": raw[10], "White": raw[11],
+        }
+        decoded["OverheadLightTheme"] = {
+            "Light": raw[13],
+            "Red": raw[14], "Blue": raw[15], "Green": raw[16], "White": raw[17],
+        }
+        decoded["LightStatus"] = raw[18]
+        decoded["FlameColor"] = raw[19]
+        decoded["AmbientSensorStatus"] = raw[22]
+
+    elif pid == 323 and len(raw) >= 10:  # Heat Settings
+        decoded["HeatStatus"] = raw[3]
+        decoded["HeatMode"] = raw[4]
+        decoded["SetpointTemperature"] = float(raw[5]) + float(raw[6]) / 10.0
+        decoded["BoostDuration"] = raw[7] | (raw[8] << 8)
+
+    elif pid == 325 and len(raw) >= 4:  # Heat Mode
+        decoded["HeatControl"] = raw[3]
+
+    elif pid == 326 and len(raw) >= 6:  # Timer
+        decoded["TimerStatus"] = raw[3]
+        decoded["Duration"] = raw[4] | (raw[5] << 8)
+
+    elif pid == 327 and len(raw) >= 12:  # Software Version
+        decoded["UIMajor"] = raw[3]
+        decoded["UIMinor"] = raw[4]
+        decoded["UITest"] = raw[5]
+        decoded["ControlMajor"] = raw[6]
+        decoded["ControlMinor"] = raw[7]
+        decoded["ControlTest"] = raw[8]
+        decoded["RelayMajor"] = raw[9]
+        decoded["RelayMinor"] = raw[10]
+        decoded["RelayTest"] = raw[11]
+
+    elif pid == 329 and len(raw) >= 7:  # Error
+        decoded["ErrorByte1"] = raw[3]
+        decoded["ErrorByte2"] = raw[4]
+        decoded["ErrorByte3"] = raw[5]
+        decoded["ErrorByte4"] = raw[6]
+
+    elif pid == 236 and len(raw) >= 4:  # Temperature Unit
+        decoded["TemperatureUnit"] = raw[3]
+
+    return decoded
+
+
 def format_rgbw(theme):
     """Format an RGBW media theme dict for display."""
     if not theme:
@@ -354,7 +415,7 @@ def main():
         print(f"{'─' * 60}")
         display_fire_info(fire)
 
-    # Step 3: Get overview for each connected fire
+    # Step 3: Read current state for each connected fire
     print(f"\n{'=' * 60}")
     print("Step 3: Reading fireplace state...")
     print(f"{'=' * 60}")
@@ -370,33 +431,23 @@ def main():
 
         try:
             overview = get_fire_overview(session, fire_id)
-            params = overview.get("Parameters", [])
+            wifi = overview.get("WifiFireOverview", {})
+            raw_params = wifi.get("Parameters", [])
 
-            if not params:
+            if not raw_params:
                 print("\n  No parameters returned (fireplace may be offline).")
                 continue
 
-            print(f"\n  {len(params)} parameter(s) reported:")
+            print(f"\n  {len(raw_params)} parameter(s) reported:")
 
-            for param in params:
-                display_parameter(param)
+            for rp in raw_params:
+                decoded = decode_parameter(rp)
+                display_parameter(decoded)
 
         except requests.HTTPError as e:
             print(f"\n  Error fetching overview: {e}")
             if e.response is not None:
                 print(f"  Response: {e.response.text[:500]}")
-
-    # Also dump raw JSON for debugging
-    print(f"\n{'=' * 60}")
-    print("Raw JSON (for debugging)")
-    print(f"{'=' * 60}")
-    for fire in fires:
-        fire_id = fire.get("FireId")
-        try:
-            overview = get_fire_overview(session, fire_id)
-            print(json.dumps(overview, indent=2))
-        except requests.HTTPError:
-            pass
 
     print("\nDone.")
 
