@@ -2,3 +2,12 @@ decomp/
 .flameconnect_token.json
 
 __pycache__
+
+.venv/
+dist/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.mutmut-cache/
+node_modules/

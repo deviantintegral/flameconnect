@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "flameconnect"
+version = "0.1.0"
+description = "Async Python library for controlling Dimplex/Faber fireplaces via the Flame Connect cloud API"
+license = "MIT"
+requires-python = ">=3.13"
+dependencies = [
+    "aiohttp>=3.9",
+    "msal>=1.28",
+]
+
+[project.optional-dependencies]
+tui = ["textual>=0.50"]
+dev = [
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "pytest>=8.0",
+    "pytest-aiohttp>=1.0",
+    "pytest-asyncio>=0.23",
+    "mutmut>=2.4",
+    "aioresponses>=0.7",
+]
+
+[project.scripts]
+flameconnect = "flameconnect.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/flameconnect"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+exclude = ["flameconnect_reader.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "TCH"]
+
+[tool.mypy]
+strict = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
