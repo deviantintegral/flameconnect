@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import sys
 from dataclasses import replace
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from textual.app import App, ComposeResult
@@ -182,6 +183,19 @@ class FlameConnectApp(App[None]):
             self.action_hide_help_panel()
         else:
             self.action_show_help_panel()
+
+    def deliver_screenshot(
+        self,
+        filename: str | None = None,
+        path: str | None = None,
+        time_format: str | None = None,
+    ) -> str | None:
+        """Deliver a screenshot, creating the save directory if needed."""
+        from platformdirs import user_downloads_path
+
+        save_dir = Path(path) if path else user_downloads_path()
+        save_dir.mkdir(parents=True, exist_ok=True)
+        return super().deliver_screenshot(filename, str(save_dir), time_format)
 
     async def action_toggle_power(self) -> None:
         """Handle the 'p' key binding to toggle fireplace power."""

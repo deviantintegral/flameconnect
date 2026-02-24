@@ -25,6 +25,8 @@ from flameconnect.models import (
     TimerParam,
     TimerStatus,
 )
+from textual.app import App
+
 from flameconnect.tui.app import FlameConnectApp
 from flameconnect.tui.screens import DashboardScreen
 
@@ -983,3 +985,43 @@ class TestSwitchFire:
         assert "Failed to load fireplaces" in call_args[0][0]
         # Verify push_screen was NOT called
         app.push_screen.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# action_screenshot – ensures the Downloads directory is created
+# ---------------------------------------------------------------------------
+
+
+class TestDeliverScreenshot:
+    """Tests for FlameConnectApp.deliver_screenshot."""
+
+    def test_creates_downloads_dir_before_delivery(
+        self, mock_client, mock_dashboard, tmp_path
+    ):
+        app = _make_app(mock_client, mock_dashboard)
+
+        target = tmp_path / "nonexistent" / "downloads"
+        with (
+            patch(
+                "platformdirs.user_downloads_path", return_value=target
+            ),
+            patch.object(
+                App, "deliver_screenshot", return_value=None
+            ) as super_deliver,
+        ):
+            app.deliver_screenshot()
+
+        assert target.is_dir()
+        super_deliver.assert_called_once_with(None, str(target), None)
+
+    def test_explicit_path_is_created(self, mock_client, mock_dashboard, tmp_path):
+        app = _make_app(mock_client, mock_dashboard)
+
+        target = tmp_path / "custom" / "dir"
+        with patch.object(
+            App, "deliver_screenshot", return_value=None
+        ) as super_deliver:
+            app.deliver_screenshot(path=str(target))
+
+        assert target.is_dir()
+        super_deliver.assert_called_once_with(None, str(target), None)
