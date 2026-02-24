@@ -213,13 +213,23 @@ class DashboardScreen(Screen[None]):
 
         status_bar = self.query_one("#status-bar", Static)
         status_bar.update(
-            "[dim]Press [bold]r[/bold]efresh  |  "
-            "[bold]p[/bold]ower  |  "
-            "[bold]f[/bold]lame speed  |  "
-            "[bold]b[/bold]rightness  |  "
-            "[bold]h[/bold]eat mode  |  "
-            "[bold]t[/bold]imer  |  "
-            "temp [bold]u[/bold]nit  |  "
+            "[dim][bold]r[/bold]efresh | "
+            "[bold]p[/bold]ower | "
+            "[bold]e[/bold]ffect | "
+            "[bold]f[/bold]lame spd | "
+            "[bold]b[/bold]right | "
+            "pulsatin[bold]g[/bold] | "
+            "[bold]c[/bold]olor | "
+            "the[bold]m[/bold]e | "
+            "media [bold]l[/bold]ight | "
+            "me[bold]d[/bold]ia clr | "
+            "[bold]o[/bold]verhead | "
+            "o[bold]v[/bold]hd clr | "
+            "light [bold]s[/bold]tat | "
+            "[bold]a[/bold]mbient | "
+            "[bold]h[/bold]eat | "
+            "[bold]t[/bold]imer | "
+            "temp [bold]u[/bold]nit | "
             "[bold]q[/bold]uit[/dim]"
         )
 
