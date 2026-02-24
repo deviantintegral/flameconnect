@@ -40,6 +40,7 @@ _DASHBOARD_CSS = """
     height: auto;
 }
 #fireplace-visual {
+    height: 100%;
     width: 1fr;
     padding: 1 2;
     border: solid $primary;
