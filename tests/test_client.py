@@ -145,7 +145,7 @@ class TestGetFireOverview:
 
         mode = next(p for p in overview.parameters if isinstance(p, ModeParam))
         assert mode.mode == FireMode.MANUAL
-        assert mode.temperature == pytest.approx(22.5)
+        assert mode.target_temperature == pytest.approx(22.5)
 
     async def test_flame_effect_param_values(
         self, mock_api, token_auth, get_fire_overview_payload
@@ -217,7 +217,7 @@ class TestWriteParameters:
         url = f"{API_BASE}/api/Fires/WriteWifiParameters"
         mock_api.post(url, payload={})
 
-        mode = ModeParam(mode=FireMode.MANUAL, temperature=22.0)
+        mode = ModeParam(mode=FireMode.MANUAL, target_temperature=22.0)
 
         async with FlameConnectClient(token_auth) as client:
             await client.write_parameters("test-fire-001", [mode])
@@ -238,7 +238,7 @@ class TestWriteParameters:
         url = f"{API_BASE}/api/Fires/WriteWifiParameters"
         mock_api.post(url, payload={})
 
-        mode = ModeParam(mode=FireMode.MANUAL, temperature=22.0)
+        mode = ModeParam(mode=FireMode.MANUAL, target_temperature=22.0)
         heat_mode = HeatModeParam(heat_control=HeatControl.ENABLED)
 
         async with FlameConnectClient(token_auth) as client:

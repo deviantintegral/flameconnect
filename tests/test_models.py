@@ -127,9 +127,9 @@ class TestFrozenDataclasses:
             color.red = 99  # type: ignore[misc]
 
     def test_mode_param_is_frozen(self):
-        mode = ModeParam(mode=FireMode.MANUAL, temperature=22.0)
+        mode = ModeParam(mode=FireMode.MANUAL, target_temperature=22.0)
         with pytest.raises(dataclasses.FrozenInstanceError):
-            mode.temperature = 25.0  # type: ignore[misc]
+            mode.target_temperature = 25.0  # type: ignore[misc]
 
 
 # ---------------------------------------------------------------------------

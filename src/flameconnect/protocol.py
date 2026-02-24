@@ -91,9 +91,9 @@ def _decode_mode(raw: bytes) -> ModeParam:
     """Decode Mode (321): 6 bytes total."""
     _check_length(raw, 6, "Mode")
     mode = FireMode(raw[3])
-    temperature = _decode_temperature(raw, 4)
-    _LOGGER.debug("Decoded Mode: mode=%s temperature=%.1f", mode, temperature)
-    return ModeParam(mode=mode, temperature=temperature)
+    target_temperature = _decode_temperature(raw, 4)
+    _LOGGER.debug("Decoded Mode: mode=%s target_temperature=%.1f", mode, target_temperature)
+    return ModeParam(mode=mode, target_temperature=target_temperature)
 
 
 def _decode_flame_effect(raw: bytes) -> FlameEffectParam:
@@ -263,14 +263,14 @@ def _encode_temp_unit(param: TempUnitParam) -> bytes:
 def _encode_mode(param: ModeParam) -> bytes:
     """Encode Mode (321): 3-byte header + 3 bytes payload."""
     _LOGGER.debug(
-        "Encoding Mode: mode=%s temperature=%.1f",
+        "Encoding Mode: mode=%s target_temperature=%.1f",
         param.mode,
-        param.temperature,
+        param.target_temperature,
     )
     return (
         _make_header(ParameterId.MODE, 3)
         + bytes([param.mode])
-        + _encode_temperature(param.temperature)
+        + _encode_temperature(param.target_temperature)
     )
 
 

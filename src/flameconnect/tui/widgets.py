@@ -46,7 +46,7 @@ def _format_mode(param: ModeParam) -> str:
     """Format the mode parameter for display."""
     return (
         f"[bold]Mode:[/bold] {_MODE_DISPLAY.get(param.mode, param.mode.name)}  |  "
-        f"[bold]Temperature:[/bold] {param.temperature}\u00b0"
+        f"[bold]Target Temp:[/bold] {param.target_temperature}\u00b0"
     )
 
 

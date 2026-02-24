@@ -63,12 +63,12 @@ class TestModeParamRoundTrip:
     """Round-trip tests for ModeParam (321)."""
 
     def test_manual_mode(self):
-        original = ModeParam(mode=FireMode.MANUAL, temperature=22.5)
+        original = ModeParam(mode=FireMode.MANUAL, target_temperature=22.5)
         decoded = _roundtrip(original, ParameterId.MODE)
         assert decoded == original
 
     def test_standby_mode(self):
-        original = ModeParam(mode=FireMode.STANDBY, temperature=0.0)
+        original = ModeParam(mode=FireMode.STANDBY, target_temperature=0.0)
         decoded = _roundtrip(original, ParameterId.MODE)
         assert decoded == original
 
@@ -451,14 +451,14 @@ class TestTemperatureEncoding:
     )
     def test_temperature_roundtrip(self, temp: float):
         """Temperature should survive an encode/decode cycle."""
-        original = ModeParam(mode=FireMode.MANUAL, temperature=temp)
+        original = ModeParam(mode=FireMode.MANUAL, target_temperature=temp)
         decoded = _roundtrip(original, ParameterId.MODE)
-        assert decoded.temperature == pytest.approx(temp)
+        assert decoded.target_temperature == pytest.approx(temp)
 
     def test_zero_temperature(self):
-        original = ModeParam(mode=FireMode.STANDBY, temperature=0.0)
+        original = ModeParam(mode=FireMode.STANDBY, target_temperature=0.0)
         decoded = _roundtrip(original, ParameterId.MODE)
-        assert decoded.temperature == 0.0
+        assert decoded.target_temperature == 0.0
 
     def test_heat_temperature_roundtrip(self):
         """Temperature in HeatParam should also round-trip correctly."""

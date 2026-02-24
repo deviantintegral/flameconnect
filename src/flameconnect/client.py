@@ -253,9 +253,9 @@ class FlameConnectClient:
             elif isinstance(param, FlameEffectParam):
                 current_flame = param
 
-        temperature = current_mode.temperature if current_mode else 22.0
+        temperature = current_mode.target_temperature if current_mode else 22.0
 
-        new_mode = ModeParam(mode=FireMode.MANUAL, temperature=temperature)
+        new_mode = ModeParam(mode=FireMode.MANUAL, target_temperature=temperature)
 
         params_to_write: list[Parameter] = [new_mode]
 
@@ -282,7 +282,7 @@ class FlameConnectClient:
                 current_mode = param
                 break
 
-        temperature = current_mode.temperature if current_mode else 22.0
+        temperature = current_mode.target_temperature if current_mode else 22.0
 
-        mode_param = ModeParam(mode=FireMode.STANDBY, temperature=temperature)
+        mode_param = ModeParam(mode=FireMode.STANDBY, target_temperature=temperature)
         await self.write_parameters(fire_id, [mode_param])

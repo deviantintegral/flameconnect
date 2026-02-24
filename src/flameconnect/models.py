@@ -189,7 +189,7 @@ class ModeParam:
     """Mode parameter (ParameterId 321)."""
 
     mode: FireMode
-    temperature: float
+    target_temperature: float
 
 
 @dataclass(frozen=True, slots=True)

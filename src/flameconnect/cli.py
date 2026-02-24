@@ -183,7 +183,7 @@ def _display_mode(param: ModeParam) -> None:
     print(f"  {'─' * 40}")
     mode = _enum_name(_FIRE_MODE_NAMES, param.mode)
     print(f"    Mode:           {mode}")
-    print(f"    Temperature:    {param.temperature}\u00b0")
+    print(f"    Target Temp:    {param.target_temperature}\u00b0")
 
 
 def _display_flame_effect(param: FlameEffectParam) -> None:
@@ -473,9 +473,9 @@ async def _set_mode(client: FlameConnectClient, fire_id: str, value: str) -> Non
             current_mode = param
             break
 
-    temperature = current_mode.temperature if current_mode else 22.0
+    temperature = current_mode.target_temperature if current_mode else 22.0
     mode = FireMode.STANDBY if value == "standby" else FireMode.MANUAL
-    mode_param = ModeParam(mode=mode, temperature=temperature)
+    mode_param = ModeParam(mode=mode, target_temperature=temperature)
     await client.write_parameters(fire_id, [mode_param])
     print(f"Mode set to {value}.")
 
