@@ -93,14 +93,14 @@ class MediaTheme(IntEnum):
     """Fuel-bed media theme preset."""
 
     USER_DEFINED = 0
-    THEME_1 = 1
-    THEME_2 = 2
-    THEME_3 = 3
-    THEME_4 = 4
-    THEME_5 = 5
-    THEME_6 = 6
-    THEME_7 = 7
-    THEME_8 = 8
+    WHITE = 1
+    BLUE = 2
+    PURPLE = 3
+    RED = 4
+    GREEN = 5
+    PRISM = 6
+    KALEIDOSCOPE = 7
+    MIDNIGHT = 8
 
 
 class ConnectionState(IntEnum):

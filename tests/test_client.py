@@ -160,7 +160,7 @@ class TestGetFireOverview:
         assert flame.flame_effect == FlameEffect.ON
         assert flame.flame_speed == 3
         assert flame.brightness == 200
-        assert flame.media_theme == MediaTheme.THEME_7
+        assert flame.media_theme == MediaTheme.KALEIDOSCOPE
         assert flame.media_color.red == 100
         assert flame.media_color.green == 75
         assert flame.media_color.blue == 50

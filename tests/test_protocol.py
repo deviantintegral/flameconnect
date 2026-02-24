@@ -79,7 +79,7 @@ class TestFlameEffectParamRoundTrip:
             flame_effect=FlameEffect.ON,
             flame_speed=3,
             brightness=200,
-            media_theme=MediaTheme.THEME_7,
+            media_theme=MediaTheme.KALEIDOSCOPE,
             media_light=LightStatus.ON,
             media_color=RGBWColor(red=100, green=75, blue=50, white=25),
             overhead_light=LightStatus.ON,

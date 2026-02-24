@@ -63,14 +63,14 @@ _TEMP_UNIT_NAMES: dict[int, str] = {0: "Fahrenheit", 1: "Celsius"}
 _LOG_EFFECT_NAMES: dict[int, str] = {0: "Off", 1: "On"}
 _MEDIA_THEME_NAMES: dict[int, str] = {
     0: "User Defined",
-    1: "Theme 1",
-    2: "Theme 2",
-    3: "Theme 3",
-    4: "Theme 4",
-    5: "Theme 5",
-    6: "Theme 6",
-    7: "Theme 7",
-    8: "Theme 8",
+    1: "White",
+    2: "Blue",
+    3: "Purple",
+    4: "Red",
+    5: "Green",
+    6: "Prism",
+    7: "Kaleidoscope",
+    8: "Midnight",
 }
 _CONNECTION_STATE_NAMES: dict[int, str] = {
     0: "Unknown",

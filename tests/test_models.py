@@ -191,8 +191,8 @@ class TestEnumValues:
 
     def test_media_theme(self):
         assert MediaTheme.USER_DEFINED == 0
-        assert MediaTheme.THEME_1 == 1
-        assert MediaTheme.THEME_8 == 8
+        assert MediaTheme.WHITE == 1
+        assert MediaTheme.MIDNIGHT == 8
 
     def test_connection_state(self):
         assert ConnectionState.UNKNOWN == 0
