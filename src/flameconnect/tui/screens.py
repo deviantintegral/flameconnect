@@ -69,35 +69,10 @@ _DASHBOARD_CSS = """
     padding: 0 2;
     border: solid $accent;
 }
-.compact #dashboard-container {
-    padding: 0 1;
-}
-.compact #status-section {
-    layout: vertical;
-}
-.compact #fireplace-visual {
-    border: none;
-    padding: 0;
-    max-height: 10;
-    width: 1fr;
-}
-.compact #param-scroll {
-    max-height: 7;
-    height: auto;
-}
-.compact #param-panel {
-    border: none;
-    padding: 0;
-    width: 1fr;
-}
-.compact #messages-label {
-    margin-top: 0;
-}
-.compact #messages-panel {
-    border: none;
-    min-height: 2;
-}
 """
+
+_COMPACT_THRESHOLD_WIDTH = 100
+_COMPACT_THRESHOLD_HEIGHT = 30
 
 
 class _TuiLogHandler(logging.Handler):
@@ -172,11 +147,61 @@ class DashboardScreen(Screen[None]):
         fc_logger.addHandler(self._log_handler)
 
         self.call_after_refresh(self._initial_load)
+        self.call_after_refresh(self._apply_compact_mode)
+
+    def _apply_compact_mode(self) -> None:
+        """Apply or remove compact layout class based on current size."""
+        import os
+
+        try:
+            term = os.get_terminal_size()
+            w, h = term.columns, term.lines
+        except OSError:
+            w, h = self.app.size.width, self.app.size.height
+
+        compact = (
+            w < _COMPACT_THRESHOLD_WIDTH
+            or h < _COMPACT_THRESHOLD_HEIGHT
+        )
+        self.set_class(compact, "compact")
+
+        # Direct widget manipulation — CSS descendant selectors from
+        # Screen class don't reliably reach children in Textual.
+        fireplace = self.query_one("#fireplace-visual")
+        container = self.query_one("#dashboard-container")
+        status = self.query_one("#status-section")
+        param_scroll = self.query_one("#param-scroll")
+        param_panel = self.query_one("#param-panel")
+        msg_label = self.query_one("#messages-label")
+        msg_panel = self.query_one("#messages-panel")
+
+        fireplace.display = not compact
+
+        if compact:
+            container.styles.padding = (0, 1)
+            status.styles.layout = "vertical"
+            param_panel.styles.border = "none"
+            param_panel.styles.padding = (0, 1)
+            param_panel.styles.width = "1fr"
+            msg_label.styles.margin = (0, 0)
+            msg_panel.styles.border = "none"
+            msg_panel.styles.min_height = 2
+        else:
+            # Clear inline overrides — let CSS stylesheet rules apply.
+            for rule in (
+                "padding", "layout", "height", "border",
+                "width", "margin", "min_height",
+            ):
+                container.styles.clear_rule(rule)
+                status.styles.clear_rule(rule)
+                param_scroll.styles.clear_rule(rule)
+                param_panel.styles.clear_rule(rule)
+                msg_label.styles.clear_rule(rule)
+                msg_panel.styles.clear_rule(rule)
 
     def on_resize(self, event: events.Resize) -> None:
         """Toggle compact layout based on terminal dimensions."""
-        compact = event.size.width < 100 or event.size.height < 30
-        self.set_class(compact, "compact")
+        self._apply_compact_mode()
 
     def on_unmount(self) -> None:
         """Remove the TUI log handler when the screen is unmounted."""
