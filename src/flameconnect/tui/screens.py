@@ -12,7 +12,6 @@ from textual.screen import Screen
 from textual.widgets import Footer, Header, RichLog, Static
 
 from flameconnect.tui.widgets import (
-    FireplaceInfo,
     FireplaceVisual,
     ParameterPanel,
     _format_connection_state,
@@ -50,6 +49,7 @@ _DASHBOARD_CSS = """
     width: 1fr;
     padding: 1 2;
     border: solid $primary;
+    content-align: center middle;
 }
 #param-panel {
     height: auto;
@@ -129,7 +129,7 @@ class DashboardScreen(Screen[None]):
         """Compose the dashboard layout."""
         yield Header()
         with Vertical(id="dashboard-container"):
-            yield FireplaceInfo(id="fire-info")
+            yield Static("", id="fire-info")
             with Horizontal(id="status-section"):
                 yield FireplaceVisual(id="fireplace-visual")
                 yield ParameterPanel(id="param-panel")
@@ -188,11 +188,15 @@ class DashboardScreen(Screen[None]):
         """
         from flameconnect.models import ModeParam
 
-        fire_info = self.query_one("#fire-info", FireplaceInfo)
-        fire_info.fire_name = overview.fire.friendly_name
-        fire_info.fire_id = overview.fire.fire_id
-        fire_info.connection = _format_connection_state(overview.fire.connection_state)
-        fire_info.last_updated = datetime.now().strftime("%H:%M:%S")
+        fire_info = self.query_one("#fire-info", Static)
+        connection = _format_connection_state(overview.fire.connection_state)
+        updated = datetime.now().strftime("%H:%M:%S")
+        fire_info.update(
+            f"[bold]{overview.fire.friendly_name}[/bold]  |  "
+            f"ID: {overview.fire.fire_id}  |  "
+            f"Connection: {connection}  |  "
+            f"[dim]Updated: {updated}[/dim]"
+        )
 
         param_panel = self.query_one("#param-panel", ParameterPanel)
         param_panel.update_parameters(overview.parameters)
