@@ -370,7 +370,7 @@ class TestToggleTimer:
             prop.return_value = mock_dashboard
             await app.action_toggle_timer()
 
-        mock_dashboard.log_message.assert_any_call("Timer disabled")
+        mock_dashboard.log_message.assert_any_call("Disabling timer...")
 
     async def test_logs_enable_message(self, mock_client, mock_dashboard):
         app = _make_app(mock_client, mock_dashboard)
@@ -379,7 +379,7 @@ class TestToggleTimer:
             prop.return_value = mock_dashboard
             await app.action_toggle_timer()
 
-        mock_dashboard.log_message.assert_any_call("Timer enabled (60 min)")
+        mock_dashboard.log_message.assert_any_call("Enabling timer (60 min)...")
 
 
 # ---------------------------------------------------------------------------
@@ -432,7 +432,7 @@ class TestToggleTempUnit:
             await app.action_toggle_temp_unit()
 
         mock_dashboard.log_message.assert_any_call(
-            "Temperature unit set to Fahrenheit"
+            "Setting temperature unit to Fahrenheit..."
         )
 
     async def test_no_op_when_no_temp_unit_param(self, mock_client, mock_dashboard):

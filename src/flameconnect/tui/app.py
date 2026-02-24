@@ -262,12 +262,11 @@ class FlameConnectApp(App[None]):
         current_mode = screen.current_mode
         try:
             if current_mode is not None and current_mode.mode == FireMode.MANUAL:
-                await self.client.turn_off(self.fire_id)
                 screen.log_message("Turning off...")
+                await self.client.turn_off(self.fire_id)
             else:
-                await self.client.turn_on(self.fire_id)
                 screen.log_message("Turning on...")
-            # Refresh after toggling
+                await self.client.turn_on(self.fire_id)
             await screen.refresh_state()
         except Exception as exc:
             _LOGGER.exception("Failed to toggle power")
@@ -324,8 +323,8 @@ class FlameConnectApp(App[None]):
             if not isinstance(current, FlameEffectParam):
                 return
             new_param = replace(current, flame_speed=speed)
+            screen.log_message(f"Setting flame speed to {speed}...")
             await self.client.write_parameters(self.fire_id, [new_param])
-            screen.log_message(f"Flame speed set to {speed}")
             await screen.refresh_state()
         except Exception as exc:
             _LOGGER.exception("Failed to set flame speed")
@@ -359,9 +358,9 @@ class FlameConnectApp(App[None]):
                 else Brightness.HIGH
             )
             new_param = replace(current, brightness=new_brightness)
-            await self.client.write_parameters(self.fire_id, [new_param])
             label = "Low" if new_brightness == Brightness.LOW else "High"
-            screen.log_message(f"Brightness set to {label}")
+            screen.log_message(f"Setting brightness to {label}...")
+            await self.client.write_parameters(self.fire_id, [new_param])
             await screen.refresh_state()
         except Exception as exc:
             _LOGGER.exception("Failed to toggle brightness")
@@ -393,9 +392,9 @@ class FlameConnectApp(App[None]):
                 else FlameEffect.ON
             )
             new_param = replace(current, flame_effect=new_val)
-            await self.client.write_parameters(self.fire_id, [new_param])
             label = "On" if new_val == FlameEffect.ON else "Off"
-            screen.log_message(f"Flame effect set to {label}")
+            screen.log_message(f"Setting flame effect to {label}...")
+            await self.client.write_parameters(self.fire_id, [new_param])
             await screen.refresh_state()
         except Exception as exc:
             _LOGGER.exception("Failed to toggle flame effect")
@@ -430,9 +429,9 @@ class FlameConnectApp(App[None]):
                 else PulsatingEffect.ON
             )
             new_param = replace(current, pulsating_effect=new_val)
-            await self.client.write_parameters(self.fire_id, [new_param])
             label = "On" if new_val == PulsatingEffect.ON else "Off"
-            screen.log_message(f"Pulsating set to {label}")
+            screen.log_message(f"Setting pulsating to {label}...")
+            await self.client.write_parameters(self.fire_id, [new_param])
             await screen.refresh_state()
         except Exception as exc:
             _LOGGER.exception("Failed to toggle pulsating")
@@ -467,9 +466,9 @@ class FlameConnectApp(App[None]):
                 else LightStatus.ON
             )
             new_param = replace(current, media_light=new_val)
-            await self.client.write_parameters(self.fire_id, [new_param])
             label = "On" if new_val == LightStatus.ON else "Off"
-            screen.log_message(f"Media light set to {label}")
+            screen.log_message(f"Setting media light to {label}...")
+            await self.client.write_parameters(self.fire_id, [new_param])
             await screen.refresh_state()
         except Exception as exc:
             _LOGGER.exception("Failed to toggle media light")
@@ -504,9 +503,9 @@ class FlameConnectApp(App[None]):
                 else LightStatus.ON
             )
             new_param = replace(current, overhead_light=new_val)
-            await self.client.write_parameters(self.fire_id, [new_param])
             label = "On" if new_val == LightStatus.ON else "Off"
-            screen.log_message(f"Overhead light set to {label}")
+            screen.log_message(f"Setting overhead light to {label}...")
+            await self.client.write_parameters(self.fire_id, [new_param])
             await screen.refresh_state()
         except Exception as exc:
             _LOGGER.exception("Failed to toggle overhead light")
@@ -541,9 +540,9 @@ class FlameConnectApp(App[None]):
                 else LightStatus.ON
             )
             new_param = replace(current, light_status=new_val)
-            await self.client.write_parameters(self.fire_id, [new_param])
             label = "On" if new_val == LightStatus.ON else "Off"
-            screen.log_message(f"Light status set to {label}")
+            screen.log_message(f"Setting light status to {label}...")
+            await self.client.write_parameters(self.fire_id, [new_param])
             await screen.refresh_state()
         except Exception as exc:
             _LOGGER.exception("Failed to toggle light status")
@@ -578,9 +577,9 @@ class FlameConnectApp(App[None]):
                 else LightStatus.ON
             )
             new_param = replace(current, ambient_sensor=new_val)
-            await self.client.write_parameters(self.fire_id, [new_param])
             label = "On" if new_val == LightStatus.ON else "Off"
-            screen.log_message(f"Ambient sensor set to {label}")
+            screen.log_message(f"Setting ambient sensor to {label}...")
+            await self.client.write_parameters(self.fire_id, [new_param])
             await screen.refresh_state()
         except Exception as exc:
             _LOGGER.exception("Failed to toggle ambient sensor")
@@ -640,9 +639,9 @@ class FlameConnectApp(App[None]):
             if not isinstance(current, FlameEffectParam):
                 return
             new_param = replace(current, flame_color=color)
-            await self.client.write_parameters(self.fire_id, [new_param])
             label = _display_name(color)
-            screen.log_message(f"Flame color set to {label}")
+            screen.log_message(f"Setting flame color to {label}...")
+            await self.client.write_parameters(self.fire_id, [new_param])
             await screen.refresh_state()
         except Exception as exc:
             _LOGGER.exception("Failed to set flame color")
@@ -701,9 +700,9 @@ class FlameConnectApp(App[None]):
             if not isinstance(current, FlameEffectParam):
                 return
             new_param = replace(current, media_theme=theme)
-            await self.client.write_parameters(self.fire_id, [new_param])
             label = _display_name(theme)
-            screen.log_message(f"Media theme set to {label}")
+            screen.log_message(f"Setting media theme to {label}...")
+            await self.client.write_parameters(self.fire_id, [new_param])
             await screen.refresh_state()
         except Exception as exc:
             _LOGGER.exception("Failed to set media theme")
@@ -761,11 +760,11 @@ class FlameConnectApp(App[None]):
             if not isinstance(current, FlameEffectParam):
                 return
             new_param = replace(current, media_color=color)
-            await self.client.write_parameters(self.fire_id, [new_param])
             screen.log_message(
-                f"Media color set to R={color.red} G={color.green} "
-                f"B={color.blue} W={color.white}"
+                f"Setting media color to R={color.red} G={color.green} "
+                f"B={color.blue} W={color.white}..."
             )
+            await self.client.write_parameters(self.fire_id, [new_param])
             await screen.refresh_state()
         except Exception as exc:
             _LOGGER.exception("Failed to set media color")
@@ -823,11 +822,11 @@ class FlameConnectApp(App[None]):
             if not isinstance(current, FlameEffectParam):
                 return
             new_param = replace(current, overhead_color=color)
-            await self.client.write_parameters(self.fire_id, [new_param])
             screen.log_message(
-                f"Overhead color set to R={color.red} G={color.green} "
-                f"B={color.blue} W={color.white}"
+                f"Setting overhead color to R={color.red} G={color.green} "
+                f"B={color.blue} W={color.white}..."
             )
+            await self.client.write_parameters(self.fire_id, [new_param])
             await screen.refresh_state()
         except Exception as exc:
             _LOGGER.exception("Failed to set overhead color")
@@ -895,9 +894,9 @@ class FlameConnectApp(App[None]):
                 )
             else:
                 new_param = replace(current, heat_mode=mode)
-            await self.client.write_parameters(self.fire_id, [new_param])
             mode_label = _display_name(mode)
-            screen.log_message(f"Heat mode set to {mode_label}")
+            screen.log_message(f"Setting heat mode to {mode_label}...")
+            await self.client.write_parameters(self.fire_id, [new_param])
             await screen.refresh_state()
         except Exception as exc:
             _LOGGER.exception("Failed to set heat mode")
@@ -956,10 +955,10 @@ class FlameConnectApp(App[None]):
                 return
             if current.timer_status == TimerStatus.ENABLED:
                 new_param = TimerParam(timer_status=TimerStatus.DISABLED, duration=0)
-                screen.log_message("Timer disabled")
+                screen.log_message("Disabling timer...")
             else:
                 new_param = TimerParam(timer_status=TimerStatus.ENABLED, duration=60)
-                screen.log_message("Timer enabled (60 min)")
+                screen.log_message("Enabling timer (60 min)...")
             await self.client.write_parameters(self.fire_id, [new_param])
             await screen.refresh_state()
         except Exception as exc:
@@ -992,15 +991,13 @@ class FlameConnectApp(App[None]):
                 else TempUnit.FAHRENHEIT
             )
             new_param = TempUnitParam(unit=new_unit)
-            await self.client.write_parameters(self.fire_id, [new_param])
             unit_label = (
                 "Celsius"
                 if new_unit == TempUnit.CELSIUS
                 else "Fahrenheit"
             )
-            screen.log_message(
-                f"Temperature unit set to {unit_label}"
-            )
+            screen.log_message(f"Setting temperature unit to {unit_label}...")
+            await self.client.write_parameters(self.fire_id, [new_param])
             await screen.refresh_state()
         except Exception as exc:
             _LOGGER.exception("Failed to toggle temperature unit")
