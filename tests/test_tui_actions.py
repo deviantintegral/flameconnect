@@ -117,12 +117,29 @@ def _make_app(mock_client, mock_dashboard):
     We avoid actually running the Textual app; instead we set up the
     instance fields that the action methods rely on and patch
     ``app.screen`` to return the mock dashboard.
+
+    ``run_worker`` is mocked to capture the worker coroutine.
+    Use ``await _run_workers(app)`` to execute captured workers.
     """
     app = FlameConnectApp.__new__(FlameConnectApp)
     app.client = mock_client
     app.fire_id = "test-fire-001"
     app._write_in_progress = False
+    app._captured_workers: list = []
+
+    def _capture_worker(coro, **kwargs):
+        app._captured_workers.append(coro)
+        return MagicMock()
+
+    app.run_worker = _capture_worker
     return app
+
+
+async def _run_workers(app):
+    """Execute all captured workers from _run_command calls."""
+    for coro in app._captured_workers:
+        await coro
+    app._captured_workers.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -138,7 +155,8 @@ class TestApplyFlameSpeed:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_flame_speed(4)
+            app._apply_flame_speed(4)
+            await _run_workers(app)
 
         mock_client.write_parameters.assert_awaited_once()
         call_args = mock_client.write_parameters.call_args
@@ -152,7 +170,8 @@ class TestApplyFlameSpeed:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_flame_speed(1)
+            app._apply_flame_speed(1)
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert written_param.flame_speed == 1
@@ -163,7 +182,8 @@ class TestApplyFlameSpeed:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_flame_speed(3)
+            app._apply_flame_speed(3)
+            await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -173,7 +193,8 @@ class TestApplyFlameSpeed:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_flame_speed(3)
+            app._apply_flame_speed(3)
+            await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -183,7 +204,8 @@ class TestApplyFlameSpeed:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_flame_speed(3)
+            app._apply_flame_speed(3)
+            await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -202,7 +224,8 @@ class TestToggleBrightness:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_brightness()
+            app.action_toggle_brightness()
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert isinstance(written_param, FlameEffectParam)
@@ -227,7 +250,8 @@ class TestToggleBrightness:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_brightness()
+            app.action_toggle_brightness()
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert written_param.brightness == Brightness.LOW
@@ -237,7 +261,8 @@ class TestToggleBrightness:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_brightness()
+            app.action_toggle_brightness()
+            await _run_workers(app)
 
         mock_dashboard.refresh_state.assert_awaited_once()
 
@@ -246,7 +271,8 @@ class TestToggleBrightness:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_brightness()
+            app.action_toggle_brightness()
+            await _run_workers(app)
 
         assert app._write_in_progress is False
 
@@ -264,7 +290,8 @@ class TestApplyHeatMode:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_heat_mode(HeatMode.NORMAL, None)
+            app._apply_heat_mode(HeatMode.NORMAL, None)
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert isinstance(written_param, HeatParam)
@@ -275,7 +302,8 @@ class TestApplyHeatMode:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_heat_mode(HeatMode.ECO, None)
+            app._apply_heat_mode(HeatMode.ECO, None)
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert isinstance(written_param, HeatParam)
@@ -286,7 +314,8 @@ class TestApplyHeatMode:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_heat_mode(HeatMode.BOOST, 15)
+            app._apply_heat_mode(HeatMode.BOOST, 15)
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert isinstance(written_param, HeatParam)
@@ -299,7 +328,8 @@ class TestApplyHeatMode:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_heat_mode(HeatMode.NORMAL, None)
+            app._apply_heat_mode(HeatMode.NORMAL, None)
+            await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -309,7 +339,8 @@ class TestApplyHeatMode:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_heat_mode(HeatMode.ECO, None)
+            app._apply_heat_mode(HeatMode.ECO, None)
+            await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -319,7 +350,8 @@ class TestApplyHeatMode:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_heat_mode(HeatMode.ECO, None)
+            app._apply_heat_mode(HeatMode.ECO, None)
+            await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -337,7 +369,8 @@ class TestToggleTimer:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_timer()
+            app.action_toggle_timer()
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert isinstance(written_param, TimerParam)
@@ -353,7 +386,8 @@ class TestToggleTimer:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_timer()
+            app.action_toggle_timer()
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert written_param.timer_status == TimerStatus.DISABLED
@@ -368,7 +402,8 @@ class TestToggleTimer:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_timer()
+            app.action_toggle_timer()
+            await _run_workers(app)
 
         mock_dashboard.log_message.assert_any_call("Disabling timer...")
 
@@ -377,7 +412,8 @@ class TestToggleTimer:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_timer()
+            app.action_toggle_timer()
+            await _run_workers(app)
 
         mock_dashboard.log_message.assert_any_call("Enabling timer (60 min)...")
 
@@ -395,7 +431,8 @@ class TestToggleTempUnit:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_temp_unit()
+            app.action_toggle_temp_unit()
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert isinstance(written_param, TempUnitParam)
@@ -409,7 +446,8 @@ class TestToggleTempUnit:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_temp_unit()
+            app.action_toggle_temp_unit()
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert written_param.unit == TempUnit.CELSIUS
@@ -419,7 +457,8 @@ class TestToggleTempUnit:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_temp_unit()
+            app.action_toggle_temp_unit()
+            await _run_workers(app)
 
         mock_dashboard.refresh_state.assert_awaited_once()
         assert app._write_in_progress is False
@@ -429,7 +468,8 @@ class TestToggleTempUnit:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_temp_unit()
+            app.action_toggle_temp_unit()
+            await _run_workers(app)
 
         mock_dashboard.log_message.assert_any_call(
             "Setting temperature unit to Fahrenheit..."
@@ -441,7 +481,8 @@ class TestToggleTempUnit:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_temp_unit()
+            app.action_toggle_temp_unit()
+            await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -460,7 +501,8 @@ class TestToggleFlameEffect:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_flame_effect()
+            app.action_toggle_flame_effect()
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert isinstance(written_param, FlameEffectParam)
@@ -472,7 +514,8 @@ class TestToggleFlameEffect:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_flame_effect()
+            app.action_toggle_flame_effect()
+            await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -491,7 +534,8 @@ class TestTogglePulsating:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_pulsating()
+            app.action_toggle_pulsating()
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert isinstance(written_param, FlameEffectParam)
@@ -503,7 +547,8 @@ class TestTogglePulsating:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_pulsating()
+            app.action_toggle_pulsating()
+            await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -522,7 +567,8 @@ class TestToggleMediaLight:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_media_light()
+            app.action_toggle_media_light()
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert isinstance(written_param, FlameEffectParam)
@@ -534,7 +580,8 @@ class TestToggleMediaLight:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_media_light()
+            app.action_toggle_media_light()
+            await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -553,7 +600,8 @@ class TestToggleOverheadLight:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_overhead_light()
+            app.action_toggle_overhead_light()
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert isinstance(written_param, FlameEffectParam)
@@ -565,7 +613,8 @@ class TestToggleOverheadLight:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_overhead_light()
+            app.action_toggle_overhead_light()
+            await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -584,7 +633,8 @@ class TestToggleLightStatus:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_light_status()
+            app.action_toggle_light_status()
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert isinstance(written_param, FlameEffectParam)
@@ -596,7 +646,8 @@ class TestToggleLightStatus:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_light_status()
+            app.action_toggle_light_status()
+            await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -615,7 +666,8 @@ class TestToggleAmbientSensor:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_ambient_sensor()
+            app.action_toggle_ambient_sensor()
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert isinstance(written_param, FlameEffectParam)
@@ -627,7 +679,8 @@ class TestToggleAmbientSensor:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_ambient_sensor()
+            app.action_toggle_ambient_sensor()
+            await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -645,7 +698,8 @@ class TestApplyFlameColor:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_flame_color(FlameColor.BLUE)
+            app._apply_flame_color(FlameColor.BLUE)
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert isinstance(written_param, FlameEffectParam)
@@ -657,7 +711,8 @@ class TestApplyFlameColor:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_flame_color(FlameColor.BLUE)
+            app._apply_flame_color(FlameColor.BLUE)
+            await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -675,7 +730,8 @@ class TestApplyMediaTheme:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_media_theme(MediaTheme.BLUE)
+            app._apply_media_theme(MediaTheme.BLUE)
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert isinstance(written_param, FlameEffectParam)
@@ -687,7 +743,8 @@ class TestApplyMediaTheme:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_media_theme(MediaTheme.BLUE)
+            app._apply_media_theme(MediaTheme.BLUE)
+            await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -706,7 +763,8 @@ class TestApplyMediaColor:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_media_color(color)
+            app._apply_media_color(color)
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert isinstance(written_param, FlameEffectParam)
@@ -718,7 +776,8 @@ class TestApplyMediaColor:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_media_color(RGBWColor(red=255, green=0, blue=0, white=0))
+            app._apply_media_color(RGBWColor(red=255, green=0, blue=0, white=0))
+            await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -737,7 +796,8 @@ class TestApplyOverheadColor:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_overhead_color(color)
+            app._apply_overhead_color(color)
+            await _run_workers(app)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert isinstance(written_param, FlameEffectParam)
@@ -751,9 +811,10 @@ class TestApplyOverheadColor:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_overhead_color(
+            app._apply_overhead_color(
                 RGBWColor(red=0, green=0, blue=255, white=80)
             )
+            await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -774,7 +835,8 @@ class TestActionErrorHandling:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app._apply_flame_speed(4)
+            app._apply_flame_speed(4)
+            await _run_workers(app)
 
         assert app._write_in_progress is False
         # Check that an error was logged
@@ -792,7 +854,8 @@ class TestActionErrorHandling:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_brightness()
+            app.action_toggle_brightness()
+            await _run_workers(app)
 
         assert app._write_in_progress is False
 
@@ -804,7 +867,8 @@ class TestActionErrorHandling:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_timer()
+            app.action_toggle_timer()
+            await _run_workers(app)
 
         assert app._write_in_progress is False
 
@@ -816,7 +880,8 @@ class TestActionErrorHandling:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_toggle_temp_unit()
+            app.action_toggle_temp_unit()
+            await _run_workers(app)
 
         assert app._write_in_progress is False
 
@@ -863,7 +928,7 @@ class TestSetHeatModeDialog:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_set_heat_mode()
+            app.action_set_heat_mode()
 
         app.push_screen.assert_called_once()
         call_args = app.push_screen.call_args
@@ -880,7 +945,7 @@ class TestSetHeatModeDialog:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_set_heat_mode()
+            app.action_set_heat_mode()
 
         app.push_screen.assert_not_called()
 
@@ -892,7 +957,7 @@ class TestSetHeatModeDialog:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_set_heat_mode()
+            app.action_set_heat_mode()
 
         app.push_screen.assert_not_called()
 
