@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import logging
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
@@ -259,20 +260,7 @@ class FlameConnectClient:
         params_to_write: list[Parameter] = [new_mode]
 
         if current_flame is not None:
-            new_flame = FlameEffectParam(
-                flame_effect=FlameEffect.ON,
-                flame_speed=current_flame.flame_speed,
-                brightness=current_flame.brightness,
-                pulsating_effect=current_flame.pulsating_effect,
-                media_theme=current_flame.media_theme,
-                media_light=current_flame.media_light,
-                media_color=current_flame.media_color,
-                overhead_light=current_flame.overhead_light,
-                overhead_color=current_flame.overhead_color,
-                light_status=current_flame.light_status,
-                flame_color=current_flame.flame_color,
-                ambient_sensor=current_flame.ambient_sensor,
-            )
+            new_flame = replace(current_flame, flame_effect=FlameEffect.ON)
             params_to_write.append(new_flame)
 
         await self.write_parameters(fire_id, params_to_write)

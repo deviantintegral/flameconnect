@@ -7,6 +7,7 @@ import asyncio
 import logging
 import sys
 import webbrowser
+from dataclasses import replace
 from typing import overload
 
 from flameconnect.auth import MsalAuth
@@ -399,20 +400,7 @@ async def _set_flame_speed(
     if current is None:
         print("Error: no FlameEffect parameter found.")
         sys.exit(1)
-    new_param = FlameEffectParam(
-        flame_effect=current.flame_effect,
-        flame_speed=speed,
-        brightness=current.brightness,
-        pulsating_effect=current.pulsating_effect,
-        media_theme=current.media_theme,
-        media_light=current.media_light,
-        media_color=current.media_color,
-        overhead_light=current.overhead_light,
-        overhead_color=current.overhead_color,
-        light_status=current.light_status,
-        flame_color=current.flame_color,
-        ambient_sensor=current.ambient_sensor,
-    )
+    new_param = replace(current, flame_speed=speed)
     await client.write_parameters(fire_id, [new_param])
     print(f"Flame speed set to {speed}.")
 
@@ -431,20 +419,7 @@ async def _set_brightness(client: FlameConnectClient, fire_id: str, value: str) 
     if current is None:
         print("Error: no FlameEffect parameter found.")
         sys.exit(1)
-    new_param = FlameEffectParam(
-        flame_effect=current.flame_effect,
-        flame_speed=current.flame_speed,
-        brightness=brightness,
-        pulsating_effect=current.pulsating_effect,
-        media_theme=current.media_theme,
-        media_light=current.media_light,
-        media_color=current.media_color,
-        overhead_light=current.overhead_light,
-        overhead_color=current.overhead_color,
-        light_status=current.light_status,
-        flame_color=current.flame_color,
-        ambient_sensor=current.ambient_sensor,
-    )
+    new_param = replace(current, brightness=brightness)
     await client.write_parameters(fire_id, [new_param])
     print(f"Brightness set to {value}.")
 
@@ -461,12 +436,7 @@ async def _set_heat_mode(client: FlameConnectClient, fire_id: str, value: str) -
     if current is None:
         print("Error: no HeatSettings parameter found.")
         sys.exit(1)
-    new_param = HeatParam(
-        heat_status=current.heat_status,
-        heat_mode=heat_mode,
-        setpoint_temperature=current.setpoint_temperature,
-        boost_duration=current.boost_duration,
-    )
+    new_param = replace(current, heat_mode=heat_mode)
     await client.write_parameters(fire_id, [new_param])
     print(f"Heat mode set to {value}.")
 
@@ -479,12 +449,7 @@ async def _set_heat_temp(client: FlameConnectClient, fire_id: str, value: str) -
     if current is None:
         print("Error: no HeatSettings parameter found.")
         sys.exit(1)
-    new_param = HeatParam(
-        heat_status=current.heat_status,
-        heat_mode=current.heat_mode,
-        setpoint_temperature=temp,
-        boost_duration=current.boost_duration,
-    )
+    new_param = replace(current, setpoint_temperature=temp)
     await client.write_parameters(fire_id, [new_param])
     print(f"Heat temperature set to {temp}\u00b0.")
 
