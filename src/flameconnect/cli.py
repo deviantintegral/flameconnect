@@ -186,12 +186,17 @@ def _display_heat_mode(param: HeatModeParam) -> None:
 
 def _display_timer(param: TimerParam) -> None:
     """Display Timer parameter."""
+    from datetime import datetime, timedelta
+
     dur = param.duration
     print("\n  [326] Timer Mode")
     print(f"  {'─' * 40}")
     ts = _enum_name(_TIMER_STATUS_NAMES, param.timer_status)
     print(f"    Timer:          {ts}")
     print(f"    Duration:       {dur} min ({dur // 60}h {dur % 60}m)")
+    if param.timer_status == 1 and dur > 0:
+        off_time = datetime.now() + timedelta(minutes=dur)
+        print(f"    Off at:         {off_time.strftime('%H:%M')}")
 
 
 def _display_software_version(param: SoftwareVersionParam) -> None:

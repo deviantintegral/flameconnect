@@ -81,10 +81,18 @@ def _format_heat_mode(param: HeatModeParam) -> str:
 
 def _format_timer(param: TimerParam) -> str:
     """Format the timer parameter for display."""
-    return (
+    from datetime import datetime, timedelta
+
+    from flameconnect.models import TimerStatus
+
+    line = (
         f"[bold]Timer:[/bold] {param.timer_status.name}  |  "
         f"Duration: {param.duration}min"
     )
+    if param.timer_status == TimerStatus.ENABLED and param.duration > 0:
+        off_time = datetime.now() + timedelta(minutes=param.duration)
+        line += f"  |  Off at {off_time.strftime('%H:%M')}"
+    return line
 
 
 def _format_software_version(param: SoftwareVersionParam) -> str:
