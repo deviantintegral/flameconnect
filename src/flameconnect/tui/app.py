@@ -44,7 +44,7 @@ class FlameConnectApp(App[None]):
         ("q", "quit", "Quit"),
         ("r", "refresh", "Refresh"),
         ("p", "toggle_power", "Power On/Off"),
-        ("f", "cycle_flame_speed", "Flame Speed"),
+        ("f", "set_flame_speed", "Flame Speed"),
         ("b", "toggle_brightness", "Brightness"),
         ("h", "cycle_heat_mode", "Heat Mode"),
         ("t", "toggle_timer", "Timer"),
@@ -193,8 +193,38 @@ class FlameConnectApp(App[None]):
         finally:
             self._write_in_progress = False
 
-    async def action_cycle_flame_speed(self) -> None:
-        """Handle the 'f' key binding to cycle flame speed 1-5."""
+    async def action_set_flame_speed(self) -> None:
+        """Handle the 'f' key binding to open flame speed dialog."""
+        from flameconnect.models import FlameEffectParam
+        from flameconnect.tui.flame_speed_screen import FlameSpeedScreen
+
+        screen = self.screen
+        if not isinstance(screen, DashboardScreen):
+            return
+        if self.fire_id is None:
+            return
+
+        params = screen.current_parameters
+        current = params.get(FlameEffectParam)
+        if not isinstance(current, FlameEffectParam):
+            return
+
+        current_speed = current.flame_speed
+
+        def _on_speed_selected(speed: int | None) -> None:
+            if speed is not None and speed != current_speed:
+                self.run_worker(
+                    self._apply_flame_speed(speed),
+                    exclusive=True,
+                    thread=False,
+                )
+
+        self.push_screen(
+            FlameSpeedScreen(current_speed), callback=_on_speed_selected
+        )
+
+    async def _apply_flame_speed(self, speed: int) -> None:
+        """Write the selected flame speed to the fireplace."""
         from flameconnect.models import FlameEffectParam
 
         screen = self.screen
@@ -211,14 +241,15 @@ class FlameConnectApp(App[None]):
             current = params.get(FlameEffectParam)
             if not isinstance(current, FlameEffectParam):
                 return
-            new_speed = current.flame_speed % 5 + 1
-            new_param = replace(current, flame_speed=new_speed)
+            new_param = replace(current, flame_speed=speed)
             await self.client.write_parameters(self.fire_id, [new_param])
-            screen.log_message(f"Flame speed set to {new_speed}")
+            screen.log_message(f"Flame speed set to {speed}")
             await screen.refresh_state()
         except Exception as exc:
-            _LOGGER.exception("Failed to cycle flame speed")
-            screen.log_message(f"Flame speed change failed: {exc}", level=logging.ERROR)
+            _LOGGER.exception("Failed to set flame speed")
+            screen.log_message(
+                f"Flame speed change failed: {exc}", level=logging.ERROR
+            )
         finally:
             self._write_in_progress = False
 

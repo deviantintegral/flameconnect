@@ -204,3 +204,56 @@ All changes integrate with the existing architecture:
 ### Change Log
 - 2026-02-23: Initial plan created
 - 2026-02-23: Refinement — trimmed sound/log-effect from scope per YAGNI and user confirmation; set timer default to 60 minutes; confirmed all four heat modes in TUI cycle; added Plan Clarifications table; detailed write-in-progress guard as single boolean flag; added dataclasses.replace() refactor as explicit architectural component
+- 2026-02-23: Generated tasks and execution blueprint
+
+## Task Dependency Visualization
+
+```mermaid
+graph TD
+    T1[Task 01: Refactor dataclasses.replace] --> T2[Task 02: Add CLI set commands]
+    T1 --> T3[Task 03: Add TUI keybindings]
+    T2 --> T4[Task 04: Add tests]
+    T3 --> T4
+```
+
+## Execution Blueprint
+
+**Validation Gates:**
+- Reference: `/config/hooks/POST_PHASE.md`
+
+### ✅ Phase 1: Foundation Refactor
+**Parallel Tasks:**
+- ✔️ Task 01: Refactor existing write handlers to use dataclasses.replace()
+
+### ✅ Phase 2: Feature Implementation
+**Parallel Tasks:**
+- ✔️ Task 02: Add missing CLI set sub-parameters (depends on: 01)
+- ✔️ Task 03: Add TUI interactive keybindings (depends on: 01)
+
+### ✅ Phase 3: Test Coverage
+**Parallel Tasks:**
+- ✔️ Task 04: Add tests for new CLI and TUI write operations (depends on: 02, 03)
+
+### Execution Summary
+- Total Phases: 3
+- Total Tasks: 4
+- Maximum Parallelism: 2 tasks (in Phase 2)
+- Critical Path Length: 3 phases
+
+## Execution Summary
+
+**Status**: Completed Successfully
+**Completed Date**: 2026-02-23
+
+### Results
+- Phase 1: Refactored 5 write handlers in `cli.py` and `client.py` to use `dataclasses.replace()`, removing 47 lines of manual field copying
+- Phase 2: Added 4 new CLI set commands (pulsating, flame-color, media-theme, temp-unit) and 5 new TUI keybindings (f, b, h, t, u) with write-in-progress guard
+- Phase 3: Added 64 new tests (39 CLI + 28 TUI) — total test count grew from 105 to 169, all passing
+- All commits on `project-foundation` branch: `99fc8c8` (refactor), `076c8e7` (features), `c342037` (tests)
+
+### Noteworthy Events
+No significant issues encountered. All phases executed cleanly with no test failures or linting regressions.
+
+### Recommendations
+- Sound and log-effect CLI commands can be added in a future plan if users request them
+- The TUI keybindings could be extended with more controls (e.g., flame color cycling) if the single-key pattern proves popular

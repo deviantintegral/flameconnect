@@ -98,19 +98,19 @@ def _make_app(mock_client, mock_dashboard):
 
 
 # ---------------------------------------------------------------------------
-# action_cycle_flame_speed
+# _apply_flame_speed (called via FlameSpeedScreen dialog)
 # ---------------------------------------------------------------------------
 
 
-class TestCycleFlameSpeed:
-    """Tests for FlameConnectApp.action_cycle_flame_speed."""
+class TestApplyFlameSpeed:
+    """Tests for FlameConnectApp._apply_flame_speed."""
 
-    async def test_cycles_speed_3_to_4(self, mock_client, mock_dashboard):
+    async def test_sets_speed_to_4(self, mock_client, mock_dashboard):
         app = _make_app(mock_client, mock_dashboard)
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_cycle_flame_speed()
+            await app._apply_flame_speed(4)
 
         mock_client.write_parameters.assert_awaited_once()
         call_args = mock_client.write_parameters.call_args
@@ -119,26 +119,12 @@ class TestCycleFlameSpeed:
         assert isinstance(written_param, FlameEffectParam)
         assert written_param.flame_speed == 4
 
-    async def test_cycles_speed_5_wraps_to_1(self, mock_client, mock_dashboard):
-        mock_dashboard.current_parameters[FlameEffectParam] = FlameEffectParam(
-            flame_effect=FlameEffect.ON,
-            flame_speed=5,
-            brightness=Brightness.LOW,
-            pulsating_effect=PulsatingEffect.OFF,
-            media_theme=MediaTheme.KALEIDOSCOPE,
-            media_light=LightStatus.ON,
-            media_color=RGBWColor(red=0, green=0, blue=0, white=0),
-            overhead_light=LightStatus.OFF,
-            overhead_color=RGBWColor(red=0, green=0, blue=0, white=0),
-            light_status=LightStatus.OFF,
-            flame_color=FlameColor.ALL,
-            ambient_sensor=LightStatus.OFF,
-        )
+    async def test_sets_speed_to_1(self, mock_client, mock_dashboard):
         app = _make_app(mock_client, mock_dashboard)
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_cycle_flame_speed()
+            await app._apply_flame_speed(1)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert written_param.flame_speed == 1
@@ -149,7 +135,7 @@ class TestCycleFlameSpeed:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_cycle_flame_speed()
+            await app._apply_flame_speed(3)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -159,7 +145,7 @@ class TestCycleFlameSpeed:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_cycle_flame_speed()
+            await app._apply_flame_speed(3)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -169,7 +155,7 @@ class TestCycleFlameSpeed:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_cycle_flame_speed()
+            await app._apply_flame_speed(3)
 
         mock_client.write_parameters.assert_not_awaited()
 
@@ -439,7 +425,7 @@ class TestActionErrorHandling:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_cycle_flame_speed()
+            await app._apply_flame_speed(4)
 
         assert app._write_in_progress is False
         # Check that an error was logged
