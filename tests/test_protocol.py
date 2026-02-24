@@ -117,7 +117,7 @@ class TestHeatParamRoundTrip:
             heat_status=HeatStatus.ON,
             heat_mode=HeatMode.NORMAL,
             setpoint_temperature=22.0,
-            boost_duration=0,
+            boost_duration=1,
         )
         decoded = _roundtrip(original, ParameterId.HEAT_SETTINGS)
         assert decoded == original

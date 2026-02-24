@@ -180,7 +180,7 @@ class TestGetFireOverview:
         assert heat.heat_status == HeatStatus.ON
         assert heat.heat_mode == HeatMode.NORMAL
         assert heat.setpoint_temperature == pytest.approx(22.0)
-        assert heat.boost_duration == 0
+        assert heat.boost_duration == 1  # wire 0 → model 1 (1-indexed)
 
     async def test_software_version_values(
         self, mock_api, token_auth, get_fire_overview_payload

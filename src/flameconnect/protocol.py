@@ -140,7 +140,7 @@ def _decode_heat_settings(raw: bytes) -> HeatParam:
     setpoint = _decode_temperature(raw, 5)
     boost_lo = raw[7] if len(raw) > 7 else 0
     boost_hi = raw[8] if len(raw) > 8 else 0
-    boost_duration = boost_lo | (boost_hi << 8)
+    boost_duration = (boost_lo | (boost_hi << 8)) + 1  # wire is 0-indexed
     _LOGGER.debug(
         "Decoded HeatSettings: status=%s mode=%s temp=%.1f boost=%d",
         heat_status,
@@ -312,8 +312,9 @@ def _encode_heat_settings(param: HeatParam) -> bytes:
         param.setpoint_temperature,
         param.boost_duration,
     )
-    boost_lo = param.boost_duration & 0xFF
-    boost_hi = (param.boost_duration >> 8) & 0xFF
+    wire_boost = max(0, param.boost_duration - 1)  # model is 1-indexed, wire is 0-indexed
+    boost_lo = wire_boost & 0xFF
+    boost_hi = (wire_boost >> 8) & 0xFF
     payload = (
         bytes([param.heat_status, param.heat_mode])
         + _encode_temperature(param.setpoint_temperature)
