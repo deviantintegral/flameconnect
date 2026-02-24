@@ -133,12 +133,14 @@ def _decode_flame_effect(raw: bytes) -> FlameEffectParam:
 
 
 def _decode_heat_settings(raw: bytes) -> HeatParam:
-    """Decode HeatSettings (323): 10 bytes total."""
-    _check_length(raw, 10, "HeatSettings")
+    """Decode HeatSettings (323): 7–10 bytes total."""
+    _check_length(raw, 7, "HeatSettings")
     heat_status = HeatStatus(raw[3])
     heat_mode = HeatMode(raw[4])
     setpoint = _decode_temperature(raw, 5)
-    boost_duration = raw[7] | (raw[8] << 8)
+    boost_lo = raw[7] if len(raw) > 7 else 0
+    boost_hi = raw[8] if len(raw) > 8 else 0
+    boost_duration = boost_lo | (boost_hi << 8)
     _LOGGER.debug(
         "Decoded HeatSettings: status=%s mode=%s temp=%.1f boost=%d",
         heat_status,

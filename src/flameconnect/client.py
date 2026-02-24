@@ -202,8 +202,8 @@ class FlameConnectClient:
             raw = base64.b64decode(entry["Value"])
             try:
                 param = decode_parameter(param_id, raw)
-            except Exception:
-                _LOGGER.warning("Failed to decode parameter %d, skipping", param_id)
+            except Exception as exc:
+                _LOGGER.warning("Failed to decode parameter %d: %s", param_id, exc)
                 continue
             parameters.append(param)
 
