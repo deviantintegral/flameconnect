@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from textual.app import ComposeResult
 
     from flameconnect.client import FlameConnectClient
-    from flameconnect.models import FireOverview, ModeParam, Parameter
+    from flameconnect.models import Fire, FireOverview, ModeParam, Parameter
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,11 +36,6 @@ _LEVEL_MARKUP: dict[int, tuple[str, str]] = {
 _DASHBOARD_CSS = """
 #dashboard-container {
     padding: 1 2;
-}
-#fire-info {
-    height: auto;
-    padding: 1 2;
-    border: solid $primary;
 }
 #status-section {
     height: auto;
@@ -113,14 +108,14 @@ class DashboardScreen(Screen[None]):
     def __init__(
         self,
         client: FlameConnectClient,
-        fire_id: str,
-        fire_name: str,
+        fire: Fire,
         name: str | None = None,
     ) -> None:
         super().__init__(name=name)
         self.client = client
-        self.fire_id = fire_id
-        self.fire_name = fire_name
+        self._fire = fire
+        self.fire_id = fire.fire_id
+        self.fire_name = fire.friendly_name
         self._current_mode: ModeParam | None = None
         self._previous_params: dict[type, Parameter] = {}
         self._log_handler: _TuiLogHandler | None = None
@@ -129,7 +124,6 @@ class DashboardScreen(Screen[None]):
         """Compose the dashboard layout."""
         yield Header()
         with Vertical(id="dashboard-container"):
-            yield Static("", id="fire-info")
             with Horizontal(id="status-section"):
                 yield FireplaceVisual(id="fireplace-visual")
                 yield ParameterPanel(id="param-panel")
@@ -188,16 +182,6 @@ class DashboardScreen(Screen[None]):
         """
         from flameconnect.models import ModeParam
 
-        fire_info = self.query_one("#fire-info", Static)
-        connection = _format_connection_state(overview.fire.connection_state)
-        updated = datetime.now().strftime("%H:%M:%S")
-        fire_info.update(
-            f"[bold]{overview.fire.friendly_name}[/bold]  |  "
-            f"ID: {overview.fire.fire_id}  |  "
-            f"Connection: {connection}  |  "
-            f"[dim]Updated: {updated}[/dim]"
-        )
-
         param_panel = self.query_one("#param-panel", ParameterPanel)
         param_panel.update_parameters(overview.parameters)
 
@@ -215,27 +199,14 @@ class DashboardScreen(Screen[None]):
                 self._current_mode = param
                 break
 
+        brand_model = f"{self._fire.brand} {self._fire.product_model}".strip()
+        parts: list[str] = [f"[bold]{overview.fire.friendly_name}[/bold]"]
+        if brand_model:
+            parts.append(brand_model)
+        parts.append(_format_connection_state(overview.fire.connection_state))
+        parts.append(f"[dim]Updated: {datetime.now().strftime('%H:%M:%S')}[/dim]")
         status_bar = self.query_one("#status-bar", Static)
-        status_bar.update(
-            "[dim][bold]r[/bold]efresh | "
-            "[bold]p[/bold]ower | "
-            "[bold]e[/bold]ffect | "
-            "[bold]f[/bold]lame spd | "
-            "[bold]b[/bold]right | "
-            "pulsatin[bold]g[/bold] | "
-            "[bold]c[/bold]olor | "
-            "the[bold]m[/bold]e | "
-            "media [bold]l[/bold]ight | "
-            "me[bold]d[/bold]ia clr | "
-            "[bold]o[/bold]verhead | "
-            "o[bold]v[/bold]hd clr | "
-            "light [bold]s[/bold]tat | "
-            "[bold]a[/bold]mbient | "
-            "[bold]h[/bold]eat | "
-            "[bold]t[/bold]imer | "
-            "temp [bold]u[/bold]nit | "
-            "[bold]q[/bold]uit[/dim]"
-        )
+        status_bar.update(" | ".join(parts))
 
     def _log_param_changes(
         self,

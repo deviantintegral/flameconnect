@@ -8,11 +8,13 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.widgets import Footer, Header, OptionList, Static
 from textual.widgets.option_list import Option
 
 from flameconnect.tui.auth_screen import AuthScreen
 from flameconnect.tui.screens import DashboardScreen
+from flameconnect.tui.widgets import _display_name
 
 if TYPE_CHECKING:
     import asyncio
@@ -39,26 +41,28 @@ class FlameConnectApp(App[None]):
 
     TITLE = "FlameConnect"
     CSS = _APP_CSS
+    COMMAND_PALETTE_DISPLAY = "Palette"
 
     BINDINGS = [
         ("q", "quit", "Quit"),
         ("r", "refresh", "Refresh"),
-        ("p", "toggle_power", "Power On/Off"),
-        ("e", "toggle_flame_effect", "Flame Effect"),
-        ("f", "set_flame_speed", "Flame Speed"),
-        ("b", "toggle_brightness", "Brightness"),
-        ("g", "toggle_pulsating", "Pulsating"),
-        ("c", "set_flame_color", "Flame Color"),
-        ("m", "set_media_theme", "Media Theme"),
-        ("l", "toggle_media_light", "Media Light"),
-        ("d", "set_media_color", "Media Color"),
-        ("o", "toggle_overhead_light", "Overhead Light"),
-        ("v", "set_overhead_color", "Overhead Color"),
-        ("s", "toggle_light_status", "Light Status"),
-        ("a", "toggle_ambient_sensor", "Ambient Sensor"),
-        ("h", "cycle_heat_mode", "Heat Mode"),
-        ("t", "toggle_timer", "Timer"),
-        ("u", "toggle_temp_unit", "Temp Unit"),
+        ("question_mark", "toggle_help", "Help"),
+        Binding("p", "toggle_power", "Power On/Off", show=False),
+        Binding("e", "toggle_flame_effect", "Flame Effect", show=False),
+        Binding("f", "set_flame_speed", "Flame Speed", show=False),
+        Binding("b", "toggle_brightness", "Brightness", show=False),
+        Binding("g", "toggle_pulsating", "Pulsating", show=False),
+        Binding("c", "set_flame_color", "Flame Color", show=False),
+        Binding("m", "set_media_theme", "Media Theme", show=False),
+        Binding("l", "toggle_media_light", "Media Light", show=False),
+        Binding("d", "set_media_color", "Media Color", show=False),
+        Binding("o", "toggle_overhead_light", "Overhead Light", show=False),
+        Binding("v", "set_overhead_color", "Overhead Color", show=False),
+        Binding("s", "toggle_light_status", "Light Status", show=False),
+        Binding("a", "toggle_ambient_sensor", "Ambient Sensor", show=False),
+        Binding("h", "cycle_heat_mode", "Heat Mode", show=False),
+        Binding("t", "toggle_timer", "Timer", show=False),
+        Binding("u", "toggle_temp_unit", "Temp Unit", show=False),
     ]
 
     def __init__(self, client: FlameConnectClient) -> None:
@@ -105,7 +109,7 @@ class FlameConnectApp(App[None]):
         loading.update("[bold]Select a fireplace:[/bold]")
         options = [
             Option(
-                f"{fire.friendly_name} ({fire.connection_state.name})",
+                f"{fire.friendly_name} ({_display_name(fire.connection_state)})",
                 id=fire.fire_id,
             )
             for fire in self.fires
@@ -154,11 +158,7 @@ class FlameConnectApp(App[None]):
         Args:
             fire: The selected Fire instance.
         """
-        screen = DashboardScreen(
-            client=self.client,
-            fire_id=fire.fire_id,
-            fire_name=fire.friendly_name,
-        )
+        screen = DashboardScreen(client=self.client, fire=fire)
         self.push_screen(screen)
 
     async def action_refresh(self) -> None:
@@ -168,6 +168,13 @@ class FlameConnectApp(App[None]):
             screen.log_message("Refreshing...")
             await screen.refresh_state()
             screen.log_message("Refresh complete")
+
+    def action_toggle_help(self) -> None:
+        """Toggle the help panel open or closed."""
+        if self.query("HelpPanel"):
+            self.action_hide_help_panel()
+        else:
+            self.action_show_help_panel()
 
     async def action_toggle_power(self) -> None:
         """Handle the 'p' key binding to toggle fireplace power."""
@@ -569,7 +576,7 @@ class FlameConnectApp(App[None]):
                 return
             new_param = replace(current, flame_color=color)
             await self.client.write_parameters(self.fire_id, [new_param])
-            label = color.name.replace("_", " ").title()
+            label = _display_name(color)
             screen.log_message(f"Flame color set to {label}")
             await screen.refresh_state()
         except Exception as exc:
@@ -630,7 +637,7 @@ class FlameConnectApp(App[None]):
                 return
             new_param = replace(current, media_theme=theme)
             await self.client.write_parameters(self.fire_id, [new_param])
-            label = theme.name.replace("_", " ").title()
+            label = _display_name(theme)
             screen.log_message(f"Media theme set to {label}")
             await screen.refresh_state()
         except Exception as exc:
@@ -791,7 +798,7 @@ class FlameConnectApp(App[None]):
             new_mode = modes[(idx + 1) % len(modes)]
             new_param = replace(current, heat_mode=new_mode)
             await self.client.write_parameters(self.fire_id, [new_param])
-            mode_label = new_mode.name.replace("_", " ").title()
+            mode_label = _display_name(new_mode)
             screen.log_message(f"Heat mode set to {mode_label}")
             await screen.refresh_state()
         except Exception as exc:
