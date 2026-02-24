@@ -196,6 +196,27 @@ def _format_connection_state(state: ConnectionState) -> str:
     return f"[{color}]{state.name}[/{color}]"
 
 
+class FireplaceVisual(Static):
+    """Static ASCII-art fireplace visual (placeholder for future animation)."""
+
+    def render(self) -> str:
+        """Render the ASCII fireplace art with Rich markup."""
+        return (
+            "[dim]┌──────────────────────┐[/dim]\n"
+            "[dim]│[/dim]    [dim]╱╲      ╱╲[/dim]    [dim]│[/dim]\n"
+            "[dim]│[/dim]   [yellow]╱[/yellow][red]@@[/red][yellow]╲[/yellow]  [yellow]╱[/yellow][red]@@[/red][yellow]╲[/yellow]   [dim]│[/dim]\n"
+            "[dim]│[/dim]  [yellow]╱[/yellow][red]@@@@[/red][yellow]╲╱[/yellow][red]@@@@[/red][yellow]╲[/yellow]  [dim]│[/dim]\n"
+            "[dim]│[/dim]  [yellow]║[/yellow][red]@@@@@@@@@@@@[/red][yellow]║[/yellow]  [dim]│[/dim]\n"
+            "[dim]│[/dim]  [yellow]║[/yellow][red]@@[/red][yellow]@@[/yellow][red]@@[/red][yellow]@@[/yellow][red]@@[/red][yellow]@@[/yellow][yellow]║[/yellow]  [dim]│[/dim]\n"
+            "[dim]│[/dim]   [yellow]║[/yellow][yellow]@@[/yellow][red]@@@@[/red][yellow]@@[/yellow][yellow]║[/yellow]   [dim]│[/dim]\n"
+            "[dim]│[/dim]    [yellow]║[/yellow][yellow]@@@@@@[/yellow][yellow]║[/yellow]    [dim]│[/dim]\n"
+            "[dim]│[/dim]     [yellow]╚════╝[/yellow]     [dim]│[/dim]\n"
+            "[dim]│[/dim]  [dim]══════════════[/dim]  [dim]│[/dim]\n"
+            "[dim]│[/dim]  [dim]║            ║[/dim]  [dim]│[/dim]\n"
+            "[dim]└──────────────────────┘[/dim]"
+        )
+
+
 class FireplaceInfo(Static):
     """Widget showing fire name, ID, and connection state."""
 
@@ -220,6 +241,10 @@ class ParameterPanel(Static):
     def render(self) -> str:
         """Render the parameter panel content."""
         return self.content_text
+
+    def watch_content_text(self) -> None:
+        """Force a layout recalculation when content changes."""
+        self.refresh(layout=True)
 
     def update_parameters(self, params: list[Parameter]) -> None:
         """Update the panel with new parameter data.

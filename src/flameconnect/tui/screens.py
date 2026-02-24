@@ -6,12 +6,13 @@ import logging
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.widgets import Footer, Header, RichLog, Static
 
 from flameconnect.tui.widgets import (
     FireplaceInfo,
+    FireplaceVisual,
     ParameterPanel,
     _format_connection_state,
 )
@@ -38,12 +39,20 @@ _DASHBOARD_CSS = """
 }
 #fire-info {
     height: auto;
-    margin-bottom: 1;
+    padding: 1 2;
+    border: solid $primary;
+}
+#status-section {
+    height: auto;
+}
+#fireplace-visual {
+    width: 1fr;
     padding: 1 2;
     border: solid $primary;
 }
 #param-panel {
     height: auto;
+    width: 2fr;
     padding: 1 2;
     border: solid $secondary;
 }
@@ -119,7 +128,9 @@ class DashboardScreen(Screen[None]):
         yield Header()
         with Vertical(id="dashboard-container"):
             yield FireplaceInfo(id="fire-info")
-            yield ParameterPanel(id="param-panel")
+            with Horizontal(id="status-section"):
+                yield FireplaceVisual(id="fireplace-visual")
+                yield ParameterPanel(id="param-panel")
             yield Static("[bold]Messages[/bold]", id="messages-label")
             yield RichLog(id="messages-panel", markup=True, wrap=True)
         yield Static("", id="status-bar")
