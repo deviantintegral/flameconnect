@@ -48,12 +48,12 @@ class FlameConnectApp(App[None]):
 
     TITLE = "FlameConnect"
     CSS = _APP_CSS
-    COMMAND_PALETTE_DISPLAY = "Palette"
 
     BINDINGS = [
         ("q", "quit", "Quit"),
         ("r", "refresh", "Refresh"),
         ("question_mark", "toggle_help", "Help"),
+        Binding("ctrl+p", "command_palette", "Palette"),
         Binding("p", "toggle_power", "Power On/Off", show=False),
         Binding("e", "toggle_flame_effect", "Flame Effect", show=False),
         Binding("f", "set_flame_speed", "Flame Speed", show=False),

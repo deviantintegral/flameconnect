@@ -14,7 +14,7 @@ from textual.widgets import Footer, Header, RichLog, Static
 from flameconnect.tui.widgets import (
     FireplaceVisual,
     ParameterPanel,
-    _format_connection_state,
+    _display_name,
 )
 
 if TYPE_CHECKING:
@@ -64,13 +64,6 @@ _DASHBOARD_CSS = """
     padding: 0 2;
     border: solid $accent;
 }
-#status-bar {
-    height: 1;
-    dock: bottom;
-    background: $surface;
-    color: $text-muted;
-    padding: 0 2;
-}
 """
 
 
@@ -119,6 +112,7 @@ class DashboardScreen(Screen[None]):
         self._current_mode: ModeParam | None = None
         self._previous_params: dict[type, Parameter] = {}
         self._log_handler: _TuiLogHandler | None = None
+        self.sub_title = fire.friendly_name
 
     def compose(self) -> ComposeResult:
         """Compose the dashboard layout."""
@@ -129,7 +123,6 @@ class DashboardScreen(Screen[None]):
                 yield ParameterPanel(id="param-panel")
             yield Static("[bold]Messages[/bold]", id="messages-label")
             yield RichLog(id="messages-panel", markup=True, wrap=True)
-        yield Static("", id="status-bar")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -200,13 +193,13 @@ class DashboardScreen(Screen[None]):
                 break
 
         brand_model = f"{self._fire.brand} {self._fire.product_model}".strip()
-        parts: list[str] = [f"[bold]{overview.fire.friendly_name}[/bold]"]
+        conn = _display_name(overview.fire.connection_state)
+        parts: list[str] = [overview.fire.friendly_name]
         if brand_model:
             parts.append(brand_model)
-        parts.append(_format_connection_state(overview.fire.connection_state))
-        parts.append(f"[dim]Updated: {datetime.now().strftime('%H:%M:%S')}[/dim]")
-        status_bar = self.query_one("#status-bar", Static)
-        status_bar.update(" | ".join(parts))
+        parts.append(conn)
+        parts.append(f"Updated: {datetime.now().strftime('%H:%M:%S')}")
+        self.sub_title = " | ".join(parts)
 
     def _log_param_changes(
         self,
