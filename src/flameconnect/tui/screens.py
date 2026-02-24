@@ -177,7 +177,7 @@ class DashboardScreen(Screen[None]):
         Args:
             overview: The latest FireOverview from the API.
         """
-        from flameconnect.models import ModeParam
+        from flameconnect.models import FlameEffectParam, ModeParam
 
         param_panel = self.query_one("#param-panel", ParameterPanel)
         param_panel.update_parameters(overview.parameters)
@@ -190,11 +190,18 @@ class DashboardScreen(Screen[None]):
             self._log_param_changes(self._previous_params, current_params)
         self._previous_params = current_params
 
-        # Track the current mode for power toggle
+        # Track the current mode and flame effect for power toggle / visual
+        mode_param: ModeParam | None = None
+        flame_effect_param: FlameEffectParam | None = None
         for param in overview.parameters:
             if isinstance(param, ModeParam):
-                self._current_mode = param
-                break
+                mode_param = param
+            elif isinstance(param, FlameEffectParam):
+                flame_effect_param = param
+        self._current_mode = mode_param
+
+        visual = self.query_one("#fireplace-visual", FireplaceVisual)
+        visual.update_state(mode_param, flame_effect_param)
 
         parts: list[str] = [f"{self._fire.friendly_name} ({overview.fire.fire_id})"]
         brand_model = f"{self._fire.brand} {self._fire.product_model}".strip()
