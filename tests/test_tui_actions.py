@@ -1,0 +1,511 @@
+"""Tests for TUI keybinding action methods in FlameConnectApp."""
+
+from __future__ import annotations
+
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+
+import pytest
+
+from flameconnect.models import (
+    Brightness,
+    FlameColor,
+    FlameEffect,
+    FlameEffectParam,
+    HeatMode,
+    HeatParam,
+    HeatStatus,
+    LightStatus,
+    MediaTheme,
+    PulsatingEffect,
+    RGBWColor,
+    TempUnit,
+    TempUnitParam,
+    TimerParam,
+    TimerStatus,
+)
+from flameconnect.tui.app import FlameConnectApp
+from flameconnect.tui.screens import DashboardScreen
+
+# ---------------------------------------------------------------------------
+# Shared fixtures
+# ---------------------------------------------------------------------------
+
+_DEFAULT_FLAME_EFFECT = FlameEffectParam(
+    flame_effect=FlameEffect.ON,
+    flame_speed=3,
+    brightness=Brightness.LOW,
+    pulsating_effect=PulsatingEffect.OFF,
+    media_theme=MediaTheme.KALEIDOSCOPE,
+    media_light=LightStatus.ON,
+    media_color=RGBWColor(red=100, green=75, blue=50, white=25),
+    overhead_light=LightStatus.ON,
+    overhead_color=RGBWColor(red=200, green=175, blue=150, white=125),
+    light_status=LightStatus.ON,
+    flame_color=FlameColor.ALL,
+    ambient_sensor=LightStatus.OFF,
+)
+
+_DEFAULT_HEAT = HeatParam(
+    heat_status=HeatStatus.ON,
+    heat_mode=HeatMode.NORMAL,
+    setpoint_temperature=22.0,
+    boost_duration=1,
+)
+
+_DEFAULT_TIMER = TimerParam(
+    timer_status=TimerStatus.DISABLED,
+    duration=0,
+)
+
+_DEFAULT_TEMP_UNIT = TempUnitParam(unit=TempUnit.CELSIUS)
+
+
+@pytest.fixture
+def mock_client():
+    """Return an AsyncMock client with write_parameters stubbed."""
+    client = AsyncMock()
+    client.write_parameters = AsyncMock()
+    return client
+
+
+@pytest.fixture
+def mock_dashboard():
+    """Return a mock DashboardScreen with current_parameters and helpers."""
+    screen = MagicMock(spec=DashboardScreen)
+    screen.log_message = MagicMock()
+    screen.refresh_state = AsyncMock()
+    screen.current_parameters = {
+        FlameEffectParam: _DEFAULT_FLAME_EFFECT,
+        HeatParam: _DEFAULT_HEAT,
+        TimerParam: _DEFAULT_TIMER,
+        TempUnitParam: _DEFAULT_TEMP_UNIT,
+    }
+    return screen
+
+
+def _make_app(mock_client, mock_dashboard):
+    """Create a FlameConnectApp wired to the mock client and dashboard.
+
+    We avoid actually running the Textual app; instead we set up the
+    instance fields that the action methods rely on and patch
+    ``app.screen`` to return the mock dashboard.
+    """
+    app = FlameConnectApp.__new__(FlameConnectApp)
+    app.client = mock_client
+    app.fire_id = "test-fire-001"
+    app._write_in_progress = False
+    return app
+
+
+# ---------------------------------------------------------------------------
+# action_cycle_flame_speed
+# ---------------------------------------------------------------------------
+
+
+class TestCycleFlameSpeed:
+    """Tests for FlameConnectApp.action_cycle_flame_speed."""
+
+    async def test_cycles_speed_3_to_4(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_cycle_flame_speed()
+
+        mock_client.write_parameters.assert_awaited_once()
+        call_args = mock_client.write_parameters.call_args
+        assert call_args[0][0] == "test-fire-001"
+        written_param = call_args[0][1][0]
+        assert isinstance(written_param, FlameEffectParam)
+        assert written_param.flame_speed == 4
+
+    async def test_cycles_speed_5_wraps_to_1(self, mock_client, mock_dashboard):
+        mock_dashboard.current_parameters[FlameEffectParam] = FlameEffectParam(
+            flame_effect=FlameEffect.ON,
+            flame_speed=5,
+            brightness=Brightness.LOW,
+            pulsating_effect=PulsatingEffect.OFF,
+            media_theme=MediaTheme.KALEIDOSCOPE,
+            media_light=LightStatus.ON,
+            media_color=RGBWColor(red=0, green=0, blue=0, white=0),
+            overhead_light=LightStatus.OFF,
+            overhead_color=RGBWColor(red=0, green=0, blue=0, white=0),
+            light_status=LightStatus.OFF,
+            flame_color=FlameColor.ALL,
+            ambient_sensor=LightStatus.OFF,
+        )
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_cycle_flame_speed()
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert written_param.flame_speed == 1
+
+    async def test_no_op_when_no_fire_id(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+        app.fire_id = None
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_cycle_flame_speed()
+
+        mock_client.write_parameters.assert_not_awaited()
+
+    async def test_no_op_when_write_in_progress(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+        app._write_in_progress = True
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_cycle_flame_speed()
+
+        mock_client.write_parameters.assert_not_awaited()
+
+    async def test_no_op_when_no_flame_param(self, mock_client, mock_dashboard):
+        del mock_dashboard.current_parameters[FlameEffectParam]
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_cycle_flame_speed()
+
+        mock_client.write_parameters.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# action_toggle_brightness
+# ---------------------------------------------------------------------------
+
+
+class TestToggleBrightness:
+    """Tests for FlameConnectApp.action_toggle_brightness."""
+
+    async def test_toggles_low_to_high(self, mock_client, mock_dashboard):
+        # Default fixture has brightness LOW
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_brightness()
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert isinstance(written_param, FlameEffectParam)
+        assert written_param.brightness == Brightness.HIGH
+
+    async def test_toggles_high_to_low(self, mock_client, mock_dashboard):
+        mock_dashboard.current_parameters[FlameEffectParam] = FlameEffectParam(
+            flame_effect=FlameEffect.ON,
+            flame_speed=3,
+            brightness=Brightness.HIGH,
+            pulsating_effect=PulsatingEffect.OFF,
+            media_theme=MediaTheme.KALEIDOSCOPE,
+            media_light=LightStatus.ON,
+            media_color=RGBWColor(red=0, green=0, blue=0, white=0),
+            overhead_light=LightStatus.OFF,
+            overhead_color=RGBWColor(red=0, green=0, blue=0, white=0),
+            light_status=LightStatus.OFF,
+            flame_color=FlameColor.ALL,
+            ambient_sensor=LightStatus.OFF,
+        )
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_brightness()
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert written_param.brightness == Brightness.LOW
+
+    async def test_refreshes_after_write(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_brightness()
+
+        mock_dashboard.refresh_state.assert_awaited_once()
+
+    async def test_clears_write_flag_on_success(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_brightness()
+
+        assert app._write_in_progress is False
+
+
+# ---------------------------------------------------------------------------
+# action_cycle_heat_mode
+# ---------------------------------------------------------------------------
+
+
+class TestCycleHeatMode:
+    """Tests for FlameConnectApp.action_cycle_heat_mode."""
+
+    async def test_cycles_normal_to_boost(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_cycle_heat_mode()
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert isinstance(written_param, HeatParam)
+        assert written_param.heat_mode == HeatMode.BOOST
+
+    async def test_cycles_fan_only_wraps_to_normal(
+        self, mock_client, mock_dashboard
+    ):
+        mock_dashboard.current_parameters[HeatParam] = HeatParam(
+            heat_status=HeatStatus.ON,
+            heat_mode=HeatMode.FAN_ONLY,
+            setpoint_temperature=22.0,
+            boost_duration=1,
+        )
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_cycle_heat_mode()
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert written_param.heat_mode == HeatMode.NORMAL
+
+    async def test_cycles_eco_to_fan_only(self, mock_client, mock_dashboard):
+        mock_dashboard.current_parameters[HeatParam] = HeatParam(
+            heat_status=HeatStatus.ON,
+            heat_mode=HeatMode.ECO,
+            setpoint_temperature=22.0,
+            boost_duration=1,
+        )
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_cycle_heat_mode()
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert written_param.heat_mode == HeatMode.FAN_ONLY
+
+    async def test_no_op_when_no_heat_param(self, mock_client, mock_dashboard):
+        del mock_dashboard.current_parameters[HeatParam]
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_cycle_heat_mode()
+
+        mock_client.write_parameters.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# action_toggle_timer
+# ---------------------------------------------------------------------------
+
+
+class TestToggleTimer:
+    """Tests for FlameConnectApp.action_toggle_timer."""
+
+    async def test_enables_timer_when_disabled(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_timer()
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert isinstance(written_param, TimerParam)
+        assert written_param.timer_status == TimerStatus.ENABLED
+        assert written_param.duration == 60
+
+    async def test_disables_timer_when_enabled(self, mock_client, mock_dashboard):
+        mock_dashboard.current_parameters[TimerParam] = TimerParam(
+            timer_status=TimerStatus.ENABLED,
+            duration=120,
+        )
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_timer()
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert written_param.timer_status == TimerStatus.DISABLED
+        assert written_param.duration == 0
+
+    async def test_logs_disable_message(self, mock_client, mock_dashboard):
+        mock_dashboard.current_parameters[TimerParam] = TimerParam(
+            timer_status=TimerStatus.ENABLED,
+            duration=60,
+        )
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_timer()
+
+        mock_dashboard.log_message.assert_any_call("Timer disabled")
+
+    async def test_logs_enable_message(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_timer()
+
+        mock_dashboard.log_message.assert_any_call("Timer enabled (60 min)")
+
+
+# ---------------------------------------------------------------------------
+# action_toggle_temp_unit
+# ---------------------------------------------------------------------------
+
+
+class TestToggleTempUnit:
+    """Tests for FlameConnectApp.action_toggle_temp_unit."""
+
+    async def test_toggles_celsius_to_fahrenheit(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_temp_unit()
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert isinstance(written_param, TempUnitParam)
+        assert written_param.unit == TempUnit.FAHRENHEIT
+
+    async def test_toggles_fahrenheit_to_celsius(self, mock_client, mock_dashboard):
+        mock_dashboard.current_parameters[TempUnitParam] = TempUnitParam(
+            unit=TempUnit.FAHRENHEIT,
+        )
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_temp_unit()
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert written_param.unit == TempUnit.CELSIUS
+
+    async def test_refreshes_and_clears_flag(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_temp_unit()
+
+        mock_dashboard.refresh_state.assert_awaited_once()
+        assert app._write_in_progress is False
+
+    async def test_logs_unit_message(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_temp_unit()
+
+        mock_dashboard.log_message.assert_any_call(
+            "Temperature unit set to Fahrenheit"
+        )
+
+    async def test_no_op_when_no_temp_unit_param(self, mock_client, mock_dashboard):
+        del mock_dashboard.current_parameters[TempUnitParam]
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_temp_unit()
+
+        mock_client.write_parameters.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# Error handling
+# ---------------------------------------------------------------------------
+
+
+class TestActionErrorHandling:
+    """Test that action methods handle exceptions gracefully."""
+
+    async def test_flame_speed_error_logs_and_clears_flag(
+        self, mock_client, mock_dashboard
+    ):
+        mock_client.write_parameters.side_effect = Exception("API failure")
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_cycle_flame_speed()
+
+        assert app._write_in_progress is False
+        # Check that an error was logged
+        mock_dashboard.log_message.assert_called()
+        log_call_args = [
+            call.args[0] for call in mock_dashboard.log_message.call_args_list
+        ]
+        assert any("failed" in msg.lower() for msg in log_call_args)
+
+    async def test_brightness_error_logs_and_clears_flag(
+        self, mock_client, mock_dashboard
+    ):
+        mock_client.write_parameters.side_effect = Exception("network error")
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_brightness()
+
+        assert app._write_in_progress is False
+
+    async def test_timer_error_logs_and_clears_flag(
+        self, mock_client, mock_dashboard
+    ):
+        mock_client.write_parameters.side_effect = Exception("timeout")
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_timer()
+
+        assert app._write_in_progress is False
+
+    async def test_temp_unit_error_logs_and_clears_flag(
+        self, mock_client, mock_dashboard
+    ):
+        mock_client.write_parameters.side_effect = Exception("server error")
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_temp_unit()
+
+        assert app._write_in_progress is False
+
+
+# ---------------------------------------------------------------------------
+# DashboardScreen.current_parameters property
+# ---------------------------------------------------------------------------
+
+
+class TestDashboardCurrentParameters:
+    """Test the current_parameters property on DashboardScreen."""
+
+    def test_returns_copy_of_previous_params(self):
+        screen = DashboardScreen.__new__(DashboardScreen)
+        screen._previous_params = {
+            FlameEffectParam: _DEFAULT_FLAME_EFFECT,
+            HeatParam: _DEFAULT_HEAT,
+        }
+        result = screen.current_parameters
+        assert result == screen._previous_params
+        # Must be a copy, not the same dict
+        assert result is not screen._previous_params
+
+    def test_returns_empty_dict_when_no_params(self):
+        screen = DashboardScreen.__new__(DashboardScreen)
+        screen._previous_params = {}
+        assert screen.current_parameters == {}
