@@ -53,7 +53,7 @@ class FlameConnectApp(App[None]):
         ("q", "quit", "Quit"),
         ("r", "refresh", "Refresh"),
         ("question_mark", "toggle_help", "Help"),
-        Binding("ctrl+p", "command_palette", "Palette"),
+        Binding("ctrl+p", "command_palette", "Palette", show=False, priority=True),
         Binding("p", "toggle_power", "Power On/Off", show=False),
         Binding("e", "toggle_flame_effect", "Flame Effect", show=False),
         Binding("f", "set_flame_speed", "Flame Speed", show=False),
