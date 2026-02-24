@@ -281,6 +281,42 @@ The `#fireplace-visual` CSS should be updated to ensure the art centres within i
 
 Most changes are to existing TUI files (`widgets.py`, `screens.py`, `app.py`). Two new files are needed: `heat_mode_screen.py` for the heat mode selection dialog and `fire_select_screen.py` for the fireplace switcher dialog (both following the `flame_speed_screen.py` pattern). The `_display_name()` helper is a module-level function in `widgets.py` — it must be added to the import surface (exported from widgets) since `app.py` also needs it for 4 log-message `.name` usages. Existing tests in `test_tui_actions.py` and `test_cli_set.py` do not assert on status display text strings, so no test modifications are needed for the casing or layout changes. The heat mode dialog replaces `action_cycle_heat_mode` — the existing `TestCycleHeatMode` test class in `test_tui_actions.py` must be updated to test the new dialog-based flow. The CLI `_set_heat_mode` changes (including `boost:<minutes>` parsing) require updates to the corresponding CLI test. The fireplace switcher requires testing that `action_switch_fire` re-fetches fires, pops/pushes screens, and updates `self.fire_id`. The `DashboardScreen` constructor change (accepting a `Fire` object instead of separate `fire_id`/`fire_name`) affects the test fixture setup in `test_tui_actions.py`.
 
+## Dependency Visualization
+
+```mermaid
+graph TD
+    01["Task 01: widgets.py overhaul"] --> 02["Task 02: Layout + Footer + Help + Info"]
+    02 --> 03["Task 03: Heat Mode + Fire Switcher Dialogs"]
+    03 --> 04["Task 04: Tests"]
+```
+
+## Execution Blueprint
+
+**Validation Gates:**
+- Reference: `/config/hooks/POST_PHASE.md`
+
+### ✅ Phase 1: Widget Formatter Overhaul
+**Parallel Tasks:**
+- ✔️ Task 01: Overhaul widgets.py — formatters, display name helper, case standardisation, ASCII art, FireplaceInfo deletion
+
+### ✅ Phase 2: Layout & Footer Restructuring
+**Parallel Tasks:**
+- ✔️ Task 02: Restructure layout, simplify footer, add help panel, enhance fireplace info (depends on: 01)
+
+### ✅ Phase 3: Dialog Screens & CLI
+**Parallel Tasks:**
+- ✔️ Task 03: Add heat mode selection dialog, fireplace switcher dialog, CLI heat-mode update (depends on: 02)
+
+### ✅ Phase 4: Tests
+**Parallel Tasks:**
+- ✔️ Task 04: Tests for heat mode dialog, fire switcher, CLI heat-mode, DashboardScreen constructor (depends on: 03)
+
+### Execution Summary
+- Total Phases: 4
+- Total Tasks: 4
+- Maximum Parallelism: 1 task (sequential pipeline — all tasks modify overlapping files)
+- Critical Path Length: 4 phases
+
 ## Notes
 
 - The `Binding` import from `textual.app` is needed alongside the existing `App` and `ComposeResult` imports in `app.py`.
@@ -292,3 +328,24 @@ Most changes are to existing TUI files (`widgets.py`, `screens.py`, `app.py`). T
 - 2026-02-24: Added heat mode selection dialog — replaces non-functional `action_cycle_heat_mode` with `HeatModeScreen` offering Normal, Eco, Boost (with duration input 1-20 min); removed Fan Only from user-facing options; updated CLI `_set_heat_mode` to support `boost <minutes>` syntax; added new `heat_mode_screen.py` file to architecture.
 - 2026-02-24: Added fireplace switcher dialog (`fire_select_screen.py`, `w` keybinding) and enhanced fireplace info to show brand + model in status bar; `DashboardScreen` now receives full `Fire` object; documented `Fire` metadata fields available from API.
 - 2026-02-24: Refinement pass — fixed CLI boost syntax to `boost:15` (preserves 3-arg argparse structure); consolidated status bar format across Layout Restructuring and Enhanced Info sections; expanded Status Text Case to cover 4 `.name` usages in `app.py`; specified `_display_name()` must be exported from `widgets.py`; added fire list re-fetch before switcher dialog; clarified HeatModeScreen allows switching from Boost input back to Normal/Eco directly; resolved `DashboardScreen` constructor ambiguity (single `Fire` param, not "or"); added fireplace switcher state leakage risk entry.
+
+## Execution Summary
+
+**Status**: ✅ Completed Successfully
+**Completed Date**: 2026-02-24
+
+### Results
+All 4 phases executed successfully in sequence:
+- **Phase 1** (`ccc86eb`): Overhauled `widgets.py` — added `_display_name()` helper, fixed boost display, standardised all 15 enum `.name` references to Title Case, removed `_BRIGHTNESS_NAMES`/`_PULSATING_NAMES`, deleted `FireplaceInfo` widget, redesigned fireplace ASCII art (48x16, Rich colour markup).
+- **Phase 2** (`e21516e`): Restructured layout — moved fire info to status bar with brand/model, replaced keybinding bar with HelpPanel (`?` toggle), simplified Footer to Quit/Refresh/Help/Palette, converted BINDINGS to `Binding` class with `show=False`, updated `DashboardScreen` to accept `Fire` object.
+- **Phase 3** (`3c7c7cd`): Created `HeatModeScreen` (Normal/Eco/Boost with duration input) and `FireSelectScreen` (fire switcher with re-fetch). Replaced `action_cycle_heat_mode` with dialog-based `action_set_heat_mode`. Updated CLI for `boost:N` syntax, removed `fan-only`.
+- **Phase 4** (`0876e17`): Added 15 new tests — `TestSetHeatModeDialog`, `TestApplyHeatMode`, `TestSwitchFire`, CLI heat-mode tests. 225 total tests passing.
+
+### Noteworthy Events
+- Phase 1 required an immediate fix to `screens.py` because deleting `FireplaceInfo` from `widgets.py` broke the import in `screens.py`. The import removal and `compose()` update were done in Phase 1 to keep tests green, rather than waiting for Phase 2.
+- Phase 3 agent proactively added core tests alongside the implementation (TestApplyHeatMode and CLI boost tests), reducing the scope needed for Phase 4.
+- DashboardScreen test fixtures did not need updating — existing tests use `MagicMock(spec=DashboardScreen)` which bypasses the constructor.
+
+### Recommendations
+- Verify heat mode changes work on a real fireplace — the root cause of mode changes not applying may be fireplace-side, not TUI-side.
+- Consider adding integration tests for the full dialog flow (open screen → select → verify write) once Textual's `Pilot` testing API is adopted.
