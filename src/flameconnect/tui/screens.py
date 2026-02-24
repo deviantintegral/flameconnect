@@ -112,7 +112,11 @@ class DashboardScreen(Screen[None]):
         self._current_mode: ModeParam | None = None
         self._previous_params: dict[type, Parameter] = {}
         self._log_handler: _TuiLogHandler | None = None
-        self.sub_title = fire.friendly_name
+        parts = [f"{fire.friendly_name} ({fire.fire_id})"]
+        brand_model = f"{fire.brand} {fire.product_model}".strip()
+        if brand_model:
+            parts.append(brand_model)
+        self.sub_title = " | ".join(parts)
 
     def compose(self) -> ComposeResult:
         """Compose the dashboard layout."""
@@ -192,9 +196,9 @@ class DashboardScreen(Screen[None]):
                 self._current_mode = param
                 break
 
-        brand_model = f"{self._fire.brand} {self._fire.product_model}".strip()
         conn = _display_name(overview.fire.connection_state)
-        parts: list[str] = [overview.fire.friendly_name]
+        parts: list[str] = [f"{self._fire.friendly_name} ({overview.fire.fire_id})"]
+        brand_model = f"{self._fire.brand} {self._fire.product_model}".strip()
         if brand_model:
             parts.append(brand_model)
         parts.append(conn)
