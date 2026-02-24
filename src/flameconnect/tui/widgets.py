@@ -378,8 +378,8 @@ _FIRE_ART: list[str] = [
     # spread
     _row(
         f"   {_R}(  \\ {_r}"
-        f"{_Y}/ || \\{_y}"
-        f"{_R}  /  ){_r}",
+        f"{_Y}/ || {_y}"
+        f"{_R}\\  /  ){_r}",
         20,
     ),
     # lower
@@ -401,8 +401,8 @@ _FIRE_ART: list[str] = [
     # embers
     _row(
         f"    {_Y}(__/  {_y}"
-        f"{_B}/==\\{_b}"
-        f"{_Y}  \\__){_y}",
+        f"{_B}/=={_b}"
+        f"{_Y}\\  \\__){_y}",
         20,
     ),
     # coal bed
