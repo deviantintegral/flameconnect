@@ -7,7 +7,7 @@ import logging
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from textual.containers import Horizontal, Vertical
+from textual.containers import Container, Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.widgets import Footer, Header, RichLog, Static
 
@@ -17,6 +17,7 @@ from flameconnect.tui.widgets import (
 )
 
 if TYPE_CHECKING:
+    from textual import events
     from textual.app import ComposeResult
 
     from flameconnect.client import FlameConnectClient
@@ -37,6 +38,7 @@ _DASHBOARD_CSS = """
     padding: 1 2;
 }
 #status-section {
+    layout: horizontal;
     height: auto;
 }
 #fireplace-visual {
@@ -45,6 +47,9 @@ _DASHBOARD_CSS = """
     padding: 1 2;
     border: solid $primary;
     content-align: center middle;
+}
+#param-scroll {
+    height: auto;
 }
 #param-panel {
     height: auto;
@@ -63,6 +68,34 @@ _DASHBOARD_CSS = """
     min-height: 4;
     padding: 0 2;
     border: solid $accent;
+}
+.compact #dashboard-container {
+    padding: 0 1;
+}
+.compact #status-section {
+    layout: vertical;
+}
+.compact #fireplace-visual {
+    border: none;
+    padding: 0;
+    max-height: 10;
+    width: 1fr;
+}
+.compact #param-scroll {
+    max-height: 7;
+    height: auto;
+}
+.compact #param-panel {
+    border: none;
+    padding: 0;
+    width: 1fr;
+}
+.compact #messages-label {
+    margin-top: 0;
+}
+.compact #messages-panel {
+    border: none;
+    min-height: 2;
 }
 """
 
@@ -122,9 +155,10 @@ class DashboardScreen(Screen[None]):
         """Compose the dashboard layout."""
         yield Header()
         with Vertical(id="dashboard-container"):
-            with Horizontal(id="status-section"):
+            with Container(id="status-section"):
                 yield FireplaceVisual(id="fireplace-visual")
-                yield ParameterPanel(id="param-panel")
+                with VerticalScroll(id="param-scroll"):
+                    yield ParameterPanel(id="param-panel")
             yield Static("[bold]Messages[/bold]", id="messages-label")
             yield RichLog(id="messages-panel", markup=True, wrap=True)
         yield Footer()
@@ -138,6 +172,11 @@ class DashboardScreen(Screen[None]):
         fc_logger.addHandler(self._log_handler)
 
         self.call_after_refresh(self._initial_load)
+
+    def on_resize(self, event: events.Resize) -> None:
+        """Toggle compact layout based on terminal dimensions."""
+        compact = event.size.width < 100 or event.size.height < 30
+        self.set_class(compact, "compact")
 
     def on_unmount(self) -> None:
         """Remove the TUI log handler when the screen is unmounted."""
