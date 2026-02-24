@@ -141,6 +141,24 @@ class RGBWColor:
     white: int
 
 
+
+NAMED_COLORS: dict[str, RGBWColor] = {
+    "dark-red": RGBWColor(red=180, green=0, blue=0, white=0),
+    "light-red": RGBWColor(red=255, green=0, blue=0, white=80),
+    "dark-yellow": RGBWColor(red=180, green=120, blue=0, white=0),
+    "light-yellow": RGBWColor(red=255, green=200, blue=0, white=80),
+    "dark-green": RGBWColor(red=0, green=180, blue=0, white=0),
+    "light-green": RGBWColor(red=0, green=255, blue=0, white=80),
+    "dark-cyan": RGBWColor(red=0, green=180, blue=180, white=0),
+    "light-cyan": RGBWColor(red=0, green=255, blue=255, white=80),
+    "dark-blue": RGBWColor(red=0, green=0, blue=180, white=0),
+    "light-blue": RGBWColor(red=0, green=0, blue=255, white=80),
+    "dark-purple": RGBWColor(red=128, green=0, blue=180, white=0),
+    "light-purple": RGBWColor(red=180, green=0, blue=255, white=80),
+    "dark-pink": RGBWColor(red=180, green=0, blue=80, white=0),
+    "light-pink": RGBWColor(red=255, green=0, blue=128, white=80),
+}
+
 # ---------------------------------------------------------------------------
 # Fire identity
 # ---------------------------------------------------------------------------
