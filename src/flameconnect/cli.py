@@ -33,7 +33,7 @@ from flameconnect.models import (
 # Enum display name lookups
 # ---------------------------------------------------------------------------
 
-_FIRE_MODE_NAMES: dict[int, str] = {0: "Standby", 1: "Manual"}
+_FIRE_MODE_NAMES: dict[int, str] = {0: "Standby", 1: "On"}
 _BRIGHTNESS_NAMES: dict[int, str] = {0: "High", 1: "Low"}
 _PULSATING_NAMES: dict[int, str] = {0: "Off", 1: "On"}
 _FLAME_EFFECT_NAMES: dict[int, str] = {0: "Off", 1: "On"}

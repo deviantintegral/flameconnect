@@ -8,6 +8,8 @@ from textual.containers import Vertical
 from textual.reactive import reactive
 from textual.widgets import Static
 
+from flameconnect.models import FireMode
+
 if TYPE_CHECKING:
     from textual.app import ComposeResult
 
@@ -37,10 +39,13 @@ def _format_rgbw(color: RGBWColor) -> str:
     return f"R:{color.red} G:{color.green} B:{color.blue} W:{color.white}"
 
 
+_MODE_DISPLAY: dict[FireMode, str] = {FireMode.STANDBY: "Standby", FireMode.MANUAL: "On"}
+
+
 def _format_mode(param: ModeParam) -> str:
     """Format the mode parameter for display."""
     return (
-        f"[bold]Mode:[/bold] {param.mode.name}  |  "
+        f"[bold]Mode:[/bold] {_MODE_DISPLAY.get(param.mode, param.mode.name)}  |  "
         f"[bold]Temperature:[/bold] {param.temperature}\u00b0"
     )
 
