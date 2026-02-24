@@ -14,7 +14,6 @@ from textual.widgets import Footer, Header, RichLog, Static
 from flameconnect.tui.widgets import (
     FireplaceVisual,
     ParameterPanel,
-    _display_name,
 )
 
 if TYPE_CHECKING:
@@ -196,12 +195,10 @@ class DashboardScreen(Screen[None]):
                 self._current_mode = param
                 break
 
-        conn = _display_name(overview.fire.connection_state)
         parts: list[str] = [f"{self._fire.friendly_name} ({overview.fire.fire_id})"]
         brand_model = f"{self._fire.brand} {self._fire.product_model}".strip()
         if brand_model:
             parts.append(brand_model)
-        parts.append(conn)
         parts.append(f"Updated: {datetime.now().strftime('%H:%M:%S')}")
         self.sub_title = " | ".join(parts)
 
