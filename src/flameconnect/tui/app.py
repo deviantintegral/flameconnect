@@ -5,11 +5,13 @@ from __future__ import annotations
 import logging
 import sys
 from dataclasses import replace
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.command import Hit, Hits, Provider
 from textual.widgets import Footer, Header, OptionList, Static
 from textual.widgets.option_list import Option
 
@@ -31,6 +33,47 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
+_CONTROL_COMMANDS: list[tuple[str, str, str]] = [
+    ("Power On/Off", "Toggle fireplace power", "toggle_power"),
+    ("Flame Effect", "Toggle flame effect on/off", "toggle_flame_effect"),
+    ("Flame Speed", "Set flame speed", "set_flame_speed"),
+    ("Brightness", "Toggle brightness high/low", "toggle_brightness"),
+    ("Pulsating", "Toggle pulsating effect", "toggle_pulsating"),
+    ("Flame Color", "Set flame color", "set_flame_color"),
+    ("Media Theme", "Set media theme", "set_media_theme"),
+    ("Media Light", "Toggle media light on/off", "toggle_media_light"),
+    ("Media Color", "Set fuel bed color", "set_media_color"),
+    ("Overhead Light", "Toggle overhead light on/off", "toggle_overhead_light"),
+    ("Overhead Color", "Set overhead color", "set_overhead_color"),
+    ("Light Status", "Toggle light status on/off", "toggle_light_status"),
+    ("Ambient Sensor", "Toggle ambient sensor", "toggle_ambient_sensor"),
+    ("Heat Mode", "Set heat mode", "set_heat_mode"),
+    ("Switch Fire", "Switch between fireplaces", "switch_fire"),
+    ("Timer", "Toggle timer on/off", "toggle_timer"),
+    ("Temp Unit", "Toggle temperature unit (°C/°F)", "toggle_temp_unit"),
+]
+
+
+class FireplaceCommandsProvider(Provider):
+    """Command palette provider exposing fireplace control actions."""
+
+    async def search(self, query: str) -> Hits:
+        matcher = self.matcher(query)
+        for name, help_text, action in _CONTROL_COMMANDS:
+            score = matcher.match(name)
+            if score > 0:
+                yield Hit(
+                    score,
+                    matcher.highlight(name),
+                    partial(self.app.run_action, action),
+                    help=help_text,
+                )
+
+
+def _get_fireplace_commands() -> type[FireplaceCommandsProvider]:
+    return FireplaceCommandsProvider
+
+
 _APP_CSS = """
 #fire-selector {
     margin: 2 4;
@@ -48,6 +91,7 @@ class FlameConnectApp(App[None]):
 
     TITLE = "FlameConnect"
     CSS = _APP_CSS
+    COMMANDS = App.COMMANDS | {_get_fireplace_commands}
 
     BINDINGS = [
         ("q", "quit", "Quit"),
