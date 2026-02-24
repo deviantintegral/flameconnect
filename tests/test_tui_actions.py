@@ -410,6 +410,318 @@ class TestToggleTempUnit:
 
 
 # ---------------------------------------------------------------------------
+# action_toggle_flame_effect
+# ---------------------------------------------------------------------------
+
+
+class TestToggleFlameEffect:
+    """Tests for FlameConnectApp.action_toggle_flame_effect."""
+
+    async def test_toggles_on_to_off(self, mock_client, mock_dashboard):
+        # Default fixture has flame_effect ON
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_flame_effect()
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert isinstance(written_param, FlameEffectParam)
+        assert written_param.flame_effect == FlameEffect.OFF
+
+    async def test_no_op_when_write_in_progress(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+        app._write_in_progress = True
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_flame_effect()
+
+        mock_client.write_parameters.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# action_toggle_pulsating
+# ---------------------------------------------------------------------------
+
+
+class TestTogglePulsating:
+    """Tests for FlameConnectApp.action_toggle_pulsating."""
+
+    async def test_toggles_off_to_on(self, mock_client, mock_dashboard):
+        # Default fixture has pulsating_effect OFF
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_pulsating()
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert isinstance(written_param, FlameEffectParam)
+        assert written_param.pulsating_effect == PulsatingEffect.ON
+
+    async def test_no_op_when_write_in_progress(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+        app._write_in_progress = True
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_pulsating()
+
+        mock_client.write_parameters.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# action_toggle_media_light
+# ---------------------------------------------------------------------------
+
+
+class TestToggleMediaLight:
+    """Tests for FlameConnectApp.action_toggle_media_light."""
+
+    async def test_toggles_on_to_off(self, mock_client, mock_dashboard):
+        # Default fixture has media_light ON
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_media_light()
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert isinstance(written_param, FlameEffectParam)
+        assert written_param.media_light == LightStatus.OFF
+
+    async def test_no_op_when_write_in_progress(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+        app._write_in_progress = True
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_media_light()
+
+        mock_client.write_parameters.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# action_toggle_overhead_light
+# ---------------------------------------------------------------------------
+
+
+class TestToggleOverheadLight:
+    """Tests for FlameConnectApp.action_toggle_overhead_light."""
+
+    async def test_toggles_on_to_off(self, mock_client, mock_dashboard):
+        # Default fixture has overhead_light ON
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_overhead_light()
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert isinstance(written_param, FlameEffectParam)
+        assert written_param.overhead_light == LightStatus.OFF
+
+    async def test_no_op_when_write_in_progress(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+        app._write_in_progress = True
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_overhead_light()
+
+        mock_client.write_parameters.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# action_toggle_light_status
+# ---------------------------------------------------------------------------
+
+
+class TestToggleLightStatus:
+    """Tests for FlameConnectApp.action_toggle_light_status."""
+
+    async def test_toggles_on_to_off(self, mock_client, mock_dashboard):
+        # Default fixture has light_status ON
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_light_status()
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert isinstance(written_param, FlameEffectParam)
+        assert written_param.light_status == LightStatus.OFF
+
+    async def test_no_op_when_write_in_progress(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+        app._write_in_progress = True
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_light_status()
+
+        mock_client.write_parameters.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# action_toggle_ambient_sensor
+# ---------------------------------------------------------------------------
+
+
+class TestToggleAmbientSensor:
+    """Tests for FlameConnectApp.action_toggle_ambient_sensor."""
+
+    async def test_toggles_off_to_on(self, mock_client, mock_dashboard):
+        # Default fixture has ambient_sensor OFF
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_ambient_sensor()
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert isinstance(written_param, FlameEffectParam)
+        assert written_param.ambient_sensor == LightStatus.ON
+
+    async def test_no_op_when_write_in_progress(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+        app._write_in_progress = True
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_toggle_ambient_sensor()
+
+        mock_client.write_parameters.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# _apply_flame_color
+# ---------------------------------------------------------------------------
+
+
+class TestApplyFlameColor:
+    """Tests for FlameConnectApp._apply_flame_color."""
+
+    async def test_sets_flame_color(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app._apply_flame_color(FlameColor.BLUE)
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert isinstance(written_param, FlameEffectParam)
+        assert written_param.flame_color == FlameColor.BLUE
+
+    async def test_no_op_when_write_in_progress(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+        app._write_in_progress = True
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app._apply_flame_color(FlameColor.BLUE)
+
+        mock_client.write_parameters.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# _apply_media_theme
+# ---------------------------------------------------------------------------
+
+
+class TestApplyMediaTheme:
+    """Tests for FlameConnectApp._apply_media_theme."""
+
+    async def test_sets_media_theme(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app._apply_media_theme(MediaTheme.BLUE)
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert isinstance(written_param, FlameEffectParam)
+        assert written_param.media_theme == MediaTheme.BLUE
+
+    async def test_no_op_when_write_in_progress(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+        app._write_in_progress = True
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app._apply_media_theme(MediaTheme.BLUE)
+
+        mock_client.write_parameters.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# _apply_media_color
+# ---------------------------------------------------------------------------
+
+
+class TestApplyMediaColor:
+    """Tests for FlameConnectApp._apply_media_color."""
+
+    async def test_sets_media_color(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+        color = RGBWColor(red=255, green=0, blue=0, white=0)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app._apply_media_color(color)
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert isinstance(written_param, FlameEffectParam)
+        assert written_param.media_color == RGBWColor(red=255, green=0, blue=0, white=0)
+
+    async def test_no_op_when_write_in_progress(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+        app._write_in_progress = True
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app._apply_media_color(RGBWColor(red=255, green=0, blue=0, white=0))
+
+        mock_client.write_parameters.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# _apply_overhead_color
+# ---------------------------------------------------------------------------
+
+
+class TestApplyOverheadColor:
+    """Tests for FlameConnectApp._apply_overhead_color."""
+
+    async def test_sets_overhead_color(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+        color = RGBWColor(red=0, green=0, blue=255, white=80)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app._apply_overhead_color(color)
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert isinstance(written_param, FlameEffectParam)
+        assert written_param.overhead_color == RGBWColor(
+            red=0, green=0, blue=255, white=80
+        )
+
+    async def test_no_op_when_write_in_progress(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+        app._write_in_progress = True
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app._apply_overhead_color(
+                RGBWColor(red=0, green=0, blue=255, white=80)
+            )
+
+        mock_client.write_parameters.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
 # Error handling
 # ---------------------------------------------------------------------------
 
