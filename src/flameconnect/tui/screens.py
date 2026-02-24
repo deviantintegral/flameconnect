@@ -37,9 +37,15 @@ _DASHBOARD_CSS = """
 #dashboard-container {
     padding: 1 2;
 }
+#dashboard-container.compact {
+    padding: 0 1;
+}
 #status-section {
     layout: horizontal;
     height: auto;
+}
+#status-section.compact {
+    layout: vertical;
 }
 #fireplace-visual {
     height: 100%;
@@ -57,17 +63,29 @@ _DASHBOARD_CSS = """
     padding: 1 2;
     border: solid $secondary;
 }
+#param-panel.compact {
+    border: none;
+    padding: 0 1;
+    width: 1fr;
+}
 #messages-label {
     height: auto;
     margin-top: 1;
     padding: 0 2;
     text-style: bold;
 }
+#messages-label.compact {
+    margin-top: 0;
+}
 #messages-panel {
     height: 1fr;
     min-height: 4;
     padding: 0 2;
     border: solid $accent;
+}
+#messages-panel.compact {
+    border: none;
+    min-height: 2;
 }
 """
 
@@ -165,39 +183,18 @@ class DashboardScreen(Screen[None]):
         )
         self.set_class(compact, "compact")
 
-        # Direct widget manipulation — CSS descendant selectors from
-        # Screen class don't reliably reach children in Textual.
-        fireplace = self.query_one("#fireplace-visual")
-        container = self.query_one("#dashboard-container")
-        status = self.query_one("#status-section")
-        param_scroll = self.query_one("#param-scroll")
-        param_panel = self.query_one("#param-panel")
-        msg_label = self.query_one("#messages-label")
-        msg_panel = self.query_one("#messages-panel")
-
-        fireplace.display = not compact
-
-        if compact:
-            container.styles.padding = (0, 1)
-            status.styles.layout = "vertical"
-            param_panel.styles.border = "none"
-            param_panel.styles.padding = (0, 1)
-            param_panel.styles.width = "1fr"
-            msg_label.styles.margin = (0, 0)
-            msg_panel.styles.border = "none"
-            msg_panel.styles.min_height = 2
-        else:
-            # Clear inline overrides — let CSS stylesheet rules apply.
-            for rule in (
-                "padding", "layout", "height", "border",
-                "width", "margin", "min_height",
-            ):
-                container.styles.clear_rule(rule)
-                status.styles.clear_rule(rule)
-                param_scroll.styles.clear_rule(rule)
-                param_panel.styles.clear_rule(rule)
-                msg_label.styles.clear_rule(rule)
-                msg_panel.styles.clear_rule(rule)
+        # Toggle .compact class on each widget — same-element CSS
+        # selectors (#id.compact) work reliably in Textual, unlike
+        # descendant selectors from the Screen's class.
+        self.query_one("#fireplace-visual").display = not compact
+        for widget_id in (
+            "#dashboard-container",
+            "#status-section",
+            "#param-panel",
+            "#messages-label",
+            "#messages-panel",
+        ):
+            self.query_one(widget_id).set_class(compact, "compact")
 
     def on_resize(self, event: events.Resize) -> None:
         """Toggle compact layout based on terminal dimensions."""
