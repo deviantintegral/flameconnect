@@ -148,8 +148,9 @@ class FlameConnectApp(App[None]):
         """Handle the 'r' key binding to refresh the dashboard."""
         screen = self.screen
         if isinstance(screen, DashboardScreen):
+            screen.log_message("Refreshing...")
             await screen.refresh_state()
-            screen.log_message("Refreshed")
+            screen.log_message("Refresh complete")
 
     async def action_toggle_power(self) -> None:
         """Handle the 'p' key binding to toggle fireplace power."""
