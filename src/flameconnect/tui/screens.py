@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
     from textual.app import ComposeResult
 
     from flameconnect.client import FlameConnectClient
-    from flameconnect.models import FireOverview, ModeParam
+    from flameconnect.models import FireOverview, ModeParam, Parameter
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -121,6 +122,7 @@ class DashboardScreen(Screen[None]):
         self.fire_id = fire_id
         self.fire_name = fire_name
         self._current_mode: ModeParam | None = None
+        self._previous_params: dict[type, Parameter] = {}
         self._log_handler: _TuiLogHandler | None = None
 
     def compose(self) -> ComposeResult:
@@ -195,6 +197,14 @@ class DashboardScreen(Screen[None]):
         param_panel = self.query_one("#param-panel", ParameterPanel)
         param_panel.update_parameters(overview.parameters)
 
+        # Log changed attributes
+        current_params: dict[type, Parameter] = {
+            type(p): p for p in overview.parameters
+        }
+        if self._previous_params:
+            self._log_param_changes(self._previous_params, current_params)
+        self._previous_params = current_params
+
         # Track the current mode for power toggle
         for param in overview.parameters:
             if isinstance(param, ModeParam):
@@ -207,6 +217,24 @@ class DashboardScreen(Screen[None]):
             "[bold]p[/bold] to toggle power  |  "
             "[bold]q[/bold] to quit[/dim]"
         )
+
+    def _log_param_changes(
+        self,
+        old: dict[type, Parameter],
+        new: dict[type, Parameter],
+    ) -> None:
+        """Compare old and new parameters, logging any changed fields."""
+        for param_type, new_param in new.items():
+            old_param = old.get(param_type)
+            if old_param is None or old_param == new_param:
+                continue
+            name = param_type.__name__.removesuffix("Param")
+            for field in dataclasses.fields(new_param):
+                old_val = getattr(old_param, field.name)
+                new_val = getattr(new_param, field.name)
+                if old_val != new_val:
+                    label = field.name.replace("_", " ").title()
+                    self.log_message(f"[bold]{name}[/bold] {label}: {old_val} → {new_val}")
 
     @property
     def current_mode(self) -> ModeParam | None:
