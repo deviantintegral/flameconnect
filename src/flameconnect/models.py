@@ -24,6 +24,13 @@ class FlameEffect(IntEnum):
     ON = 1
 
 
+class Brightness(IntEnum):
+    """Flame brightness level."""
+
+    LOW = 0
+    HIGH = 1
+
+
 class HeatStatus(IntEnum):
     """Heater on/off status."""
 
@@ -166,7 +173,7 @@ class FlameEffectParam:
 
     flame_effect: FlameEffect
     flame_speed: int
-    brightness: int
+    brightness: Brightness
     media_theme: MediaTheme
     media_light: LightStatus
     media_color: RGBWColor

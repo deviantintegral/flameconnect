@@ -9,6 +9,7 @@ import struct
 from flameconnect.const import ParameterId
 from flameconnect.exceptions import ProtocolError
 from flameconnect.models import (
+    Brightness,
     ErrorParam,
     FireMode,
     FlameColor,
@@ -99,7 +100,7 @@ def _decode_flame_effect(raw: bytes) -> FlameEffectParam:
     _check_length(raw, 23, "FlameEffect")
     flame_effect = FlameEffect(raw[3])
     flame_speed = raw[4] + 1  # wire is 0-indexed, model is 1-indexed
-    brightness = raw[5]
+    brightness = Brightness(raw[5])
     media_theme = MediaTheme(raw[6])
     media_light = LightStatus(raw[7])
     # Wire byte order: Red, Blue, Green, White

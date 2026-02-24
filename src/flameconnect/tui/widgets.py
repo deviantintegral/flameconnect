@@ -46,7 +46,7 @@ def _format_flame_effect(param: FlameEffectParam) -> str:
     lines = [
         f"[bold]Flame Effect:[/bold] {param.flame_effect.name}  |  "
         f"Speed: {param.flame_speed}/5  |  "
-        f"Brightness: {param.brightness}",
+        f"Brightness: {param.brightness.name}",
         f"  Flame Color: {param.flame_color.name}  |  "
         f"Light: {param.light_status.name}  |  "
         f"Ambient Sensor: {param.ambient_sensor.name}",

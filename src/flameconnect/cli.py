@@ -34,6 +34,7 @@ from flameconnect.models import (
 # ---------------------------------------------------------------------------
 
 _FIRE_MODE_NAMES: dict[int, str] = {0: "Standby", 1: "Manual"}
+_BRIGHTNESS_NAMES: dict[int, str] = {0: "Low", 1: "High"}
 _FLAME_EFFECT_NAMES: dict[int, str] = {0: "Off", 1: "On"}
 _HEAT_STATUS_NAMES: dict[int, str] = {0: "Off", 1: "On"}
 _HEAT_MODE_NAMES: dict[int, str] = {
@@ -146,7 +147,8 @@ def _display_flame_effect(param: FlameEffectParam) -> None:
     flame = _enum_name(_FLAME_EFFECT_NAMES, param.flame_effect)
     print(f"    Flame:          {flame}")
     print(f"    Flame Speed:    {param.flame_speed} / 5")
-    print(f"    Brightness:     {param.brightness} / 255")
+    brightness = _enum_name(_BRIGHTNESS_NAMES, param.brightness)
+    print(f"    Brightness:     {brightness}")
     color = _enum_name(_FLAME_COLOR_NAMES, param.flame_color)
     print(f"    Flame Color:    {color}")
     theme = _enum_name(_MEDIA_THEME_NAMES, param.media_theme)
@@ -398,11 +400,14 @@ async def _set_flame_speed(
 
 
 async def _set_brightness(client: FlameConnectClient, fire_id: str, value: str) -> None:
-    """Set brightness (0-255)."""
-    brightness = int(value)
-    if brightness < 0 or brightness > 255:
-        print("Error: brightness must be between 0 and 255.")
+    """Set brightness (low or high)."""
+    from flameconnect.models import Brightness
+
+    lookup = {"low": Brightness.LOW, "high": Brightness.HIGH}
+    if value not in lookup:
+        print("Error: brightness must be 'low' or 'high'.")
         sys.exit(1)
+    brightness = lookup[value]
     overview = await client.get_fire_overview(fire_id)
     current = _find_param(overview.parameters, FlameEffectParam)
     if current is None:
@@ -422,7 +427,7 @@ async def _set_brightness(client: FlameConnectClient, fire_id: str, value: str) 
         ambient_sensor=current.ambient_sensor,
     )
     await client.write_parameters(fire_id, [new_param])
-    print(f"Brightness set to {brightness}.")
+    print(f"Brightness set to {value}.")
 
 
 async def _set_heat_mode(client: FlameConnectClient, fire_id: str, value: str) -> None:
