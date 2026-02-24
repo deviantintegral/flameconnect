@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import sys
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from textual.app import App, ComposeResult
@@ -43,6 +44,11 @@ class FlameConnectApp(App[None]):
         ("q", "quit", "Quit"),
         ("r", "refresh", "Refresh"),
         ("p", "toggle_power", "Power On/Off"),
+        ("f", "cycle_flame_speed", "Flame Speed"),
+        ("b", "toggle_brightness", "Brightness"),
+        ("h", "cycle_heat_mode", "Heat Mode"),
+        ("t", "toggle_timer", "Timer"),
+        ("u", "toggle_temp_unit", "Temp Unit"),
     ]
 
     def __init__(self, client: FlameConnectClient) -> None:
@@ -50,6 +56,7 @@ class FlameConnectApp(App[None]):
         self.client = client
         self.fire_id: str | None = None
         self.fires: list[Fire] = []
+        self._write_in_progress = False
 
     def compose(self) -> ComposeResult:
         """Compose the initial app layout with fireplace selector."""
@@ -166,6 +173,10 @@ class FlameConnectApp(App[None]):
             screen.log_message("No fireplace selected", level=logging.WARNING)
             return
 
+        if self._write_in_progress:
+            return
+
+        self._write_in_progress = True
         current_mode = screen.current_mode
         try:
             if current_mode is not None and current_mode.mode == FireMode.MANUAL:
@@ -179,6 +190,181 @@ class FlameConnectApp(App[None]):
         except Exception as exc:
             _LOGGER.exception("Failed to toggle power")
             screen.log_message(f"Power toggle failed: {exc}", level=logging.ERROR)
+        finally:
+            self._write_in_progress = False
+
+    async def action_cycle_flame_speed(self) -> None:
+        """Handle the 'f' key binding to cycle flame speed 1-5."""
+        from flameconnect.models import FlameEffectParam
+
+        screen = self.screen
+        if not isinstance(screen, DashboardScreen):
+            return
+        if self.fire_id is None:
+            return
+        if self._write_in_progress:
+            return
+
+        self._write_in_progress = True
+        try:
+            params = screen.current_parameters
+            current = params.get(FlameEffectParam)
+            if not isinstance(current, FlameEffectParam):
+                return
+            new_speed = current.flame_speed % 5 + 1
+            new_param = replace(current, flame_speed=new_speed)
+            await self.client.write_parameters(self.fire_id, [new_param])
+            screen.log_message(f"Flame speed set to {new_speed}")
+            await screen.refresh_state()
+        except Exception as exc:
+            _LOGGER.exception("Failed to cycle flame speed")
+            screen.log_message(f"Flame speed change failed: {exc}", level=logging.ERROR)
+        finally:
+            self._write_in_progress = False
+
+    async def action_toggle_brightness(self) -> None:
+        """Handle the 'b' key binding to toggle brightness high/low."""
+        from flameconnect.models import Brightness, FlameEffectParam
+
+        screen = self.screen
+        if not isinstance(screen, DashboardScreen):
+            return
+        if self.fire_id is None:
+            return
+        if self._write_in_progress:
+            return
+
+        self._write_in_progress = True
+        try:
+            params = screen.current_parameters
+            current = params.get(FlameEffectParam)
+            if not isinstance(current, FlameEffectParam):
+                return
+            new_brightness = (
+                Brightness.LOW
+                if current.brightness == Brightness.HIGH
+                else Brightness.HIGH
+            )
+            new_param = replace(current, brightness=new_brightness)
+            await self.client.write_parameters(self.fire_id, [new_param])
+            label = "Low" if new_brightness == Brightness.LOW else "High"
+            screen.log_message(f"Brightness set to {label}")
+            await screen.refresh_state()
+        except Exception as exc:
+            _LOGGER.exception("Failed to toggle brightness")
+            screen.log_message(f"Brightness toggle failed: {exc}", level=logging.ERROR)
+        finally:
+            self._write_in_progress = False
+
+    async def action_cycle_heat_mode(self) -> None:
+        """Handle the 'h' key binding to cycle heat mode."""
+        from flameconnect.models import HeatMode, HeatParam
+
+        screen = self.screen
+        if not isinstance(screen, DashboardScreen):
+            return
+        if self.fire_id is None:
+            return
+        if self._write_in_progress:
+            return
+
+        self._write_in_progress = True
+        try:
+            params = screen.current_parameters
+            current = params.get(HeatParam)
+            if not isinstance(current, HeatParam):
+                return
+            modes = [HeatMode.NORMAL, HeatMode.BOOST, HeatMode.ECO, HeatMode.FAN_ONLY]
+            try:
+                idx = modes.index(current.heat_mode)
+            except ValueError:
+                idx = -1
+            new_mode = modes[(idx + 1) % len(modes)]
+            new_param = replace(current, heat_mode=new_mode)
+            await self.client.write_parameters(self.fire_id, [new_param])
+            mode_label = new_mode.name.replace("_", " ").title()
+            screen.log_message(f"Heat mode set to {mode_label}")
+            await screen.refresh_state()
+        except Exception as exc:
+            _LOGGER.exception("Failed to cycle heat mode")
+            screen.log_message(f"Heat mode change failed: {exc}", level=logging.ERROR)
+        finally:
+            self._write_in_progress = False
+
+    async def action_toggle_timer(self) -> None:
+        """Handle the 't' key binding to toggle the timer."""
+        from flameconnect.models import TimerParam, TimerStatus
+
+        screen = self.screen
+        if not isinstance(screen, DashboardScreen):
+            return
+        if self.fire_id is None:
+            return
+        if self._write_in_progress:
+            return
+
+        self._write_in_progress = True
+        try:
+            params = screen.current_parameters
+            current = params.get(TimerParam)
+            if not isinstance(current, TimerParam):
+                return
+            if current.timer_status == TimerStatus.ENABLED:
+                new_param = TimerParam(timer_status=TimerStatus.DISABLED, duration=0)
+                screen.log_message("Timer disabled")
+            else:
+                new_param = TimerParam(timer_status=TimerStatus.ENABLED, duration=60)
+                screen.log_message("Timer enabled (60 min)")
+            await self.client.write_parameters(self.fire_id, [new_param])
+            await screen.refresh_state()
+        except Exception as exc:
+            _LOGGER.exception("Failed to toggle timer")
+            screen.log_message(f"Timer toggle failed: {exc}", level=logging.ERROR)
+        finally:
+            self._write_in_progress = False
+
+    async def action_toggle_temp_unit(self) -> None:
+        """Handle the 'u' key binding to toggle temperature unit."""
+        from flameconnect.models import TempUnit, TempUnitParam
+
+        screen = self.screen
+        if not isinstance(screen, DashboardScreen):
+            return
+        if self.fire_id is None:
+            return
+        if self._write_in_progress:
+            return
+
+        self._write_in_progress = True
+        try:
+            params = screen.current_parameters
+            current = params.get(TempUnitParam)
+            if not isinstance(current, TempUnitParam):
+                return
+            new_unit = (
+                TempUnit.CELSIUS
+                if current.unit == TempUnit.FAHRENHEIT
+                else TempUnit.FAHRENHEIT
+            )
+            new_param = TempUnitParam(unit=new_unit)
+            await self.client.write_parameters(self.fire_id, [new_param])
+            unit_label = (
+                "Celsius"
+                if new_unit == TempUnit.CELSIUS
+                else "Fahrenheit"
+            )
+            screen.log_message(
+                f"Temperature unit set to {unit_label}"
+            )
+            await screen.refresh_state()
+        except Exception as exc:
+            _LOGGER.exception("Failed to toggle temperature unit")
+            screen.log_message(
+                f"Temperature unit toggle failed: {exc}",
+                level=logging.ERROR,
+            )
+        finally:
+            self._write_in_progress = False
 
 
 async def run_tui(*, verbose: bool = False) -> None:

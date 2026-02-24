@@ -213,9 +213,14 @@ class DashboardScreen(Screen[None]):
 
         status_bar = self.query_one("#status-bar", Static)
         status_bar.update(
-            "[dim]Press [bold]r[/bold] to refresh  |  "
-            "[bold]p[/bold] to toggle power  |  "
-            "[bold]q[/bold] to quit[/dim]"
+            "[dim]Press [bold]r[/bold]efresh  |  "
+            "[bold]p[/bold]ower  |  "
+            "[bold]f[/bold]lame speed  |  "
+            "[bold]b[/bold]rightness  |  "
+            "[bold]h[/bold]eat mode  |  "
+            "[bold]t[/bold]imer  |  "
+            "temp [bold]u[/bold]nit  |  "
+            "[bold]q[/bold]uit[/dim]"
         )
 
     def _log_param_changes(
@@ -235,6 +240,11 @@ class DashboardScreen(Screen[None]):
                 if old_val != new_val:
                     label = field.name.replace("_", " ").title()
                     self.log_message(f"[bold]{name}[/bold] {label}: {old_val} → {new_val}")
+
+    @property
+    def current_parameters(self) -> dict[type, Parameter]:
+        """Return the current cached parameters."""
+        return dict(self._previous_params)
 
     @property
     def current_mode(self) -> ModeParam | None:

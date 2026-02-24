@@ -15,16 +15,20 @@ from flameconnect.client import FlameConnectClient
 from flameconnect.models import (
     ErrorParam,
     FireMode,
+    FlameColor,
     FlameEffectParam,
     HeatMode,
     HeatModeParam,
     HeatParam,
     LogEffectParam,
+    MediaTheme,
     ModeParam,
     Parameter,
+    PulsatingEffect,
     RGBWColor,
     SoftwareVersionParam,
     SoundParam,
+    TempUnit,
     TempUnitParam,
     TimerParam,
     TimerStatus,
@@ -90,7 +94,42 @@ _HEAT_MODE_LOOKUP: dict[str, HeatMode] = {
     "fan-only": HeatMode.FAN_ONLY,
 }
 
-_SET_PARAM_NAMES = "mode, flame-speed, brightness, heat-mode, heat-temp, timer"
+_PULSATING_LOOKUP: dict[str, PulsatingEffect] = {
+    "on": PulsatingEffect.ON,
+    "off": PulsatingEffect.OFF,
+}
+
+_FLAME_COLOR_LOOKUP: dict[str, FlameColor] = {
+    "all": FlameColor.ALL,
+    "yellow-red": FlameColor.YELLOW_RED,
+    "yellow-blue": FlameColor.YELLOW_BLUE,
+    "blue": FlameColor.BLUE,
+    "red": FlameColor.RED,
+    "yellow": FlameColor.YELLOW,
+    "blue-red": FlameColor.BLUE_RED,
+}
+
+_MEDIA_THEME_LOOKUP: dict[str, MediaTheme] = {
+    "user-defined": MediaTheme.USER_DEFINED,
+    "white": MediaTheme.WHITE,
+    "blue": MediaTheme.BLUE,
+    "purple": MediaTheme.PURPLE,
+    "red": MediaTheme.RED,
+    "green": MediaTheme.GREEN,
+    "prism": MediaTheme.PRISM,
+    "kaleidoscope": MediaTheme.KALEIDOSCOPE,
+    "midnight": MediaTheme.MIDNIGHT,
+}
+
+_TEMP_UNIT_LOOKUP: dict[str, TempUnit] = {
+    "fahrenheit": TempUnit.FAHRENHEIT,
+    "celsius": TempUnit.CELSIUS,
+}
+
+_SET_PARAM_NAMES = (
+    "mode, flame-speed, brightness, pulsating, flame-color,"
+    " media-theme, heat-mode, heat-temp, timer, temp-unit"
+)
 
 
 def _enum_name(mapping: dict[int, str], value: int) -> str:
@@ -353,6 +392,15 @@ async def cmd_set(
     if param == "brightness":
         await _set_brightness(client, fire_id, value)
         return
+    if param == "pulsating":
+        await _set_pulsating(client, fire_id, value)
+        return
+    if param == "flame-color":
+        await _set_flame_color(client, fire_id, value)
+        return
+    if param == "media-theme":
+        await _set_media_theme(client, fire_id, value)
+        return
     if param == "heat-mode":
         await _set_heat_mode(client, fire_id, value)
         return
@@ -361,6 +409,9 @@ async def cmd_set(
         return
     if param == "timer":
         await _set_timer(client, fire_id, value)
+        return
+    if param == "temp-unit":
+        await _set_temp_unit(client, fire_id, value)
         return
 
     print(f"Error: unknown parameter '{param}'. Valid: {_SET_PARAM_NAMES}.")
@@ -424,6 +475,63 @@ async def _set_brightness(client: FlameConnectClient, fire_id: str, value: str) 
     print(f"Brightness set to {value}.")
 
 
+async def _set_pulsating(
+    client: FlameConnectClient, fire_id: str, value: str
+) -> None:
+    """Set pulsating effect on or off."""
+    if value not in _PULSATING_LOOKUP:
+        valid = ", ".join(_PULSATING_LOOKUP)
+        print(f"Error: pulsating must be one of: {valid}.")
+        sys.exit(1)
+    pulsating = _PULSATING_LOOKUP[value]
+    overview = await client.get_fire_overview(fire_id)
+    current = _find_param(overview.parameters, FlameEffectParam)
+    if current is None:
+        print("Error: no FlameEffect parameter found.")
+        sys.exit(1)
+    new_param = replace(current, pulsating_effect=pulsating)
+    await client.write_parameters(fire_id, [new_param])
+    print(f"Pulsating effect set to {value}.")
+
+
+async def _set_flame_color(
+    client: FlameConnectClient, fire_id: str, value: str
+) -> None:
+    """Set the flame color preset."""
+    if value not in _FLAME_COLOR_LOOKUP:
+        valid = ", ".join(_FLAME_COLOR_LOOKUP)
+        print(f"Error: flame-color must be one of: {valid}.")
+        sys.exit(1)
+    flame_color = _FLAME_COLOR_LOOKUP[value]
+    overview = await client.get_fire_overview(fire_id)
+    current = _find_param(overview.parameters, FlameEffectParam)
+    if current is None:
+        print("Error: no FlameEffect parameter found.")
+        sys.exit(1)
+    new_param = replace(current, flame_color=flame_color)
+    await client.write_parameters(fire_id, [new_param])
+    print(f"Flame color set to {value}.")
+
+
+async def _set_media_theme(
+    client: FlameConnectClient, fire_id: str, value: str
+) -> None:
+    """Set the media theme preset."""
+    if value not in _MEDIA_THEME_LOOKUP:
+        valid = ", ".join(_MEDIA_THEME_LOOKUP)
+        print(f"Error: media-theme must be one of: {valid}.")
+        sys.exit(1)
+    media_theme = _MEDIA_THEME_LOOKUP[value]
+    overview = await client.get_fire_overview(fire_id)
+    current = _find_param(overview.parameters, FlameEffectParam)
+    if current is None:
+        print("Error: no FlameEffect parameter found.")
+        sys.exit(1)
+    new_param = replace(current, media_theme=media_theme)
+    await client.write_parameters(fire_id, [new_param])
+    print(f"Media theme set to {value}.")
+
+
 async def _set_heat_mode(client: FlameConnectClient, fire_id: str, value: str) -> None:
     """Set the heater mode."""
     if value not in _HEAT_MODE_LOOKUP:
@@ -467,6 +575,20 @@ async def _set_timer(client: FlameConnectClient, fire_id: str, value: str) -> No
         print(f"Timer set to {minutes} minutes.")
     else:
         print("Timer disabled.")
+
+
+async def _set_temp_unit(
+    client: FlameConnectClient, fire_id: str, value: str
+) -> None:
+    """Set the temperature display unit."""
+    if value not in _TEMP_UNIT_LOOKUP:
+        valid = ", ".join(_TEMP_UNIT_LOOKUP)
+        print(f"Error: temp-unit must be one of: {valid}.")
+        sys.exit(1)
+    unit = _TEMP_UNIT_LOOKUP[value]
+    temp_unit_param = TempUnitParam(unit=unit)
+    await client.write_parameters(fire_id, [temp_unit_param])
+    print(f"Temperature unit set to {value}.")
 
 
 async def cmd_tui(*, verbose: bool = False) -> None:
@@ -522,7 +644,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp_set.add_argument(
         "param",
         help=(
-            "Parameter name: mode, flame-speed, brightness, heat-mode, heat-temp, timer"
+            "Parameter name: mode, flame-speed, brightness, pulsating,"
+            " flame-color, media-theme, heat-mode, heat-temp, timer, temp-unit"
         ),
     )
     sp_set.add_argument("value", help="Value to set")
