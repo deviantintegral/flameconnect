@@ -319,114 +319,167 @@ def _format_connection_state(
 
 
 # -- Fireplace ASCII art ----------------------------------------
-# Built as a list of pre-rendered Rich-markup strings.
-# Shorthand aliases keep individual source lines under the
-# linter's 88-char limit.
-_D = "[dim]"
-_d = "[/dim]"
-_Y = "[yellow]"
-_y = "[/yellow]"
-_R = "[red]"
-_r = "[/red]"
-_B = "[bright_red]"
-_b = "[/bright_red]"
+# Dynamically sized using rich.text.Text to avoid markup-escaping
+# issues (Rich interprets ``\[`` as an escaped bracket).
+#
+# Each flame row is defined as a list of atoms:
+#   (text, style, trailing_gap_weight)
+# A builder distributes whitespace proportionally so the fire
+# scales to fill whatever width the widget is given.
 
-# Width: 48 visible chars  |  Height: 17 lines
-_W = 48  # outer width (visible)
-_IW = _W - 2  # inner width between │ walls
+from rich.text import Text as _Text
 
-
-def _row(content: str, vis_len: int) -> str:
-    """Wrap *content* in dim │ borders, right-padded."""
-    pad = _IW - vis_len
-    return (
-        f"{_D}│{_d}"
-        f"{content}{' ' * pad}"
-        f"{_D}│{_d}"
-    )
-
-
-_FIRE_ART: list[str] = [
-    # ── mantel ──
-    f"{_D}{'═' * _W}{_d}",
-    # ── firebox top ──
-    f"{_D}┌{'─' * _IW}┐{_d}",
-    # blank
-    _row("", 0),
+_FLAME_DEFS: list[tuple[float, list[tuple[str, str, int]]]] = [
+    # (body_width_fraction, atoms)
     # flame tip
-    _row(
-        f"      {_Y}(  .  \\      /  .  ){_y}",
-        26,
-    ),
+    (0.90, [
+        ("(", "yellow", 2), (".", "yellow", 2), ("\\", "yellow", 6),
+        ("/", "yellow", 2), (".", "yellow", 2), (")", "yellow", 0),
+    ]),
     # outer flames
-    _row(
-        f"     {_B}(   \\ \\    / /   ){_b}",
-        23,
-    ),
+    (0.82, [
+        ("(", "bright_red", 3), ("\\", "bright_red", 1),
+        ("\\", "bright_red", 5),
+        ("/", "bright_red", 1), ("/", "bright_red", 3),
+        (")", "bright_red", 0),
+    ]),
     # mid flames
-    _row(
-        f"    {_R}(  \\  \\\\ //  /   ){_r}",
-        22,
-    ),
+    (0.80, [
+        ("(", "red", 2), ("\\", "red", 2), ("\\\\", "red", 4),
+        ("//", "red", 2), ("/", "red", 3), (")", "red", 0),
+    ]),
     # bright core
-    _row(
-        f"   {_B}(   \\ {_b}"
-        f"{_Y}||||{_y}"
-        f"{_B}  /   ){_b}",
-        20,
-    ),
+    (0.76, [
+        ("(", "bright_red", 3), ("\\", "bright_red", 1),
+        ("||||", "yellow", 1),
+        ("/", "bright_red", 3), (")", "bright_red", 0),
+    ]),
     # spread
-    _row(
-        f"   {_R}(  \\ {_r}"
-        f"{_Y}/ || {_y}"
-        f"{_R}\\  /  ){_r}",
-        20,
-    ),
+    (0.76, [
+        ("(", "red", 2), ("\\", "red", 1),
+        ("/", "yellow", 1), ("||", "yellow", 1), ("\\", "red", 1),
+        ("/", "red", 2), (")", "red", 0),
+    ]),
     # lower
-    _row(
-        f"   {_R}( {_r}"
-        f"{_Y}/ / {_y}"
-        f"{_B}||{_b}"
-        f"{_Y} \\ \\ {_y}"
-        f"{_R}){_r}",
-        17,
-    ),
+    (0.64, [
+        ("(", "red", 1),
+        ("/", "yellow", 1), ("/", "yellow", 1),
+        ("||", "bright_red", 1),
+        ("\\", "yellow", 1), ("\\", "yellow", 1),
+        (")", "red", 0),
+    ]),
     # base flames
-    _row(
-        f"    {_Y}(/ /  {_y}"
-        f"{_R}||{_r}"
-        f"{_Y}  \\ \\){_y}",
-        18,
-    ),
+    (0.68, [
+        ("(/", "yellow", 1), ("/", "yellow", 2),
+        ("||", "red", 2),
+        ("\\", "yellow", 1), ("\\)", "yellow", 0),
+    ]),
     # embers
-    _row(
-        f"    {_Y}(__/  {_y}"
-        f"{_B}/=={_b}"
-        f"{_Y}\\  \\__){_y}",
-        20,
-    ),
-    # coal bed
-    _row(
-        f"  {_D}{'▓' * 30}{_d}",
-        32,
-    ),
-    # blank
-    _row("", 0),
-    # ── firebox bottom ──
-    f"{_D}└{'─' * _IW}┘{_d}",
-    # hearth slab
-    f"{_D}{'█' * _W}{_d}",
-    # base mantel
-    f"{_D}{'═' * _W}{_d}",
+    (0.76, [
+        ("(__/", "yellow", 2),
+        ("/==\\", "bright_red", 2),
+        ("\\__)", "yellow", 0),
+    ]),
 ]
+
+_COAL_FRAC = 0.95
+
+
+def _expand_flame(
+    atoms: list[tuple[str, str, int]],
+    body_width: int,
+) -> _Text:
+    """Build a single flame row as a Text object.
+
+    Gaps between atoms are distributed proportionally according to
+    each atom's trailing gap weight.
+    """
+    chars_w = sum(len(a[0]) for a in atoms)
+    total_gap = max(body_width - chars_w, 0)
+    total_weight = sum(a[2] for a in atoms) or 1
+
+    line = _Text()
+    remaining_gap = total_gap
+    remaining_weight = total_weight
+    for text, style, gap_w in atoms:
+        line.append(text, style=style)
+        if gap_w > 0 and remaining_weight > 0:
+            sp = remaining_gap * gap_w // remaining_weight
+            remaining_gap -= sp
+            remaining_weight -= gap_w
+            line.append(" " * sp)
+    return line
+
+
+def _build_fire_art(w: int) -> _Text:
+    """Generate fireplace ASCII art at outer width *w*."""
+    iw = w - 2  # inner width between │ walls
+
+    result = _Text()
+
+    def _nl() -> None:
+        result.append("\n")
+
+    def _full(char: str) -> None:
+        result.append(char * w, style="dim")
+        _nl()
+
+    def _border(left: str, fill: str, right: str) -> None:
+        result.append(left + fill * iw + right, style="dim")
+        _nl()
+
+    def _row(content: _Text | None = None, vis_len: int = 0) -> None:
+        result.append("│", style="dim")
+        if content is not None:
+            result.append_text(content)
+        result.append(" " * max(iw - vis_len, 0))
+        result.append("│", style="dim")
+        _nl()
+
+    # ── mantel ──
+    _full("═")
+    # ── firebox top ──
+    _border("┌", "─", "┐")
+    # blank
+    _row()
+
+    # ── flame rows ──
+    for body_frac, atoms in _FLAME_DEFS:
+        min_w = sum(len(a[0]) for a in atoms) + len(atoms) - 1
+        body_w = max(int(iw * body_frac), min_w)
+        lead = (iw - body_w) // 2
+        flame = _Text(" " * lead)
+        flame.append_text(_expand_flame(atoms, body_w))
+        _row(flame, lead + body_w)
+
+    # ── coal bed ──
+    coal_w = max(int(iw * _COAL_FRAC), 10)
+    coal_lead = (iw - coal_w) // 2
+    coal = _Text(" " * coal_lead)
+    coal.append("▓" * coal_w, style="dim")
+    _row(coal, coal_lead + coal_w)
+
+    # blank
+    _row()
+    # ── firebox bottom ──
+    _border("└", "─", "┘")
+    # hearth slab
+    _full("█")
+    # base mantel
+    result.append("═" * w, style="dim")  # no trailing newline
+
+    return result
 
 
 class FireplaceVisual(Static):
-    """Static ASCII-art fireplace visual."""
+    """Dynamically sized ASCII-art fireplace visual."""
 
-    def render(self) -> str:
-        """Render the fireplace art with Rich markup."""
-        return "\n".join(_FIRE_ART)
+    def render(self) -> _Text:
+        """Render fireplace art scaled to the widget's content width."""
+        w = self.content_region.width
+        if w < 20:
+            w = 48
+        return _build_fire_art(w)
 
 
 class ParameterPanel(Static):
