@@ -122,7 +122,7 @@ def _format_error(param: ErrorParam) -> str:
             f"0x{param.error_byte1:02X} 0x{param.error_byte2:02X} "
             f"0x{param.error_byte3:02X} 0x{param.error_byte4:02X}"
         )
-    return "[bold]Error:[/bold] None"
+    return "[bold]Errors:[/bold] No Errors Recorded"
 
 
 def _format_temp_unit(param: TempUnitParam) -> str:
@@ -167,27 +167,30 @@ def format_parameters(params: list[Parameter]) -> str:
     )
 
     lines: list[str] = []
+    error_line: str | None = None
     for param in params:
         if isinstance(param, ModeParam):
             lines.append(_format_mode(param))
-        elif isinstance(param, FlameEffectParam):
-            lines.append(_format_flame_effect(param))
         elif isinstance(param, HeatParam):
             lines.append(_format_heat(param))
         elif isinstance(param, HeatModeParam):
             lines.append(_format_heat_mode(param))
+        elif isinstance(param, FlameEffectParam):
+            lines.append(_format_flame_effect(param))
         elif isinstance(param, TimerParam):
             lines.append(_format_timer(param))
         elif isinstance(param, SoftwareVersionParam):
             lines.append(_format_software_version(param))
         elif isinstance(param, ErrorParam):
-            lines.append(_format_error(param))
+            error_line = _format_error(param)
         elif isinstance(param, TempUnitParam):
             lines.append(_format_temp_unit(param))
         elif isinstance(param, SoundParam):
             lines.append(_format_sound(param))
         elif isinstance(param, LogEffectParam):
             lines.append(_format_log_effect(param))
+    if error_line is not None:
+        lines.append(error_line)
 
     if not lines:
         return "[dim]No parameters available[/dim]"
