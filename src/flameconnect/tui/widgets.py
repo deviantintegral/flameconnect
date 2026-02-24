@@ -28,6 +28,9 @@ if TYPE_CHECKING:
     )
 
 
+_BRIGHTNESS_NAMES: dict[int, str] = {0: "Low", 1: "High"}
+
+
 def _format_rgbw(color: RGBWColor) -> str:
     """Format an RGBW color value for display."""
     return f"R:{color.red} G:{color.green} B:{color.blue} W:{color.white}"
@@ -46,7 +49,7 @@ def _format_flame_effect(param: FlameEffectParam) -> str:
     lines = [
         f"[bold]Flame Effect:[/bold] {param.flame_effect.name}  |  "
         f"Speed: {param.flame_speed}/5  |  "
-        f"Brightness: {param.brightness.name}",
+        f"Brightness: {_BRIGHTNESS_NAMES.get(param.brightness, param.brightness)}",
         f"  Flame Color: {param.flame_color.name}  |  "
         f"Light: {param.light_status.name}  |  "
         f"Ambient Sensor: {param.ambient_sensor.name}",

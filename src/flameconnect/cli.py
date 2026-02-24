@@ -401,9 +401,7 @@ async def _set_flame_speed(
 
 async def _set_brightness(client: FlameConnectClient, fire_id: str, value: str) -> None:
     """Set brightness (low or high)."""
-    from flameconnect.models import Brightness
-
-    lookup = {"low": Brightness.LOW, "high": Brightness.HIGH}
+    lookup = {"low": 0, "high": 1}
     if value not in lookup:
         print("Error: brightness must be 'low' or 'high'.")
         sys.exit(1)

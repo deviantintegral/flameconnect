@@ -15,7 +15,6 @@ from flameconnect.client import FlameConnectClient
 from flameconnect.const import API_BASE
 from flameconnect.exceptions import ApiError
 from flameconnect.models import (
-    Brightness,
     ConnectionState,
     ErrorParam,
     Fire,
@@ -160,7 +159,7 @@ class TestGetFireOverview:
         flame = next(p for p in overview.parameters if isinstance(p, FlameEffectParam))
         assert flame.flame_effect == FlameEffect.ON
         assert flame.flame_speed == 3
-        assert flame.brightness == Brightness.HIGH
+        assert flame.brightness == 1
         assert flame.media_theme == MediaTheme.KALEIDOSCOPE
         assert flame.media_color.red == 100
         assert flame.media_color.green == 75
