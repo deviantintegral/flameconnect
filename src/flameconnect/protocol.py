@@ -310,7 +310,7 @@ def _encode_flame_effect(param: FlameEffectParam) -> bytes:
 
 
 def _encode_heat_settings(param: HeatParam) -> bytes:
-    """Encode HeatSettings (323): 3-byte header + 7 bytes payload."""
+    """Encode HeatSettings (323): 3-byte header + 5 bytes payload."""
     _LOGGER.debug(
         "Encoding HeatSettings: status=%s mode=%s temp=%.1f boost=%d",
         param.heat_status,
@@ -319,12 +319,10 @@ def _encode_heat_settings(param: HeatParam) -> bytes:
         param.boost_duration,
     )
     wire_boost = max(0, param.boost_duration - 1)  # model is 1-indexed, wire is 0-indexed
-    boost_lo = wire_boost & 0xFF
-    boost_hi = (wire_boost >> 8) & 0xFF
     payload = (
         bytes([param.heat_status, param.heat_mode])
         + _encode_temperature(param.setpoint_temperature)
-        + bytes([boost_lo, boost_hi, 0x00])  # trailing padding byte
+        + bytes([wire_boost & 0xFF])
     )
     return _make_header(ParameterId.HEAT_SETTINGS, len(payload)) + payload
 

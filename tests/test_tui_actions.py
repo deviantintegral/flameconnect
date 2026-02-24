@@ -961,6 +961,28 @@ class TestSetHeatModeDialog:
 
         app.push_screen.assert_not_called()
 
+    async def test_callback_defers_via_call_later(self, mock_client, mock_dashboard):
+        """Dismiss callback uses call_later so _apply_heat_mode runs after modal pop."""
+        app = _make_app(mock_client, mock_dashboard)
+        app.push_screen = MagicMock()
+        app.call_later = MagicMock()
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            app.action_set_heat_mode()
+
+        # Extract the callback passed to push_screen
+        call_args = app.push_screen.call_args
+        callback = call_args[1].get("callback") or call_args[0][1]
+
+        # Simulate the dismiss callback with a NORMAL selection
+        callback((HeatMode.NORMAL, None))
+
+        # _apply_heat_mode should have been deferred via call_later
+        app.call_later.assert_called_once_with(
+            app._apply_heat_mode, HeatMode.NORMAL, None
+        )
+
 
 # ---------------------------------------------------------------------------
 # action_switch_fire

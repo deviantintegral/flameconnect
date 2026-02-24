@@ -321,7 +321,7 @@ class FlameConnectApp(App[None]):
 
         def _on_speed_selected(speed: int | None) -> None:
             if speed is not None and speed != current_speed:
-                self._apply_flame_speed(speed)
+                self.call_later(self._apply_flame_speed, speed)
 
         self.push_screen(
             FlameSpeedScreen(current_speed), callback=_on_speed_selected
@@ -557,7 +557,7 @@ class FlameConnectApp(App[None]):
 
         def _on_color_selected(color: FlameColor | None) -> None:
             if color is not None and color != current_color:
-                self._apply_flame_color(color)
+                self.call_later(self._apply_flame_color, color)
 
         self.push_screen(
             FlameColorScreen(current_color), callback=_on_color_selected
@@ -605,7 +605,7 @@ class FlameConnectApp(App[None]):
 
         def _on_theme_selected(theme: MediaTheme | None) -> None:
             if theme is not None and theme != current_theme:
-                self._apply_media_theme(theme)
+                self.call_later(self._apply_media_theme, theme)
 
         self.push_screen(
             MediaThemeScreen(current_theme), callback=_on_theme_selected
@@ -651,7 +651,7 @@ class FlameConnectApp(App[None]):
 
         def _on_color_selected(color: RGBWColor | None) -> None:
             if color is not None:
-                self._apply_media_color(color)
+                self.call_later(self._apply_media_color, color)
 
         self.push_screen(
             ColorScreen(current.media_color, "Fuel Bed Color"),
@@ -698,7 +698,7 @@ class FlameConnectApp(App[None]):
 
         def _on_color_selected(color: RGBWColor | None) -> None:
             if color is not None:
-                self._apply_overhead_color(color)
+                self.call_later(self._apply_overhead_color, color)
 
         self.push_screen(
             ColorScreen(current.overhead_color, "Overhead Color"),
@@ -748,7 +748,7 @@ class FlameConnectApp(App[None]):
         ) -> None:
             if result is not None:
                 mode, boost_minutes = result
-                self._apply_heat_mode(mode, boost_minutes)
+                self.call_later(self._apply_heat_mode, mode, boost_minutes)
 
         self.push_screen(
             HeatModeScreen(current.heat_mode, current.boost_duration),
@@ -804,9 +804,13 @@ class FlameConnectApp(App[None]):
 
         def _on_selected(fire: Fire | None) -> None:
             if fire is not None:
-                self.pop_screen()
-                self.fire_id = fire.fire_id
-                self._push_dashboard(fire)
+
+                def _switch() -> None:
+                    self.pop_screen()
+                    self.fire_id = fire.fire_id
+                    self._push_dashboard(fire)
+
+                self.call_later(_switch)
 
         self.push_screen(
             FireSelectScreen(self.fires, self.fire_id),
