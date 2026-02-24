@@ -34,7 +34,8 @@ from flameconnect.models import (
 # ---------------------------------------------------------------------------
 
 _FIRE_MODE_NAMES: dict[int, str] = {0: "Standby", 1: "Manual"}
-_BRIGHTNESS_NAMES: dict[int, str] = {0: "Low", 1: "High"}
+_BRIGHTNESS_NAMES: dict[int, str] = {0: "High", 1: "Low"}
+_PULSATING_NAMES: dict[int, str] = {0: "Off", 1: "On"}
 _FLAME_EFFECT_NAMES: dict[int, str] = {0: "Off", 1: "On"}
 _HEAT_STATUS_NAMES: dict[int, str] = {0: "Off", 1: "On"}
 _HEAT_MODE_NAMES: dict[int, str] = {
@@ -148,7 +149,9 @@ def _display_flame_effect(param: FlameEffectParam) -> None:
     print(f"    Flame:          {flame}")
     print(f"    Flame Speed:    {param.flame_speed} / 5")
     brightness = _enum_name(_BRIGHTNESS_NAMES, param.brightness)
+    pulsating = _enum_name(_PULSATING_NAMES, param.pulsating_effect)
     print(f"    Brightness:     {brightness}")
+    print(f"    Pulsating:      {pulsating}")
     color = _enum_name(_FLAME_COLOR_NAMES, param.flame_color)
     print(f"    Flame Color:    {color}")
     theme = _enum_name(_MEDIA_THEME_NAMES, param.media_theme)
@@ -386,6 +389,7 @@ async def _set_flame_speed(
         flame_effect=current.flame_effect,
         flame_speed=speed,
         brightness=current.brightness,
+        pulsating_effect=current.pulsating_effect,
         media_theme=current.media_theme,
         media_light=current.media_light,
         media_color=current.media_color,
@@ -401,7 +405,9 @@ async def _set_flame_speed(
 
 async def _set_brightness(client: FlameConnectClient, fire_id: str, value: str) -> None:
     """Set brightness (low or high)."""
-    lookup = {"low": 0, "high": 1}
+    from flameconnect.models import Brightness
+
+    lookup = {"low": Brightness.LOW, "high": Brightness.HIGH}
     if value not in lookup:
         print("Error: brightness must be 'low' or 'high'.")
         sys.exit(1)
@@ -415,6 +421,7 @@ async def _set_brightness(client: FlameConnectClient, fire_id: str, value: str) 
         flame_effect=current.flame_effect,
         flame_speed=current.flame_speed,
         brightness=brightness,
+        pulsating_effect=current.pulsating_effect,
         media_theme=current.media_theme,
         media_light=current.media_light,
         media_color=current.media_color,

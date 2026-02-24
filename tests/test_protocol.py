@@ -10,6 +10,7 @@ import pytest
 from flameconnect.const import ParameterId
 from flameconnect.exceptions import ProtocolError
 from flameconnect.models import (
+    Brightness,
     ErrorParam,
     FireMode,
     FlameColor,
@@ -25,6 +26,7 @@ from flameconnect.models import (
     LogEffectParam,
     MediaTheme,
     ModeParam,
+    PulsatingEffect,
     RGBWColor,
     SoftwareVersionParam,
     SoundParam,
@@ -78,7 +80,8 @@ class TestFlameEffectParamRoundTrip:
         original = FlameEffectParam(
             flame_effect=FlameEffect.ON,
             flame_speed=3,
-            brightness=1,
+            brightness=Brightness.LOW,
+            pulsating_effect=PulsatingEffect.OFF,
             media_theme=MediaTheme.KALEIDOSCOPE,
             media_light=LightStatus.ON,
             media_color=RGBWColor(red=100, green=75, blue=50, white=25),
@@ -95,7 +98,8 @@ class TestFlameEffectParamRoundTrip:
         original = FlameEffectParam(
             flame_effect=FlameEffect.OFF,
             flame_speed=1,
-            brightness=0,
+            brightness=Brightness.HIGH,
+            pulsating_effect=PulsatingEffect.OFF,
             media_theme=MediaTheme.USER_DEFINED,
             media_light=LightStatus.OFF,
             media_color=RGBWColor(red=0, green=0, blue=0, white=0),
@@ -367,7 +371,8 @@ class TestFlameSpeedOffset:
         param = FlameEffectParam(
             flame_effect=FlameEffect.ON,
             flame_speed=3,
-            brightness=1,
+            brightness=Brightness.LOW,
+            pulsating_effect=PulsatingEffect.OFF,
             media_theme=MediaTheme.USER_DEFINED,
             media_light=LightStatus.OFF,
             media_color=RGBWColor(red=0, green=0, blue=0, white=0),
@@ -390,7 +395,8 @@ class TestFlameSpeedOffset:
         param = FlameEffectParam(
             flame_effect=FlameEffect.ON,
             flame_speed=1,
-            brightness=1,
+            brightness=Brightness.LOW,
+            pulsating_effect=PulsatingEffect.OFF,
             media_theme=MediaTheme.USER_DEFINED,
             media_light=LightStatus.OFF,
             media_color=RGBWColor(red=0, green=0, blue=0, white=0),
@@ -412,7 +418,8 @@ class TestFlameSpeedOffset:
         param = FlameEffectParam(
             flame_effect=FlameEffect.ON,
             flame_speed=5,
-            brightness=1,
+            brightness=Brightness.LOW,
+            pulsating_effect=PulsatingEffect.OFF,
             media_theme=MediaTheme.USER_DEFINED,
             media_light=LightStatus.OFF,
             media_color=RGBWColor(red=0, green=0, blue=0, white=0),

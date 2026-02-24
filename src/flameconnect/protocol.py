@@ -9,6 +9,7 @@ import struct
 from flameconnect.const import ParameterId
 from flameconnect.exceptions import ProtocolError
 from flameconnect.models import (
+    Brightness,
     ErrorParam,
     FireMode,
     FlameColor,
@@ -25,6 +26,7 @@ from flameconnect.models import (
     MediaTheme,
     ModeParam,
     Parameter,
+    PulsatingEffect,
     RGBWColor,
     SoftwareVersionParam,
     SoundParam,
@@ -99,7 +101,9 @@ def _decode_flame_effect(raw: bytes) -> FlameEffectParam:
     _check_length(raw, 23, "FlameEffect")
     flame_effect = FlameEffect(raw[3])
     flame_speed = raw[4] + 1  # wire is 0-indexed, model is 1-indexed
-    brightness = raw[5]
+    brightness_byte = raw[5]
+    brightness = Brightness(brightness_byte & 1)
+    pulsating_effect = PulsatingEffect((brightness_byte >> 1) & 1)
     media_theme = MediaTheme(raw[6])
     media_light = LightStatus(raw[7])
     # Wire byte order: Red, Blue, Green, White
@@ -112,15 +116,17 @@ def _decode_flame_effect(raw: bytes) -> FlameEffectParam:
     # raw[20], raw[21] are padding
     ambient_sensor = LightStatus(raw[22])
     _LOGGER.debug(
-        "Decoded FlameEffect: effect=%s speed=%d brightness=%d",
+        "Decoded FlameEffect: effect=%s speed=%d brightness=%s pulsating=%s",
         flame_effect,
         flame_speed,
-        brightness,
+        brightness.name,
+        pulsating_effect.name,
     )
     return FlameEffectParam(
         flame_effect=flame_effect,
         flame_speed=flame_speed,
         brightness=brightness,
+        pulsating_effect=pulsating_effect,
         media_theme=media_theme,
         media_light=media_light,
         media_color=media_color,
@@ -279,7 +285,7 @@ def _encode_flame_effect(param: FlameEffectParam) -> bytes:
         [
             param.flame_effect,
             max(0, param.flame_speed - 1),  # model is 1-indexed, wire is 0-indexed
-            param.brightness,
+            param.brightness | (param.pulsating_effect << 1),
             param.media_theme,
             param.media_light,
             # Wire byte order: Red, Blue, Green, White

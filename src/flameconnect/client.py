@@ -263,6 +263,7 @@ class FlameConnectClient:
                 flame_effect=FlameEffect.ON,
                 flame_speed=current_flame.flame_speed,
                 brightness=current_flame.brightness,
+                pulsating_effect=current_flame.pulsating_effect,
                 media_theme=current_flame.media_theme,
                 media_light=current_flame.media_light,
                 media_color=current_flame.media_color,

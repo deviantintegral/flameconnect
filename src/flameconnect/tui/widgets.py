@@ -28,7 +28,8 @@ if TYPE_CHECKING:
     )
 
 
-_BRIGHTNESS_NAMES: dict[int, str] = {0: "Low", 1: "High"}
+_BRIGHTNESS_NAMES: dict[int, str] = {0: "High", 1: "Low"}
+_PULSATING_NAMES: dict[int, str] = {0: "Off", 1: "On"}
 
 
 def _format_rgbw(color: RGBWColor) -> str:
@@ -49,7 +50,8 @@ def _format_flame_effect(param: FlameEffectParam) -> str:
     lines = [
         f"[bold]Flame Effect:[/bold] {param.flame_effect.name}  |  "
         f"Speed: {param.flame_speed}/5  |  "
-        f"Brightness: {_BRIGHTNESS_NAMES.get(param.brightness, param.brightness)}",
+        f"Brightness: {_BRIGHTNESS_NAMES.get(param.brightness, param.brightness)}  |  "
+        f"Pulsating: {_PULSATING_NAMES.get(param.pulsating_effect, param.pulsating_effect)}",
         f"  Flame Color: {param.flame_color.name}  |  "
         f"Light: {param.light_status.name}  |  "
         f"Ambient Sensor: {param.ambient_sensor.name}",
