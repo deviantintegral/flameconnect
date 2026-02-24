@@ -295,9 +295,13 @@ class TestTurnOn:
 class TestTurnOff:
     """Test the turn_off() convenience method."""
 
-    async def test_turn_off_sends_standby(self, mock_api, token_auth):
+    async def test_turn_off_sends_standby(
+        self, mock_api, token_auth, get_fire_overview_payload
+    ):
         fire_id = "test-fire-001"
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
         write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mock_api.get(overview_url, payload=get_fire_overview_payload)
         mock_api.post(write_url, payload={})
 
         async with FlameConnectClient(token_auth) as client:

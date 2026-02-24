@@ -367,12 +367,21 @@ async def cmd_set(
 
 
 async def _set_mode(client: FlameConnectClient, fire_id: str, value: str) -> None:
-    """Set the fireplace mode."""
+    """Set the fireplace mode, preserving current temperature."""
     if value not in ("standby", "manual"):
         print("Error: mode must be 'standby' or 'manual'.")
         sys.exit(1)
+
+    overview = await client.get_fire_overview(fire_id)
+    current_mode: ModeParam | None = None
+    for param in overview.parameters:
+        if isinstance(param, ModeParam):
+            current_mode = param
+            break
+
+    temperature = current_mode.temperature if current_mode else 22.0
     mode = FireMode.STANDBY if value == "standby" else FireMode.MANUAL
-    mode_param = ModeParam(mode=mode, temperature=22.0)
+    mode_param = ModeParam(mode=mode, temperature=temperature)
     await client.write_parameters(fire_id, [mode_param])
     print(f"Mode set to {value}.")
 

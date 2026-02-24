@@ -278,12 +278,23 @@ class FlameConnectClient:
         await self.write_parameters(fire_id, params_to_write)
 
     async def turn_off(self, fire_id: str) -> None:
-        """Turn off the fireplace.
+        """Turn off the fireplace, preserving current temperature.
 
-        Sets the mode to STANDBY with temperature 0.
+        Reads the current state first to preserve the existing temperature,
+        then sets the mode to STANDBY.
 
         Args:
             fire_id: The unique identifier of the fireplace.
         """
-        mode_param = ModeParam(mode=FireMode.STANDBY, temperature=0.0)
+        overview = await self.get_fire_overview(fire_id)
+
+        current_mode: ModeParam | None = None
+        for param in overview.parameters:
+            if isinstance(param, ModeParam):
+                current_mode = param
+                break
+
+        temperature = current_mode.temperature if current_mode else 22.0
+
+        mode_param = ModeParam(mode=FireMode.STANDBY, temperature=temperature)
         await self.write_parameters(fire_id, [mode_param])
