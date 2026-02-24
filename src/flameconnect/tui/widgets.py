@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from rich.text import Text as _Text
 from textual.containers import Vertical
 from textual.reactive import reactive
 from textual.widgets import Static
 
-from flameconnect.models import FireMode
+from flameconnect.models import FireMode, FlameColor, LightStatus
 
 if TYPE_CHECKING:
     from enum import IntEnum
@@ -322,86 +323,107 @@ def _format_connection_state(
 # Dynamically sized using rich.text.Text to avoid markup-escaping
 # issues (Rich interprets ``\[`` as an escaped bracket).
 #
-# Each flame row is defined as a list of atoms:
-#   (text, style, trailing_gap_weight)
-# A builder distributes whitespace proportionally so the fire
-# scales to fill whatever width the widget is given.
+# The fireplace has three state-driven zones:
+#   1. Upper LED strip (overhead_color / overhead_light)
+#   2. Flames (flame_color + fire mode)
+#   3. Inner media bed (media_color)
+# The outer hearth row is fixed dim grey.
+#
+# Flames scale vertically to fill available height by trimming
+# the topmost (sparsest) rows first.
 
-from rich.text import Text as _Text
+# Number of fixed structural rows (everything except flame zone)
+_FIXED_ROWS = 8
+_MIN_FLAME_ROWS = 2
+_DEFAULT_HEIGHT = 20
 
-_FLAME_DEFS: list[tuple[float, list[tuple[str, str, int]]]] = [
-    # (body_width_fraction, atoms)
-    # flame tip
-    (0.90, [
-        ("(", "yellow", 2), (".", "yellow", 2), ("\\", "yellow", 6),
-        ("/", "yellow", 2), (".", "yellow", 2), (")", "yellow", 0),
+
+def _rgbw_to_style(color: RGBWColor) -> str:
+    """Convert an RGBW color to a Rich ``rgb(r,g,b)`` style string."""
+    r = min(color.red + color.white, 255)
+    g = min(color.green + color.white, 255)
+    b = min(color.blue + color.white, 255)
+    return f"rgb({r},{g},{b})"
+
+
+# Flame color palettes: (tip, mid, base) Rich style strings
+_FLAME_PALETTES: dict[FlameColor, tuple[str, str, str]] = {
+    FlameColor.ALL: ("yellow", "bright_green", "bright_magenta"),
+    FlameColor.YELLOW_RED: ("yellow", "bright_red", "red"),
+    FlameColor.YELLOW_BLUE: ("yellow", "bright_cyan", "blue"),
+    FlameColor.BLUE: ("bright_cyan", "bright_blue", "blue"),
+    FlameColor.RED: ("bright_yellow", "bright_red", "red"),
+    FlameColor.YELLOW: ("bright_yellow", "yellow", "bright_red"),
+    FlameColor.BLUE_RED: ("bright_cyan", "bright_blue", "red"),
+}
+_DEFAULT_PALETTE: tuple[str, str, str] = ("yellow", "bright_red", "red")
+
+# Flame row definitions: (body_width_fraction, zone_index, atoms)
+# zone_index: 0=tip, 1=mid, 2=base (indexes into palette tuple)
+# atoms: (text, trailing_gap_weight)
+_FLAME_DEFS: list[tuple[float, int, list[tuple[str, int]]]] = [
+    # Row 0: Sparse tips
+    (0.95, 0, [
+        ("( )", 3), (",", 5), (")", 5),
+        (",", 5), ("( )", 3), (",", 5), ("( )", 0),
     ]),
-    # outer flames
-    (0.82, [
-        ("(", "bright_red", 3), ("\\", "bright_red", 1),
-        ("\\", "bright_red", 5),
-        ("/", "bright_red", 1), ("/", "bright_red", 3),
-        (")", "bright_red", 0),
+    # Row 1: Forming columns
+    (0.95, 0, [
+        ("( \\ )", 2), ("( | )", 2), ("(  )", 1),
+        ("( \\)", 2), ("( | )", 2),
+        ("( | )", 1), ("( )", 0),
     ]),
-    # mid flames
-    (0.80, [
-        ("(", "red", 2), ("\\", "red", 2), ("\\\\", "red", 4),
-        ("//", "red", 2), ("/", "red", 3), (")", "red", 0),
+    # Row 2: Growing
+    (0.95, 1, [
+        ("( \\ \\ )", 2), ("( | | )", 2), ("( \\ )", 1),
+        ("( \\ \\)", 2), ("( / | )", 2),
+        ("( / | )", 1), ("( )", 0),
     ]),
-    # bright core
-    (0.76, [
-        ("(", "bright_red", 3), ("\\", "bright_red", 1),
-        ("||||", "yellow", 1),
-        ("/", "bright_red", 3), (")", "bright_red", 0),
+    # Row 3: Full width
+    (0.95, 1, [
+        ("( \\\\ \\)", 2), ("( || |)", 2), ("( \\\\ )", 1),
+        ("( \\\\ )", 2), ("( /| |)", 2),
+        ("( /| | )", 1), ("( )", 0),
     ]),
-    # spread
-    (0.76, [
-        ("(", "red", 2), ("\\", "red", 1),
-        ("/", "yellow", 1), ("||", "yellow", 1), ("\\", "red", 1),
-        ("/", "red", 2), (")", "red", 0),
+    # Row 4: Dense mid
+    (0.95, 1, [
+        ("( \\\\ )", 2), ("( || )", 2), ("( \\\\ )", 1),
+        ("( || )", 2), ("( /| )", 2),
+        ("( /| |)", 1), ("( )", 0),
     ]),
-    # lower
-    (0.64, [
-        ("(", "red", 1),
-        ("/", "yellow", 1), ("/", "yellow", 1),
-        ("||", "bright_red", 1),
-        ("\\", "yellow", 1), ("\\", "yellow", 1),
-        (")", "red", 0),
+    # Row 5: Narrowing
+    (0.95, 2, [
+        ("( \\\\)", 2), ("( //)", 2), ("( \\\\ )", 1),
+        ("( || )", 2), ("( // )", 2),
+        ("( // )", 1), ("( )", 0),
     ]),
-    # base flames
-    (0.68, [
-        ("(/", "yellow", 1), ("/", "yellow", 2),
-        ("||", "red", 2),
-        ("\\", "yellow", 1), ("\\)", "yellow", 0),
+    # Row 6: Base
+    (0.95, 2, [
+        ("(\\)", 2), ("(/)", 2), ("(\\)(|)", 3),
+        ("(/)", 2), ("(/)", 2), ("()", 0),
     ]),
-    # embers
-    (0.76, [
-        ("(__/", "yellow", 2),
-        ("/==\\", "bright_red", 2),
-        ("\\__)", "yellow", 0),
+    # Row 7: Base
+    (0.95, 2, [
+        ("(\\)", 2), ("(/)", 2), ("(\\|/)", 4),
+        ("(/)", 2), ("(/)", 2), ("()", 0),
     ]),
 ]
 
-_COAL_FRAC = 0.95
-
 
 def _expand_flame(
-    atoms: list[tuple[str, str, int]],
+    atoms: list[tuple[str, int]],
     body_width: int,
+    style: str,
 ) -> _Text:
-    """Build a single flame row as a Text object.
-
-    Gaps between atoms are distributed proportionally according to
-    each atom's trailing gap weight.
-    """
+    """Build a single flame row, distributing gaps proportionally."""
     chars_w = sum(len(a[0]) for a in atoms)
     total_gap = max(body_width - chars_w, 0)
-    total_weight = sum(a[2] for a in atoms) or 1
+    total_weight = sum(a[1] for a in atoms) or 1
 
     line = _Text()
     remaining_gap = total_gap
     remaining_weight = total_weight
-    for text, style, gap_w in atoms:
+    for text, gap_w in atoms:
         line.append(text, style=style)
         if gap_w > 0 and remaining_weight > 0:
             sp = remaining_gap * gap_w // remaining_weight
@@ -411,62 +433,98 @@ def _expand_flame(
     return line
 
 
-def _build_fire_art(w: int) -> _Text:
-    """Generate fireplace ASCII art at outer width *w*."""
-    iw = w - 2  # inner width between │ walls
+def _build_fire_art(
+    w: int,
+    h: int,
+    *,
+    fire_on: bool = True,
+    flame_palette: tuple[str, str, str] = _DEFAULT_PALETTE,
+    led_style: str = "dim",
+    media_style: str = "red",
+) -> _Text:
+    """Generate fireplace ASCII art at outer width *w* and height *h*."""
+    ow = w - 2   # fill width between outer frame borders
+    iw = w - 4   # content width between inner frame borders
 
     result = _Text()
 
     def _nl() -> None:
         result.append("\n")
 
-    def _full(char: str) -> None:
-        result.append(char * w, style="dim")
+    # ── top edge ──
+    result.append("▁" * w, style="dim")
+    _nl()
+
+    # ── outer frame top ──
+    result.append("┌" + "─" * ow + "┐", style="dim")
+    _nl()
+
+    # ── inner frame top ──
+    result.append("│", style="dim")
+    result.append("┌" + "─" * (ow - 2) + "┐", style="dim")
+    result.append("│", style="dim")
+    _nl()
+
+    # ── LED strip ──
+    result.append("││", style="dim")
+    result.append("░" * iw, style=led_style)
+    result.append("││", style="dim")
+    _nl()
+
+    # ── flame zone ──
+    flame_rows = max(h - _FIXED_ROWS, _MIN_FLAME_ROWS)
+    num_defs = len(_FLAME_DEFS)
+    if flame_rows >= num_defs:
+        blank_above = flame_rows - num_defs
+        defs_to_render = _FLAME_DEFS
+    else:
+        blank_above = 0
+        defs_to_render = _FLAME_DEFS[num_defs - flame_rows:]
+
+    # Blank rows above flames
+    for _ in range(blank_above):
+        result.append("││", style="dim")
+        result.append(" " * iw)
+        result.append("││", style="dim")
         _nl()
 
-    def _border(left: str, fill: str, right: str) -> None:
-        result.append(left + fill * iw + right, style="dim")
+    # Flame rows (or blank if standby)
+    for body_frac, zone, atoms in defs_to_render:
+        result.append("││", style="dim")
+        if fire_on:
+            min_w = sum(len(a[0]) for a in atoms) + len(atoms) - 1
+            body_w = max(int(iw * body_frac), min_w)
+            lead = (iw - body_w) // 2
+            style = flame_palette[zone]
+            flame_line = _Text(" " * lead)
+            flame_line.append_text(_expand_flame(atoms, body_w, style))
+            result.append_text(flame_line)
+            result.append(" " * max(iw - lead - body_w, 0))
+        else:
+            result.append(" " * iw)
+        result.append("││", style="dim")
         _nl()
 
-    def _row(content: _Text | None = None, vis_len: int = 0) -> None:
-        result.append("│", style="dim")
-        if content is not None:
-            result.append_text(content)
-        result.append(" " * max(iw - vis_len, 0))
-        result.append("│", style="dim")
-        _nl()
+    # ── inner media bed ──
+    result.append("││", style="dim")
+    result.append("▓" * iw, style=media_style)
+    result.append("││", style="dim")
+    _nl()
 
-    # ── mantel ──
-    _full("═")
-    # ── firebox top ──
-    _border("┌", "─", "┐")
-    # blank
-    _row()
+    # ── inner frame bottom ──
+    result.append("│", style="dim")
+    result.append("└" + "─" * (ow - 2) + "┘", style="dim")
+    result.append("│", style="dim")
+    _nl()
 
-    # ── flame rows ──
-    for body_frac, atoms in _FLAME_DEFS:
-        min_w = sum(len(a[0]) for a in atoms) + len(atoms) - 1
-        body_w = max(int(iw * body_frac), min_w)
-        lead = (iw - body_w) // 2
-        flame = _Text(" " * lead)
-        flame.append_text(_expand_flame(atoms, body_w))
-        _row(flame, lead + body_w)
+    # ── outer hearth (fixed dim) ──
+    result.append("│", style="dim")
+    result.append("▓" * ow, style="dim")
+    result.append("│", style="dim")
+    _nl()
 
-    # ── coal bed ──
-    coal_w = max(int(iw * _COAL_FRAC), 10)
-    coal_lead = (iw - coal_w) // 2
-    coal = _Text(" " * coal_lead)
-    coal.append("▓" * coal_w, style="dim")
-    _row(coal, coal_lead + coal_w)
-
-    # blank
-    _row()
-    # ── firebox bottom ──
-    _border("└", "─", "┘")
-    # hearth slab
-    _full("█")
-    # base mantel
-    result.append("═" * w, style="dim")  # no trailing newline
+    # ── outer frame bottom ──
+    result.append("└" + "─" * ow + "┘", style="dim")  # no trailing newline
 
     return result
 
@@ -474,12 +532,55 @@ def _build_fire_art(w: int) -> _Text:
 class FireplaceVisual(Static):
     """Dynamically sized ASCII-art fireplace visual."""
 
+    def update_state(
+        self,
+        mode: ModeParam | None,
+        flame_effect: FlameEffectParam | None,
+    ) -> None:
+        """Update the visual with new fireplace state."""
+        self._mode = mode
+        self._flame_effect = flame_effect
+        self.refresh()
+
     def render(self) -> _Text:
-        """Render fireplace art scaled to the widget's content width."""
+        """Render fireplace art scaled to the widget's content region."""
         w = self.content_region.width
+        h = self.content_region.height
         if w < 20:
             w = 48
-        return _build_fire_art(w)
+        if h == 0:
+            h = _DEFAULT_HEIGHT
+
+        mode = getattr(self, "_mode", None)
+        flame_effect = getattr(self, "_flame_effect", None)
+
+        fire_on = True
+        palette = _DEFAULT_PALETTE
+        led_style = "dim"
+        media_style = "red"
+
+        if mode is not None:
+            fire_on = mode.mode == FireMode.MANUAL
+
+        if flame_effect is not None:
+            palette = _FLAME_PALETTES.get(
+                flame_effect.flame_color, _DEFAULT_PALETTE
+            )
+            if flame_effect.overhead_light == LightStatus.ON:
+                led_style = _rgbw_to_style(
+                    flame_effect.overhead_color
+                )
+            media_style = _rgbw_to_style(
+                flame_effect.media_color
+            )
+
+        return _build_fire_art(
+            w, h,
+            fire_on=fire_on,
+            flame_palette=palette,
+            led_style=led_style,
+            media_style=media_style,
+        )
 
 
 class ParameterPanel(Static):
