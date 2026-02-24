@@ -137,14 +137,13 @@ class DashboardScreen(Screen[None]):
         yield Footer()
 
     def on_mount(self) -> None:
-        """Set up auto-refresh, install log handler, and do initial data load."""
+        """Install log handler and do initial data load."""
         rich_log = self.query_one("#messages-panel", RichLog)
         self._log_handler = _TuiLogHandler(rich_log)
         self._log_handler.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
         fc_logger = logging.getLogger("flameconnect")
         fc_logger.addHandler(self._log_handler)
 
-        self.set_interval(10, self.refresh_state)
         self.call_after_refresh(self._initial_load)
 
     def on_unmount(self) -> None:
@@ -191,6 +190,7 @@ class DashboardScreen(Screen[None]):
         fire_info.fire_name = overview.fire.friendly_name
         fire_info.fire_id = overview.fire.fire_id
         fire_info.connection = _format_connection_state(overview.fire.connection_state)
+        fire_info.last_updated = datetime.now().strftime("%H:%M:%S")
 
         param_panel = self.query_one("#param-panel", ParameterPanel)
         param_panel.update_parameters(overview.parameters)

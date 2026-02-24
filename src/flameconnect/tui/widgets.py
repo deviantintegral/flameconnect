@@ -223,14 +223,18 @@ class FireplaceInfo(Static):
     fire_name: reactive[str] = reactive("--")
     fire_id: reactive[str] = reactive("--")
     connection: reactive[str] = reactive("UNKNOWN")
+    last_updated: reactive[str] = reactive("")
 
     def render(self) -> str:
         """Render the fireplace info display."""
-        return (
+        parts = (
             f"[bold]{self.fire_name}[/bold]  |  "
             f"ID: {self.fire_id}  |  "
             f"Connection: {self.connection}"
         )
+        if self.last_updated:
+            parts += f"  |  [dim]Updated: {self.last_updated}[/dim]"
+        return parts
 
 
 class ParameterPanel(Static):
