@@ -8,6 +8,8 @@ import pytest
 
 from flameconnect.models import (
     Brightness,
+    ConnectionState,
+    Fire,
     FlameColor,
     FlameEffect,
     FlameEffectParam,
@@ -58,6 +60,30 @@ _DEFAULT_TIMER = TimerParam(
 )
 
 _DEFAULT_TEMP_UNIT = TempUnitParam(unit=TempUnit.CELSIUS)
+
+_TEST_FIRE = Fire(
+    fire_id="test-fire-001",
+    friendly_name="Test Fire",
+    brand="TestBrand",
+    product_type="Electric",
+    product_model="TM-100",
+    item_code="TB-001",
+    connection_state=ConnectionState.CONNECTED,
+    with_heat=True,
+    is_iot_fire=True,
+)
+
+_TEST_FIRE_2 = Fire(
+    fire_id="test-fire-002",
+    friendly_name="Second Fire",
+    brand="TestBrand",
+    product_type="Electric",
+    product_model="TM-200",
+    item_code="TB-002",
+    connection_state=ConnectionState.CONNECTED,
+    with_heat=True,
+    is_iot_fire=True,
+)
 
 
 @pytest.fixture
@@ -816,3 +842,144 @@ class TestDashboardCurrentParameters:
         screen = DashboardScreen.__new__(DashboardScreen)
         screen._previous_params = {}
         assert screen.current_parameters == {}
+
+
+# ---------------------------------------------------------------------------
+# action_set_heat_mode (dialog open)
+# ---------------------------------------------------------------------------
+
+
+class TestSetHeatModeDialog:
+    """Tests for FlameConnectApp.action_set_heat_mode opening HeatModeScreen."""
+
+    async def test_opens_heat_mode_screen(self, mock_client, mock_dashboard):
+        """action_set_heat_mode pushes HeatModeScreen with current mode/boost."""
+        from flameconnect.tui.heat_mode_screen import HeatModeScreen
+
+        app = _make_app(mock_client, mock_dashboard)
+        app.push_screen = MagicMock()
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_set_heat_mode()
+
+        app.push_screen.assert_called_once()
+        call_args = app.push_screen.call_args
+        screen_arg = call_args[0][0]
+        assert isinstance(screen_arg, HeatModeScreen)
+        # Verify callback was passed
+        assert call_args[1].get("callback") is not None or len(call_args[0]) > 1
+
+    async def test_no_op_when_no_heat_param(self, mock_client, mock_dashboard):
+        """action_set_heat_mode does nothing if no HeatParam in parameters."""
+        del mock_dashboard.current_parameters[HeatParam]
+        app = _make_app(mock_client, mock_dashboard)
+        app.push_screen = MagicMock()
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_set_heat_mode()
+
+        app.push_screen.assert_not_called()
+
+    async def test_no_op_when_no_fire_id(self, mock_client, mock_dashboard):
+        """action_set_heat_mode does nothing if no fire_id set."""
+        app = _make_app(mock_client, mock_dashboard)
+        app.fire_id = None
+        app.push_screen = MagicMock()
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_set_heat_mode()
+
+        app.push_screen.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# action_switch_fire
+# ---------------------------------------------------------------------------
+
+
+class TestSwitchFire:
+    """Tests for FlameConnectApp.action_switch_fire."""
+
+    async def test_refetches_fires_and_opens_dialog(self, mock_client, mock_dashboard):
+        """action_switch_fire calls get_fires and opens FireSelectScreen."""
+        from flameconnect.tui.fire_select_screen import FireSelectScreen
+
+        mock_client.get_fires = AsyncMock(
+            return_value=[_TEST_FIRE, _TEST_FIRE_2],
+        )
+        app = _make_app(mock_client, mock_dashboard)
+        app.fires = [_TEST_FIRE]
+        app.push_screen = MagicMock()
+        app.notify = MagicMock()
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_switch_fire()
+
+        # Verify get_fires was called to refresh the list
+        mock_client.get_fires.assert_awaited_once()
+        # Verify the fire list was updated
+        assert len(app.fires) == 2
+        # Verify push_screen was called with FireSelectScreen
+        app.push_screen.assert_called_once()
+        call_args = app.push_screen.call_args
+        screen_arg = call_args[0][0]
+        assert isinstance(screen_arg, FireSelectScreen)
+
+    async def test_single_fire_guard_notifies(self, mock_client, mock_dashboard):
+        """action_switch_fire notifies user when only one fire available."""
+        mock_client.get_fires = AsyncMock(return_value=[_TEST_FIRE])
+        app = _make_app(mock_client, mock_dashboard)
+        app.fires = [_TEST_FIRE]
+        app.push_screen = MagicMock()
+        app.notify = MagicMock()
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_switch_fire()
+
+        # Verify notify was called with appropriate message
+        app.notify.assert_called_once_with("Only one fireplace available")
+        # Verify push_screen was NOT called (no dialog)
+        app.push_screen.assert_not_called()
+
+    async def test_no_fires_guard_notifies(self, mock_client, mock_dashboard):
+        """action_switch_fire notifies user when no fires available."""
+        mock_client.get_fires = AsyncMock(return_value=[])
+        app = _make_app(mock_client, mock_dashboard)
+        app.fires = []
+        app.push_screen = MagicMock()
+        app.notify = MagicMock()
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_switch_fire()
+
+        # Verify notify was called
+        app.notify.assert_called_once_with("Only one fireplace available")
+        # Verify push_screen was NOT called
+        app.push_screen.assert_not_called()
+
+    async def test_get_fires_error_notifies(self, mock_client, mock_dashboard):
+        """action_switch_fire handles get_fires failure gracefully."""
+        mock_client.get_fires = AsyncMock(
+            side_effect=Exception("network error"),
+        )
+        app = _make_app(mock_client, mock_dashboard)
+        app.fires = [_TEST_FIRE]
+        app.push_screen = MagicMock()
+        app.notify = MagicMock()
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app.action_switch_fire()
+
+        # Verify error notification
+        app.notify.assert_called_once()
+        call_args = app.notify.call_args
+        assert "Failed to load fireplaces" in call_args[0][0]
+        # Verify push_screen was NOT called
+        app.push_screen.assert_not_called()

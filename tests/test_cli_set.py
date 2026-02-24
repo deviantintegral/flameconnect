@@ -370,6 +370,19 @@ class TestSetBrightness:
 class TestSetHeatMode:
     """Tests for the _set_heat_mode CLI command."""
 
+    async def test_set_heat_mode_normal(self, mock_api, token_auth, overview_payload):
+        mock_api.get(OVERVIEW_URL, payload=overview_payload)
+        mock_api.post(WRITE_URL, payload={})
+
+        async with FlameConnectClient(token_auth) as client:
+            await _set_heat_mode(client, FIRE_ID, "normal")
+
+        key = ("POST", URL(WRITE_URL))
+        calls = mock_api.requests[key]
+        assert len(calls) == 1
+        body = calls[0].kwargs["json"]
+        assert body["Parameters"][0]["ParameterId"] == 323
+
     async def test_set_heat_mode_boost(self, mock_api, token_auth, overview_payload):
         mock_api.get(OVERVIEW_URL, payload=overview_payload)
         mock_api.post(WRITE_URL, payload={})
@@ -432,6 +445,24 @@ class TestSetHeatMode:
         async with FlameConnectClient(token_auth) as client:
             with pytest.raises(SystemExit):
                 await _set_heat_mode(client, FIRE_ID, "boost:abc")
+        captured = capsys.readouterr()
+        assert "Error" in captured.out
+
+    async def test_set_heat_mode_boost_duration_21(
+        self, mock_api, token_auth, capsys
+    ):
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(SystemExit):
+                await _set_heat_mode(client, FIRE_ID, "boost:21")
+        captured = capsys.readouterr()
+        assert "Error" in captured.out
+
+    async def test_set_heat_mode_reject_fan_only(
+        self, mock_api, token_auth, capsys
+    ):
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(SystemExit):
+                await _set_heat_mode(client, FIRE_ID, "fan-only")
         captured = capsys.readouterr()
         assert "Error" in captured.out
 
