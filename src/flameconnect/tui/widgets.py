@@ -557,12 +557,12 @@ class FireplaceVisual(Static):
         fire_on = True
         palette = _DEFAULT_PALETTE
         led_style = "dim"
-        media_style = "red"
+        media_style = "dim"
 
         if mode is not None:
             fire_on = mode.mode == FireMode.MANUAL
 
-        if flame_effect is not None:
+        if fire_on and flame_effect is not None:
             palette = _FLAME_PALETTES.get(
                 flame_effect.flame_color, _DEFAULT_PALETTE
             )
