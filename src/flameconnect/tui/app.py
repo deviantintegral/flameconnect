@@ -20,7 +20,13 @@ if TYPE_CHECKING:
     import asyncio
 
     from flameconnect.client import FlameConnectClient
-    from flameconnect.models import Fire, FlameColor, MediaTheme, RGBWColor
+    from flameconnect.models import (
+        Fire,
+        FlameColor,
+        HeatMode,
+        MediaTheme,
+        RGBWColor,
+    )
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -60,7 +66,8 @@ class FlameConnectApp(App[None]):
         Binding("v", "set_overhead_color", "Overhead Color", show=False),
         Binding("s", "toggle_light_status", "Light Status", show=False),
         Binding("a", "toggle_ambient_sensor", "Ambient Sensor", show=False),
-        Binding("h", "cycle_heat_mode", "Heat Mode", show=False),
+        Binding("h", "set_heat_mode", "Heat Mode", show=False),
+        Binding("w", "switch_fire", "Switch Fire", show=False),
         Binding("t", "toggle_timer", "Timer", show=False),
         Binding("u", "toggle_temp_unit", "Temp Unit", show=False),
     ]
@@ -772,8 +779,42 @@ class FlameConnectApp(App[None]):
         finally:
             self._write_in_progress = False
 
-    async def action_cycle_heat_mode(self) -> None:
-        """Handle the 'h' key binding to cycle heat mode."""
+    async def action_set_heat_mode(self) -> None:
+        """Handle the 'h' key binding to open heat mode dialog."""
+        from flameconnect.models import HeatParam
+        from flameconnect.tui.heat_mode_screen import HeatModeScreen
+
+        screen = self.screen
+        if not isinstance(screen, DashboardScreen):
+            return
+        if self.fire_id is None:
+            return
+
+        params = screen.current_parameters
+        current = params.get(HeatParam)
+        if not isinstance(current, HeatParam):
+            return
+
+        def _on_selected(
+            result: tuple[HeatMode, int | None] | None,
+        ) -> None:
+            if result is not None:
+                mode, boost_minutes = result
+                self.run_worker(
+                    self._apply_heat_mode(mode, boost_minutes),
+                    exclusive=True,
+                    thread=False,
+                )
+
+        self.push_screen(
+            HeatModeScreen(current.heat_mode, current.boost_duration),
+            callback=_on_selected,
+        )
+
+    async def _apply_heat_mode(
+        self, mode: HeatMode, boost_minutes: int | None
+    ) -> None:
+        """Write the selected heat mode to the fireplace."""
         from flameconnect.models import HeatMode, HeatParam
 
         screen = self.screen
@@ -790,22 +831,52 @@ class FlameConnectApp(App[None]):
             current = params.get(HeatParam)
             if not isinstance(current, HeatParam):
                 return
-            modes = [HeatMode.NORMAL, HeatMode.BOOST, HeatMode.ECO, HeatMode.FAN_ONLY]
-            try:
-                idx = modes.index(current.heat_mode)
-            except ValueError:
-                idx = -1
-            new_mode = modes[(idx + 1) % len(modes)]
-            new_param = replace(current, heat_mode=new_mode)
+            if mode == HeatMode.BOOST and boost_minutes is not None:
+                new_param = replace(
+                    current, heat_mode=mode, boost_duration=boost_minutes
+                )
+            else:
+                new_param = replace(current, heat_mode=mode)
             await self.client.write_parameters(self.fire_id, [new_param])
-            mode_label = _display_name(new_mode)
+            mode_label = _display_name(mode)
             screen.log_message(f"Heat mode set to {mode_label}")
             await screen.refresh_state()
         except Exception as exc:
-            _LOGGER.exception("Failed to cycle heat mode")
-            screen.log_message(f"Heat mode change failed: {exc}", level=logging.ERROR)
+            _LOGGER.exception("Failed to set heat mode")
+            screen.log_message(
+                f"Heat mode change failed: {exc}", level=logging.ERROR
+            )
         finally:
             self._write_in_progress = False
+
+    async def action_switch_fire(self) -> None:
+        """Handle the 'w' key binding to switch between fireplaces."""
+        from flameconnect.tui.fire_select_screen import FireSelectScreen
+
+        try:
+            self.fires = await self.client.get_fires()
+        except Exception as exc:
+            _LOGGER.exception("Failed to fetch fireplaces")
+            self.notify(f"Failed to load fireplaces: {exc}", severity="error")
+            return
+
+        if len(self.fires) <= 1:
+            self.notify("Only one fireplace available")
+            return
+
+        if self.fire_id is None:
+            return
+
+        def _on_selected(fire: Fire | None) -> None:
+            if fire is not None:
+                self.pop_screen()
+                self.fire_id = fire.fire_id
+                self._push_dashboard(fire)
+
+        self.push_screen(
+            FireSelectScreen(self.fires, self.fire_id),
+            callback=_on_selected,
+        )
 
     async def action_toggle_timer(self) -> None:
         """Handle the 't' key binding to toggle the timer."""

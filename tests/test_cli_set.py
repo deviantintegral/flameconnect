@@ -393,17 +393,47 @@ class TestSetHeatMode:
         key = ("POST", URL(WRITE_URL))
         assert len(mock_api.requests[key]) == 1
 
-    async def test_set_heat_mode_fan_only(
+    async def test_set_heat_mode_boost_with_duration(
         self, mock_api, token_auth, overview_payload
     ):
         mock_api.get(OVERVIEW_URL, payload=overview_payload)
         mock_api.post(WRITE_URL, payload={})
 
         async with FlameConnectClient(token_auth) as client:
-            await _set_heat_mode(client, FIRE_ID, "fan-only")
+            await _set_heat_mode(client, FIRE_ID, "boost:15")
 
         key = ("POST", URL(WRITE_URL))
-        assert len(mock_api.requests[key]) == 1
+        calls = mock_api.requests[key]
+        assert len(calls) == 1
+        body = calls[0].kwargs["json"]
+        assert body["Parameters"][0]["ParameterId"] == 323
+
+    async def test_set_heat_mode_boost_duration_out_of_range(
+        self, mock_api, token_auth, capsys
+    ):
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(SystemExit):
+                await _set_heat_mode(client, FIRE_ID, "boost:25")
+        captured = capsys.readouterr()
+        assert "Error" in captured.out
+
+    async def test_set_heat_mode_boost_duration_zero(
+        self, mock_api, token_auth, capsys
+    ):
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(SystemExit):
+                await _set_heat_mode(client, FIRE_ID, "boost:0")
+        captured = capsys.readouterr()
+        assert "Error" in captured.out
+
+    async def test_set_heat_mode_boost_duration_invalid_format(
+        self, mock_api, token_auth, capsys
+    ):
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(SystemExit):
+                await _set_heat_mode(client, FIRE_ID, "boost:abc")
+        captured = capsys.readouterr()
+        assert "Error" in captured.out
 
     async def test_set_heat_mode_invalid(self, mock_api, token_auth, capsys):
         async with FlameConnectClient(token_auth) as client:

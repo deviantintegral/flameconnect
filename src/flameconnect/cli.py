@@ -94,7 +94,6 @@ _HEAT_MODE_LOOKUP: dict[str, HeatMode] = {
     "normal": HeatMode.NORMAL,
     "boost": HeatMode.BOOST,
     "eco": HeatMode.ECO,
-    "fan-only": HeatMode.FAN_ONLY,
 }
 
 _PULSATING_LOOKUP: dict[str, PulsatingEffect] = {
@@ -575,18 +574,39 @@ async def _set_media_theme(
 
 
 async def _set_heat_mode(client: FlameConnectClient, fire_id: str, value: str) -> None:
-    """Set the heater mode."""
-    if value not in _HEAT_MODE_LOOKUP:
-        valid = ", ".join(_HEAT_MODE_LOOKUP)
+    """Set the heater mode.
+
+    Supports ``normal``, ``eco``, ``boost``, and ``boost:<minutes>``
+    where minutes is 1-20.
+    """
+    boost_minutes: int | None = None
+
+    if value.startswith("boost:"):
+        try:
+            boost_minutes = int(value.split(":")[1])
+        except (ValueError, IndexError):
+            print("Error: boost format is boost:<minutes> (e.g., boost:15).")
+            sys.exit(1)
+        if not 1 <= boost_minutes <= 20:
+            print("Error: boost duration must be 1-20 minutes.")
+            sys.exit(1)
+        heat_mode = HeatMode.BOOST
+    elif value in _HEAT_MODE_LOOKUP:
+        heat_mode = _HEAT_MODE_LOOKUP[value]
+    else:
+        valid = ", ".join([*_HEAT_MODE_LOOKUP, "boost:<minutes>"])
         print(f"Error: heat-mode must be one of: {valid}.")
         sys.exit(1)
-    heat_mode = _HEAT_MODE_LOOKUP[value]
+
     overview = await client.get_fire_overview(fire_id)
     current = _find_param(overview.parameters, HeatParam)
     if current is None:
         print("Error: no HeatSettings parameter found.")
         sys.exit(1)
-    new_param = replace(current, heat_mode=heat_mode)
+    if boost_minutes is not None:
+        new_param = replace(current, heat_mode=heat_mode, boost_duration=boost_minutes)
+    else:
+        new_param = replace(current, heat_mode=heat_mode)
     await client.write_parameters(fire_id, [new_param])
     print(f"Heat mode set to {value}.")
 

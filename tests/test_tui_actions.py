@@ -224,57 +224,46 @@ class TestToggleBrightness:
 
 
 # ---------------------------------------------------------------------------
-# action_cycle_heat_mode
+# _apply_heat_mode
 # ---------------------------------------------------------------------------
 
 
-class TestCycleHeatMode:
-    """Tests for FlameConnectApp.action_cycle_heat_mode."""
+class TestApplyHeatMode:
+    """Tests for FlameConnectApp._apply_heat_mode."""
 
-    async def test_cycles_normal_to_boost(self, mock_client, mock_dashboard):
+    async def test_sets_normal_mode(self, mock_client, mock_dashboard):
         app = _make_app(mock_client, mock_dashboard)
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_cycle_heat_mode()
+            await app._apply_heat_mode(HeatMode.NORMAL, None)
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert isinstance(written_param, HeatParam)
+        assert written_param.heat_mode == HeatMode.NORMAL
+
+    async def test_sets_eco_mode(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app._apply_heat_mode(HeatMode.ECO, None)
+
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert isinstance(written_param, HeatParam)
+        assert written_param.heat_mode == HeatMode.ECO
+
+    async def test_sets_boost_with_duration(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app._apply_heat_mode(HeatMode.BOOST, 15)
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert isinstance(written_param, HeatParam)
         assert written_param.heat_mode == HeatMode.BOOST
-
-    async def test_cycles_fan_only_wraps_to_normal(
-        self, mock_client, mock_dashboard
-    ):
-        mock_dashboard.current_parameters[HeatParam] = HeatParam(
-            heat_status=HeatStatus.ON,
-            heat_mode=HeatMode.FAN_ONLY,
-            setpoint_temperature=22.0,
-            boost_duration=1,
-        )
-        app = _make_app(mock_client, mock_dashboard)
-
-        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
-            prop.return_value = mock_dashboard
-            await app.action_cycle_heat_mode()
-
-        written_param = mock_client.write_parameters.call_args[0][1][0]
-        assert written_param.heat_mode == HeatMode.NORMAL
-
-    async def test_cycles_eco_to_fan_only(self, mock_client, mock_dashboard):
-        mock_dashboard.current_parameters[HeatParam] = HeatParam(
-            heat_status=HeatStatus.ON,
-            heat_mode=HeatMode.ECO,
-            setpoint_temperature=22.0,
-            boost_duration=1,
-        )
-        app = _make_app(mock_client, mock_dashboard)
-
-        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
-            prop.return_value = mock_dashboard
-            await app.action_cycle_heat_mode()
-
-        written_param = mock_client.write_parameters.call_args[0][1][0]
-        assert written_param.heat_mode == HeatMode.FAN_ONLY
+        assert written_param.boost_duration == 15
 
     async def test_no_op_when_no_heat_param(self, mock_client, mock_dashboard):
         del mock_dashboard.current_parameters[HeatParam]
@@ -282,7 +271,27 @@ class TestCycleHeatMode:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            await app.action_cycle_heat_mode()
+            await app._apply_heat_mode(HeatMode.NORMAL, None)
+
+        mock_client.write_parameters.assert_not_awaited()
+
+    async def test_no_op_when_no_fire_id(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+        app.fire_id = None
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app._apply_heat_mode(HeatMode.ECO, None)
+
+        mock_client.write_parameters.assert_not_awaited()
+
+    async def test_no_op_when_write_in_progress(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+        app._write_in_progress = True
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            await app._apply_heat_mode(HeatMode.ECO, None)
 
         mock_client.write_parameters.assert_not_awaited()
 
