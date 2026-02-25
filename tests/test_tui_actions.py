@@ -366,18 +366,22 @@ class TestApplyHeatMode:
 class TestToggleTimer:
     """Tests for FlameConnectApp.action_toggle_timer."""
 
-    async def test_enables_timer_when_disabled(self, mock_client, mock_dashboard):
+    async def test_opens_timer_screen_when_disabled(self, mock_client, mock_dashboard):
+        """action_toggle_timer pushes TimerScreen when timer is disabled."""
+        from flameconnect.tui.timer_screen import TimerScreen
+
         app = _make_app(mock_client, mock_dashboard)
+        app.push_screen = MagicMock()
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
             app.action_toggle_timer()
-            await _run_workers(app)
 
-        written_param = mock_client.write_parameters.call_args[0][1][0]
-        assert isinstance(written_param, TimerParam)
-        assert written_param.timer_status == TimerStatus.ENABLED
-        assert written_param.duration == 60
+        app.push_screen.assert_called_once()
+        call_args = app.push_screen.call_args
+        screen_arg = call_args[0][0]
+        assert isinstance(screen_arg, TimerScreen)
+        assert call_args[1].get("callback") is not None or len(call_args[0]) > 1
 
     async def test_disables_timer_when_enabled(self, mock_client, mock_dashboard):
         mock_dashboard.current_parameters[TimerParam] = TimerParam(
@@ -409,15 +413,68 @@ class TestToggleTimer:
 
         mock_dashboard.log_message.assert_any_call("Disabling timer...")
 
-    async def test_logs_enable_message(self, mock_client, mock_dashboard):
+    async def test_callback_defers_via_call_later(self, mock_client, mock_dashboard):
+        """Dismiss callback uses call_later so _apply_timer runs after modal pop."""
         app = _make_app(mock_client, mock_dashboard)
+        app.push_screen = MagicMock()
+        app.call_later = MagicMock()
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
             app.action_toggle_timer()
+
+        # Extract the callback passed to push_screen
+        call_args = app.push_screen.call_args
+        callback = call_args[1].get("callback") or call_args[0][1]
+
+        # Simulate the dismiss callback with a duration
+        callback(45)
+
+        # _apply_timer should have been deferred via call_later
+        app.call_later.assert_called_once_with(app._apply_timer, 45)
+
+    async def test_callback_none_does_not_apply(self, mock_client, mock_dashboard):
+        """Dismiss callback with None (cancel) does not call _apply_timer."""
+        app = _make_app(mock_client, mock_dashboard)
+        app.push_screen = MagicMock()
+        app.call_later = MagicMock()
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            app.action_toggle_timer()
+
+        call_args = app.push_screen.call_args
+        callback = call_args[1].get("callback") or call_args[0][1]
+
+        # Simulate cancel (None)
+        callback(None)
+
+        app.call_later.assert_not_called()
+
+    async def test_apply_timer_writes_param(self, mock_client, mock_dashboard):
+        """_apply_timer writes the correct TimerParam with chosen duration."""
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            app._apply_timer(45)
             await _run_workers(app)
 
-        mock_dashboard.log_message.assert_any_call("Enabling timer (60 min)...")
+        written_param = mock_client.write_parameters.call_args[0][1][0]
+        assert isinstance(written_param, TimerParam)
+        assert written_param.timer_status == TimerStatus.ENABLED
+        assert written_param.duration == 45
+
+    async def test_apply_timer_logs_message(self, mock_client, mock_dashboard):
+        """_apply_timer logs message with the chosen duration."""
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            app._apply_timer(90)
+            await _run_workers(app)
+
+        mock_dashboard.log_message.assert_any_call("Enabling timer (90 min)...")
 
 
 # ---------------------------------------------------------------------------
@@ -828,7 +885,23 @@ class TestActionErrorHandling:
 
         assert app._write_in_progress is False
 
-    async def test_timer_error_logs_and_clears_flag(
+    async def test_timer_disable_error_logs_and_clears_flag(
+        self, mock_client, mock_dashboard
+    ):
+        mock_dashboard.current_parameters[TimerParam] = TimerParam(
+            timer_status=TimerStatus.ENABLED, duration=60,
+        )
+        mock_client.write_parameters.side_effect = Exception("timeout")
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            app.action_toggle_timer()
+            await _run_workers(app)
+
+        assert app._write_in_progress is False
+
+    async def test_timer_apply_error_logs_and_clears_flag(
         self, mock_client, mock_dashboard
     ):
         mock_client.write_parameters.side_effect = Exception("timeout")
@@ -836,7 +909,7 @@ class TestActionErrorHandling:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            app.action_toggle_timer()
+            app._apply_timer(45)
             await _run_workers(app)
 
         assert app._write_in_progress is False

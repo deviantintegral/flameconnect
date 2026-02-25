@@ -1816,3 +1816,113 @@ class TestLevelMarkup:
 
         open_tag, close_tag = _LEVEL_MARKUP[logging.CRITICAL]
         assert "bold red" in open_tag
+
+
+# ---------------------------------------------------------------------------
+# TimerScreen
+# ---------------------------------------------------------------------------
+
+
+class TimerApp(App[None]):
+    """Host app for testing TimerScreen."""
+
+    def __init__(self, current_duration: int = 60) -> None:
+        super().__init__()
+        self._duration = current_duration
+        self.dismiss_result = "SENTINEL"
+
+    def on_mount(self) -> None:
+        from flameconnect.tui.timer_screen import TimerScreen
+
+        def _on_dismiss(result):
+            self.dismiss_result = result
+
+        self.push_screen(
+            TimerScreen(self._duration), callback=_on_dismiss
+        )
+
+
+class TestTimerScreen:
+    """Tests for TimerScreen."""
+
+    async def test_compose_title(self):
+        app = TimerApp(60)
+        async with app.run_test(size=(60, 20)):
+            title = app.screen.query_one("#timer-title", Static)
+            assert "Timer" in str(title._Static__content)
+
+    async def test_compose_default_value(self):
+        app = TimerApp(60)
+        async with app.run_test(size=(60, 20)):
+            inp = app.screen.query_one("#timer-input", Input)
+            assert inp.value == "60"
+
+    async def test_compose_custom_value(self):
+        app = TimerApp(90)
+        async with app.run_test(size=(60, 20)):
+            inp = app.screen.query_one("#timer-input", Input)
+            assert inp.value == "90"
+
+    async def test_set_button_validates_and_dismisses(self):
+        app = TimerApp(60)
+        async with app.run_test(size=(60, 20)) as pilot:
+            inp = app.screen.query_one("#timer-input", Input)
+            inp.value = "45"
+            btn = app.screen.query_one("#set-btn", Button)
+            btn.press()
+            await pilot.pause()
+            assert app.dismiss_result == 45
+
+    async def test_set_invalid_number_does_not_dismiss(self):
+        app = TimerApp(60)
+        async with app.run_test(size=(60, 20)) as pilot:
+            inp = app.screen.query_one("#timer-input", Input)
+            inp.value = "abc"
+            btn = app.screen.query_one("#set-btn", Button)
+            btn.press()
+            await pilot.pause()
+            assert app.dismiss_result == "SENTINEL"
+
+    async def test_set_zero_does_not_dismiss(self):
+        app = TimerApp(60)
+        async with app.run_test(size=(60, 20)) as pilot:
+            inp = app.screen.query_one("#timer-input", Input)
+            inp.value = "0"
+            btn = app.screen.query_one("#set-btn", Button)
+            btn.press()
+            await pilot.pause()
+            assert app.dismiss_result == "SENTINEL"
+
+    async def test_set_above_max_does_not_dismiss(self):
+        app = TimerApp(60)
+        async with app.run_test(size=(60, 20)) as pilot:
+            inp = app.screen.query_one("#timer-input", Input)
+            inp.value = "500"
+            btn = app.screen.query_one("#set-btn", Button)
+            btn.press()
+            await pilot.pause()
+            assert app.dismiss_result == "SENTINEL"
+
+    async def test_cancel_button_dismisses_none(self):
+        app = TimerApp(60)
+        async with app.run_test(size=(60, 20)) as pilot:
+            btn = app.screen.query_one("#cancel-btn", Button)
+            btn.press()
+            await pilot.pause()
+            assert app.dismiss_result is None
+
+    async def test_action_cancel_dismisses_none(self):
+        app = TimerApp(60)
+        async with app.run_test(size=(60, 20)) as pilot:
+            app.screen.action_cancel()
+            await pilot.pause()
+            assert app.dismiss_result is None
+
+    async def test_input_submitted_validates_and_dismisses(self):
+        app = TimerApp(60)
+        async with app.run_test(size=(60, 20)) as pilot:
+            inp = app.screen.query_one("#timer-input", Input)
+            inp.value = "120"
+            await inp.action_submit()
+            await pilot.pause()
+            assert app.dismiss_result == 120

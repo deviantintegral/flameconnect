@@ -957,6 +957,7 @@ class FlameConnectApp(App[None]):
     def action_toggle_timer(self) -> None:
         """Handle the 't' key binding to toggle the timer."""
         from flameconnect.models import TimerParam, TimerStatus
+        from flameconnect.tui.timer_screen import TimerScreen
 
         screen = self.screen
         if not isinstance(screen, DashboardScreen):
@@ -971,9 +972,32 @@ class FlameConnectApp(App[None]):
         if current.timer_status == TimerStatus.ENABLED:
             new_param = TimerParam(timer_status=TimerStatus.DISABLED, duration=0)
             feedback = "Disabling timer..."
+            self._run_command(
+                self.client.write_parameters(self.fire_id, [new_param]),
+                feedback,
+                "Timer toggle failed",
+            )
         else:
-            new_param = TimerParam(timer_status=TimerStatus.ENABLED, duration=60)
-            feedback = "Enabling timer (60 min)..."
+            def _on_timer_dismiss(duration: int | None) -> None:
+                if duration is not None:
+                    self.call_later(self._apply_timer, duration)
+
+            self.push_screen(
+                TimerScreen(current.duration or 60),
+                callback=_on_timer_dismiss,
+            )
+
+    def _apply_timer(self, duration: int) -> None:
+        """Write the selected timer duration to the fireplace."""
+        from flameconnect.models import TimerParam, TimerStatus
+
+        screen = self.screen
+        if not isinstance(screen, DashboardScreen):
+            return
+        if self.fire_id is None or self._write_in_progress:
+            return
+        new_param = TimerParam(timer_status=TimerStatus.ENABLED, duration=duration)
+        feedback = f"Enabling timer ({duration} min)..."
         self._run_command(
             self.client.write_parameters(self.fire_id, [new_param]),
             feedback,
