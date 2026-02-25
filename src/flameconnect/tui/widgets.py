@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from rich.text import Text as _Text
 from textual.containers import Vertical
-from textual.reactive import reactive
 from textual.widgets import Static
 
 from flameconnect.models import FireMode, FlameColor, LightStatus
@@ -54,6 +53,29 @@ class ArrowNavMixin:
                 event.stop()
 
 
+class ClickableParam(Static):
+    """A single parameter field that is optionally clickable."""
+
+    DEFAULT_CSS = """
+    ClickableParam { width: 1fr; }
+    ClickableParam.clickable { text-style: underline; }
+    ClickableParam.clickable:hover { background: $surface-lighten-2; }
+    """
+
+    def __init__(
+        self, content: str, action: str | None = None, **kwargs: Any
+    ) -> None:
+        super().__init__(content, **kwargs)
+        self._action = action
+        if action:
+            self.add_class("clickable")
+
+    def on_click(self) -> None:
+        """Invoke the associated action when clicked."""
+        if self._action:
+            self.app.run_action(self._action)
+
+
 def _display_name(value: IntEnum) -> str:
     """Convert an enum member name to Title Case for display."""
     return value.name.replace("_", " ").title()
@@ -85,96 +107,164 @@ def _temp_suffix(temp_unit: TempUnitParam | None) -> str:
 def _format_mode(
     param: ModeParam,
     temp_unit: TempUnitParam | None = None,
-) -> str:
-    """Format the mode parameter for display."""
+) -> list[tuple[str, str | None]]:
+    """Format the mode parameter for display.
+
+    Returns a list of (text, action) tuples.
+    """
     mode_label = _MODE_DISPLAY.get(
         param.mode, _display_name(param.mode)
     )
     suffix = _temp_suffix(temp_unit)
-    return (
-        f"[bold]Mode:[/bold] {mode_label}  |  "
-        f"[bold]Target Temp:[/bold] "
-        f"{param.target_temperature}\u00b0{suffix}"
-    )
+    return [
+        (
+            f"[bold]Mode:[/bold] {mode_label}",
+            "toggle_power",
+        ),
+        (
+            f"[bold]Target Temp:[/bold] "
+            f"{param.target_temperature}\u00b0{suffix}",
+            "set_temperature",
+        ),
+    ]
 
 
-def _format_flame_effect(param: FlameEffectParam) -> str:
-    """Format the flame effect parameter for display."""
-    lines = [
+def _format_flame_effect(
+    param: FlameEffectParam,
+) -> list[tuple[str, str | None]]:
+    """Format the flame effect parameter for display.
+
+    Returns a list of (text, action) tuples.
+    """
+    return [
         (
             f"[bold]Flame Effect:[/bold] "
-            f"{_display_name(param.flame_effect)}  |  "
-            f"Speed: {param.flame_speed}/5  |  "
-            f"Brightness: {_display_name(param.brightness)}"
-            f"  |  "
-            f"Pulsating: "
-            f"{_display_name(param.pulsating_effect)}"
+            f"{_display_name(param.flame_effect)}",
+            "toggle_flame_effect",
+        ),
+        (
+            f"  Speed: {param.flame_speed}/5",
+            "set_flame_speed",
+        ),
+        (
+            f"  Brightness: "
+            f"{_display_name(param.brightness)}",
+            "toggle_brightness",
+        ),
+        (
+            f"  Pulsating: "
+            f"{_display_name(param.pulsating_effect)}",
+            "toggle_pulsating",
         ),
         (
             f"  Flame Color: "
-            f"{_display_name(param.flame_color)}  |  "
-            f"Overhead Light: {_display_name(param.light_status)}"
-            f"  |  "
-            f"Ambient Sensor: "
-            f"{_display_name(param.ambient_sensor)}"
-        ),
-        (
-            f"  Media Theme: "
-            f"{_display_name(param.media_theme)}  |  "
-            f"Media Light: "
-            f"{_display_name(param.media_light)}  |  "
-            f"Media Color: {_format_rgbw(param.media_color)}"
+            f"{_display_name(param.flame_color)}",
+            "set_flame_color",
         ),
         (
             f"  Overhead Light: "
-            f"{_display_name(param.overhead_light)}  |  "
-            f"Overhead Color: "
-            f"{_format_rgbw(param.overhead_color)}"
+            f"{_display_name(param.light_status)}",
+            "toggle_light_status",
+        ),
+        (
+            f"  Ambient Sensor: "
+            f"{_display_name(param.ambient_sensor)}",
+            "toggle_ambient_sensor",
+        ),
+        (
+            f"  Media Theme: "
+            f"{_display_name(param.media_theme)}",
+            "set_media_theme",
+        ),
+        (
+            f"  Media Light: "
+            f"{_display_name(param.media_light)}",
+            "toggle_media_light",
+        ),
+        (
+            f"  Media Color: "
+            f"{_format_rgbw(param.media_color)}",
+            "set_media_color",
+        ),
+        (
+            f"  Overhead Light: "
+            f"{_display_name(param.overhead_light)}",
+            "toggle_overhead_light",
+        ),
+        (
+            f"  Overhead Color: "
+            f"{_format_rgbw(param.overhead_color)}",
+            "set_overhead_color",
         ),
     ]
-    return "\n".join(lines)
 
 
 def _format_heat(
     param: HeatParam,
     temp_unit: TempUnitParam | None = None,
-) -> str:
-    """Format the heat settings parameter for display."""
+) -> list[tuple[str, str | None]]:
+    """Format the heat settings parameter for display.
+
+    Returns a list of (text, action) tuples.
+    """
     from flameconnect.models import HeatMode
 
     boost_text = (
-        f"Boost: {param.boost_duration}min"
+        f"  Boost: {param.boost_duration}min"
         if param.heat_mode == HeatMode.BOOST
-        else "Boost: Off"
+        else "  Boost: Off"
     )
     suffix = _temp_suffix(temp_unit)
-    return (
-        f"[bold]Heat:[/bold] "
-        f"{_display_name(param.heat_status)}  |  "
-        f"Mode: {_display_name(param.heat_mode)}  |  "
-        f"Setpoint: {param.setpoint_temperature}\u00b0{suffix}"
-        f"  |  {boost_text}"
-    )
+    return [
+        (
+            f"[bold]Heat:[/bold] "
+            f"{_display_name(param.heat_status)}",
+            "set_heat_mode",
+        ),
+        (
+            f"  Mode: {_display_name(param.heat_mode)}",
+            "set_heat_mode",
+        ),
+        (
+            f"  Setpoint: "
+            f"{param.setpoint_temperature}\u00b0{suffix}",
+            "set_heat_mode",
+        ),
+        (boost_text, "set_heat_mode"),
+    ]
 
 
-def _format_heat_mode(param: HeatModeParam) -> str:
-    """Format the heat mode/control parameter for display."""
-    return (
-        f"[bold]Heat Control:[/bold] "
-        f"{_display_name(param.heat_control)}"
-    )
+def _format_heat_mode(
+    param: HeatModeParam,
+) -> list[tuple[str, str | None]]:
+    """Format the heat mode/control parameter for display.
+
+    Returns a list of (text, action) tuples.
+    """
+    return [
+        (
+            f"[bold]Heat Control:[/bold] "
+            f"{_display_name(param.heat_control)}",
+            None,
+        ),
+    ]
 
 
-def _format_timer(param: TimerParam) -> str:
-    """Format the timer parameter for display."""
+def _format_timer(
+    param: TimerParam,
+) -> list[tuple[str, str | None]]:
+    """Format the timer parameter for display.
+
+    Returns a list of (text, action) tuples.
+    """
     from datetime import datetime, timedelta
 
     from flameconnect.models import TimerStatus
 
-    line = (
+    text = (
         f"[bold]Timer:[/bold] "
-        f"{_display_name(param.timer_status)}  |  "
-        f"Duration: {param.duration}min"
+        f"{_display_name(param.timer_status)}"
+        f"  Duration: {param.duration}min"
     )
     if (
         param.timer_status == TimerStatus.ENABLED
@@ -183,30 +273,41 @@ def _format_timer(param: TimerParam) -> str:
         off_time = datetime.now() + timedelta(
             minutes=param.duration
         )
-        line += (
-            f"  |  Off at {off_time.strftime('%H:%M')}"
+        text += (
+            f"  Off at {off_time.strftime('%H:%M')}"
         )
-    return line
+    return [(text, "toggle_timer")]
 
 
 def _format_software_version(
     param: SoftwareVersionParam,
-) -> str:
-    """Format the software version parameter for display."""
-    return (
-        f"[bold]Software:[/bold] "
-        f"UI {param.ui_major}.{param.ui_minor}"
-        f".{param.ui_test}  |  "
-        f"Control {param.control_major}"
-        f".{param.control_minor}"
-        f".{param.control_test}  |  "
-        f"Relay {param.relay_major}"
-        f".{param.relay_minor}.{param.relay_test}"
-    )
+) -> list[tuple[str, str | None]]:
+    """Format the software version parameter for display.
+
+    Returns a list of (text, action) tuples.
+    """
+    return [
+        (
+            f"[bold]Software:[/bold] "
+            f"UI {param.ui_major}.{param.ui_minor}"
+            f".{param.ui_test}"
+            f"  Control {param.control_major}"
+            f".{param.control_minor}"
+            f".{param.control_test}"
+            f"  Relay {param.relay_major}"
+            f".{param.relay_minor}.{param.relay_test}",
+            None,
+        ),
+    ]
 
 
-def _format_error(param: ErrorParam) -> str:
-    """Format the error parameter for display."""
+def _format_error(
+    param: ErrorParam,
+) -> list[tuple[str, str | None]]:
+    """Format the error parameter for display.
+
+    Returns a list of (text, action) tuples.
+    """
     has_error = any(
         b != 0
         for b in (
@@ -217,50 +318,81 @@ def _format_error(param: ErrorParam) -> str:
         )
     )
     if has_error:
-        return (
-            f"[bold red]Error:[/bold red] "
-            f"0x{param.error_byte1:02X} "
-            f"0x{param.error_byte2:02X} "
-            f"0x{param.error_byte3:02X} "
-            f"0x{param.error_byte4:02X}"
-        )
-    return "[bold]Errors:[/bold] No Errors Recorded"
+        return [
+            (
+                f"[bold red]Error:[/bold red] "
+                f"0x{param.error_byte1:02X} "
+                f"0x{param.error_byte2:02X} "
+                f"0x{param.error_byte3:02X} "
+                f"0x{param.error_byte4:02X}",
+                None,
+            ),
+        ]
+    return [
+        ("[bold]Errors:[/bold] No Errors Recorded", None),
+    ]
 
 
-def _format_temp_unit(param: TempUnitParam) -> str:
-    """Format the temperature unit parameter for display."""
-    return (
-        f"[bold]Temp Unit:[/bold] "
-        f"{_display_name(param.unit)}"
-    )
+def _format_temp_unit(
+    param: TempUnitParam,
+) -> list[tuple[str, str | None]]:
+    """Format the temperature unit parameter for display.
+
+    Returns a list of (text, action) tuples.
+    """
+    return [
+        (
+            f"[bold]Temp Unit:[/bold] "
+            f"{_display_name(param.unit)}",
+            "toggle_temp_unit",
+        ),
+    ]
 
 
-def _format_sound(param: SoundParam) -> str:
-    """Format the sound parameter for display."""
-    return (
-        f"[bold]Sound:[/bold] Volume {param.volume}"
-        f"  |  File: {param.sound_file}"
-    )
+def _format_sound(
+    param: SoundParam,
+) -> list[tuple[str, str | None]]:
+    """Format the sound parameter for display.
+
+    Returns a list of (text, action) tuples.
+    """
+    return [
+        (
+            f"[bold]Sound:[/bold] Volume {param.volume}"
+            f"  File: {param.sound_file}",
+            None,
+        ),
+    ]
 
 
-def _format_log_effect(param: LogEffectParam) -> str:
-    """Format the log effect parameter for display."""
-    return (
-        f"[bold]Log Effect:[/bold] "
-        f"{_display_name(param.log_effect)}  |  "
-        f"Color: {_format_rgbw(param.color)}  |  "
-        f"Pattern: {param.pattern}"
-    )
+def _format_log_effect(
+    param: LogEffectParam,
+) -> list[tuple[str, str | None]]:
+    """Format the log effect parameter for display.
+
+    Returns a list of (text, action) tuples.
+    """
+    return [
+        (
+            f"[bold]Log Effect:[/bold] "
+            f"{_display_name(param.log_effect)}"
+            f"  Color: {_format_rgbw(param.color)}"
+            f"  Pattern: {param.pattern}",
+            None,
+        ),
+    ]
 
 
-def format_parameters(params: list[Parameter]) -> str:
+def format_parameters(
+    params: list[Parameter],
+) -> list[tuple[str, str | None]]:
     """Format a list of parameters for display.
 
     Args:
         params: A list of parameter dataclass instances.
 
     Returns:
-        A multi-line string with Rich markup formatting.
+        A list of (text, action_name | None) tuples.
     """
     from flameconnect.models import (
         ErrorParam,
@@ -282,8 +414,10 @@ def format_parameters(params: list[Parameter]) -> str:
             temp_unit = param
             break
 
-    # Collect formatted lines keyed by type.
-    formatted: dict[type, str] = {}
+    # Collect formatted tuples keyed by type.
+    formatted: dict[
+        type, list[tuple[str, str | None]]
+    ] = {}
     for param in params:
         if isinstance(param, ModeParam):
             formatted[ModeParam] = _format_mode(
@@ -339,16 +473,17 @@ def format_parameters(params: list[Parameter]) -> str:
         LogEffectParam,
         ErrorParam,
     ]
-    lines = [
-        formatted[t]
-        for t in display_order
-        if t in formatted
-    ]
+    result: list[tuple[str, str | None]] = []
+    for t in display_order:
+        if t in formatted:
+            result.extend(formatted[t])
 
-    if not lines:
-        return "[dim]No parameters available[/dim]"
+    if not result:
+        result.append(
+            ("[dim]No parameters available[/dim]", None)
+        )
 
-    return "\n".join(lines)
+    return result
 
 
 def _format_connection_state(
@@ -764,110 +899,30 @@ class FireplaceVisual(Static):
         )
 
 
-def _expand_piped_line(line: str, width: int = 0) -> str:
-    """Expand every ``  |  `` separator into a new indented line.
+class ParameterPanel(Vertical):
+    """Container widget displaying decoded parameters as clickable fields."""
 
-    When *width* > 0, segments are wrapped using the same greedy
-    algorithm as :func:`_wrap_piped_line` after expansion so that
-    lines exceeding the panel width are broken correctly.
-    """
-    sep = "  |  "
-    segments = line.split(sep)
-    if len(segments) <= 1:
-        return line
-
-    if width > 0:
-        rows: list[str] = []
-        current = segments[0]
-        for seg in segments[1:]:
-            candidate = current + sep + seg
-            if _Text.from_markup(candidate).cell_len > width:
-                rows.append(current)
-                current = "  " + seg
-            else:
-                current = candidate
-        rows.append(current)
-        return "\n".join(rows)
-
-    return "\n".join(
-        [segments[0], *(f"  {seg}" for seg in segments[1:])]
-    )
-
-
-def _expand_piped_text(text: str, width: int = 0) -> str:
-    """Expand all pipe separators in *text* to separate lines.
-
-    When *width* > 0, each line is wrapped to fit within *width*
-    columns instead of unconditionally splitting every separator.
-    """
-    return "\n".join(
-        _expand_piped_line(line, width) for line in text.split("\n")
-    )
-
-
-def _wrap_piped_line(line: str, width: int) -> str:
-    """Wrap a pipe-separated line to fit within *width* columns.
-
-    Segments are split on ``  |  `` and accumulated greedily.
-    When the next segment would overflow, it starts a new line
-    with a 2-space indent.
-    """
-    sep = "  |  "
-    segments = line.split(sep)
-    if len(segments) <= 1:
-        return line
-
-    rows: list[str] = []
-    current = segments[0]
-    for seg in segments[1:]:
-        candidate = current + sep + seg
-        if _Text.from_markup(candidate).cell_len > width:
-            rows.append(current)
-            current = "  " + seg
-        else:
-            current = candidate
-    rows.append(current)
-    return "\n".join(rows)
-
-
-def _wrap_piped_text(text: str, width: int) -> str:
-    """Apply pipe-aware wrapping to every line of *text*."""
-    return "\n".join(
-        _wrap_piped_line(line, width) for line in text.split("\n")
-    )
-
-
-class ParameterPanel(Static):
-    """Widget displaying decoded parameters in a panel."""
-
-    content_text: reactive[str] = reactive(
-        "[dim]Loading...[/dim]"
-    )
-
-    def render(self) -> str:
-        """Render the parameter panel content."""
-        width = self.content_region.width
-        if self.has_class("compact"):
-            if width > 0:
-                return _wrap_piped_text(
-                    self.content_text, width
-                )
-            return self.content_text
-        return _expand_piped_text(self.content_text, width)
-
-    def watch_content_text(self) -> None:
-        """Force a layout recalculation on change."""
-        self.refresh(layout=True)
+    def compose(self) -> ComposeResult:
+        """Initial composition -- a loading placeholder."""
+        yield Static("[dim]Loading...[/dim]")
 
     def update_parameters(
         self, params: list[Parameter]
     ) -> None:
         """Update the panel with new parameter data.
 
+        Clears existing children and mounts new
+        :class:`ClickableParam` widgets for each field.
+
         Args:
             params: Parameter dataclass instances.
         """
-        self.content_text = format_parameters(params)
+        fields = format_parameters(params)
+        widgets: list[Static] = []
+        for text, action in fields:
+            widgets.append(ClickableParam(text, action=action))
+        self.query("*").remove()
+        self.mount(*widgets)
 
 
 class FireplaceSelector(Vertical):

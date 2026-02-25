@@ -69,6 +69,12 @@ _DASHBOARD_CSS = """
     padding: 0 1;
     width: 1fr;
 }
+#param-panel ClickableParam {
+    height: auto;
+}
+#param-panel Static {
+    height: auto;
+}
 #messages-label {
     height: auto;
     margin-top: 1;

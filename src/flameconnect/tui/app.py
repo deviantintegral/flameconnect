@@ -52,6 +52,7 @@ _CONTROL_COMMANDS: list[tuple[str, str, str]] = [
     ("Switch Fire", "Switch between fireplaces", "switch_fire"),
     ("Timer", "Toggle timer on/off", "toggle_timer"),
     ("Temp Unit", "Toggle temperature unit (°C/°F)", "toggle_temp_unit"),
+    ("Set Temperature", "Adjust heater setpoint temperature", "set_temperature"),
 ]
 
 
@@ -116,6 +117,7 @@ class FlameConnectApp(App[None]):
         Binding("w", "switch_fire", "Switch Fire", show=False),
         Binding("t", "toggle_timer", "Timer", show=False),
         Binding("u", "toggle_temp_unit", "Temp Unit", show=False),
+        Binding("n", "set_temperature", "Set Temp", show=False),
     ]
 
     def __init__(self, client: FlameConnectClient) -> None:
@@ -814,6 +816,57 @@ class FlameConnectApp(App[None]):
             self.client.write_parameters(self.fire_id, [new_param]),
             f"Setting heat mode to {mode_label}...",
             "Heat mode change failed",
+        )
+
+    def action_set_temperature(self) -> None:
+        """Handle the 'n' key binding to open temperature adjustment dialog."""
+        from flameconnect.models import HeatParam, TempUnitParam
+        from flameconnect.tui.temperature_screen import TemperatureScreen
+
+        screen = self.screen
+        if not isinstance(screen, DashboardScreen):
+            return
+        if self.fire_id is None:
+            return
+
+        params = screen.current_parameters
+        heat_param = params.get(HeatParam)
+        temp_unit = params.get(TempUnitParam)
+        if not isinstance(heat_param, HeatParam):
+            return
+        if not isinstance(temp_unit, TempUnitParam):
+            return
+
+        current_temp = heat_param.setpoint_temperature
+
+        def _on_temperature_dismiss(temp: float | None) -> None:
+            if temp is not None and temp != current_temp:
+                self.call_later(self._apply_temperature, temp)
+
+        self.push_screen(
+            TemperatureScreen(current_temp, temp_unit.unit),
+            callback=_on_temperature_dismiss,
+        )
+
+    def _apply_temperature(self, temp: float) -> None:
+        """Write the selected temperature to the fireplace."""
+        from flameconnect.models import HeatParam
+
+        screen = self.screen
+        if not isinstance(screen, DashboardScreen):
+            return
+        if self.fire_id is None or self._write_in_progress:
+            return
+
+        params = screen.current_parameters
+        current = params.get(HeatParam)
+        if not isinstance(current, HeatParam):
+            return
+        new_param = replace(current, setpoint_temperature=temp)
+        self._run_command(
+            self.client.write_parameters(self.fire_id, [new_param]),
+            f"Setting temperature to {temp}...",
+            "Temperature change failed",
         )
 
     async def action_switch_fire(self) -> None:
