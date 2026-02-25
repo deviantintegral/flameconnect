@@ -100,9 +100,7 @@ class TestFlameVisibility:
             if "\u2591" in inner or "\u2593" in inner:
                 continue
             # Inner content should be spaces only
-            assert inner.strip() == "", (
-                f"Expected blank flame row, got: {inner!r}"
-            )
+            assert inner.strip() == "", f"Expected blank flame row, got: {inner!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -124,8 +122,7 @@ class TestStyleApplication:
             if ch == "\u2591":
                 span_style = _style_at(text, idx)
                 assert led in span_style, (
-                    f"Expected led_style {led!r} at offset {idx}, "
-                    f"got {span_style!r}"
+                    f"Expected led_style {led!r} at offset {idx}, got {span_style!r}"
                 )
                 found = True
                 break
@@ -149,9 +146,7 @@ class TestStyleApplication:
                 # Compute the absolute offset of this line in the full
                 # plain text.
                 line_offset = plain.index(line)
-                for rel, ch in enumerate(
-                    line[inner_start:inner_end]
-                ):
+                for rel, ch in enumerate(line[inner_start:inner_end]):
                     if ch == "\u2593":
                         abs_offset = line_offset + inner_start + rel
                         span_style = _style_at(text, abs_offset)
@@ -184,8 +179,7 @@ class TestStyleApplication:
                         abs_offset = line_offset + hearth_start + rel
                         span_style = _style_at(text, abs_offset)
                         assert "dim" in span_style, (
-                            f"Expected 'dim' style on outer hearth, "
-                            f"got {span_style!r}"
+                            f"Expected 'dim' style on outer hearth, got {span_style!r}"
                         )
                         return
         raise AssertionError(  # noqa: TRY003
@@ -223,10 +217,7 @@ class TestHeightAdaptation:
         # not LED, media, or structural)
         flame_count = 0
         for line in lines:
-            if (
-                line.startswith("\u2502\u2502")
-                and line.endswith("\u2502\u2502")
-            ):
+            if line.startswith("\u2502\u2502") and line.endswith("\u2502\u2502"):
                 inner = line[2:-2]
                 if "\u2591" not in inner and "\u2593" not in inner:
                     flame_count += 1
@@ -244,9 +235,7 @@ class TestFlamePalette:
     def test_flame_palette_applied(self):
         """Flame spans use the given palette style strings."""
         palette = ("bright_cyan", "bright_blue", "blue")
-        text = _build_fire_art(
-            50, 20, fire_on=True, flame_palette=palette
-        )
+        text = _build_fire_art(50, 20, fire_on=True, flame_palette=palette)
         # Collect all unique style strings from spans
         styles_found: set[str] = set()
         for span in text._spans:
@@ -256,8 +245,7 @@ class TestFlamePalette:
         # At least one of the palette entries should appear in spans
         palette_found = styles_found & set(palette)
         assert palette_found, (
-            f"Expected one of {palette} in spans, "
-            f"found styles: {styles_found}"
+            f"Expected one of {palette} in spans, found styles: {styles_found}"
         )
 
 
@@ -281,8 +269,7 @@ class TestWidthConsistency:
         lines = text.plain.split("\n")
         for i, line in enumerate(lines):
             assert len(line) >= w, (
-                f"Line {i} has width {len(line)}, expected >= {w}: "
-                f"{line!r}"
+                f"Line {i} has width {len(line)}, expected >= {w}: {line!r}"
             )
 
     def test_structural_lines_exact_width(self):
@@ -292,8 +279,7 @@ class TestWidthConsistency:
         lines = text.plain.split("\n")
         for i, line in enumerate(lines):
             assert len(line) == w, (
-                f"Line {i} has width {len(line)}, expected {w}: "
-                f"{line!r}"
+                f"Line {i} has width {len(line)}, expected {w}: {line!r}"
             )
 
 

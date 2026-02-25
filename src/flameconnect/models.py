@@ -141,7 +141,6 @@ class RGBWColor:
     white: int
 
 
-
 NAMED_COLORS: dict[str, RGBWColor] = {
     "dark-red": RGBWColor(red=180, green=0, blue=0, white=0),
     "light-red": RGBWColor(red=255, green=0, blue=0, white=80),

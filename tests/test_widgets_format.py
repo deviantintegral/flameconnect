@@ -273,7 +273,7 @@ class TestFormatFlameEffect:
         param = _sample_flame_effect()
         result = _format_flame_effect(param)
         labels_and_actions = [(r[0], r[2]) for r in result]
-        assert ("Flame Effect" in labels_and_actions[0][0])
+        assert "Flame Effect" in labels_and_actions[0][0]
         assert labels_and_actions[0][1] == "toggle_flame_effect"
         assert labels_and_actions[1][1] == "set_flame_color"
         assert labels_and_actions[2][1] == "set_flame_speed"
@@ -536,9 +536,7 @@ class TestFormatError:
     """Tests for _format_error."""
 
     def test_no_errors(self):
-        param = ErrorParam(
-            error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=0
-        )
+        param = ErrorParam(error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=0)
         result = _format_error(param)
         assert len(result) == 1
         assert "No Errors Recorded" in result[0][1]
@@ -568,24 +566,18 @@ class TestFormatError:
         assert "0x78" in result[0][1]
 
     def test_error_only_byte4(self):
-        param = ErrorParam(
-            error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=1
-        )
+        param = ErrorParam(error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=1)
         result = _format_error(param)
         # Any non-zero byte should flag an error
         assert "Error" in result[0][0]
 
     def test_no_error_label_bold(self):
-        param = ErrorParam(
-            error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=0
-        )
+        param = ErrorParam(error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=0)
         result = _format_error(param)
         assert "[bold]Errors:[/bold]" in result[0][0]
 
     def test_error_label_bold_red(self):
-        param = ErrorParam(
-            error_byte1=1, error_byte2=0, error_byte3=0, error_byte4=0
-        )
+        param = ErrorParam(error_byte1=1, error_byte2=0, error_byte3=0, error_byte4=0)
         result = _format_error(param)
         assert "bold red" in result[0][0]
 
@@ -801,9 +793,7 @@ class TestFormatParameters:
         assert any("Sound" in r[0] for r in result)
 
     def test_single_log_effect_param(self):
-        params = [
-            LogEffectParam(log_effect=LogEffect.ON, color=_black(), pattern=0)
-        ]
+        params = [LogEffectParam(log_effect=LogEffect.ON, color=_black(), pattern=0)]
         result = format_parameters(params)
         assert any("Log Effect" in r[0] for r in result)
 
@@ -836,9 +826,7 @@ class TestFormatParameters:
     def test_display_order(self):
         """Parameters are returned in the defined display order."""
         params = [
-            ErrorParam(
-                error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=0
-            ),
+            ErrorParam(error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=0),
             ModeParam(mode=FireMode.MANUAL, target_temperature=22.0),
             TempUnitParam(unit=TempUnit.CELSIUS),
         ]
@@ -877,9 +865,7 @@ class TestFormatParameters:
             TempUnitParam(unit=TempUnit.CELSIUS),
             SoundParam(volume=5, sound_file=1),
             LogEffectParam(log_effect=LogEffect.ON, color=_black(), pattern=0),
-            ErrorParam(
-                error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=0
-            ),
+            ErrorParam(error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=0),
         ]
         result = format_parameters(params)
         # Should have results for all types; at minimum > 20 rows
@@ -889,38 +875,20 @@ class TestFormatParameters:
         # before FlameEffect before Timer before Software before
         # TempUnit before Sound before LogEffect before Error
         labels = [r[0] for r in result]
-        first_mode = next(
-            i for i, lbl in enumerate(labels) if "Mode" in lbl
-        )
+        first_mode = next(i for i, lbl in enumerate(labels) if "Mode" in lbl)
         first_heat = next(
             i
             for i, lbl in enumerate(labels)
-            if "Heat" in lbl
-            and "Control" not in lbl
-            and "Mode" not in lbl
+            if "Heat" in lbl and "Control" not in lbl and "Mode" not in lbl
         )
-        first_flame = next(
-            i for i, lbl in enumerate(labels) if "Flame Effect" in lbl
-        )
-        first_timer = next(
-            i for i, lbl in enumerate(labels) if "Timer" in lbl
-        )
-        first_sw = next(
-            i for i, lbl in enumerate(labels) if "Software" in lbl
-        )
-        first_temp_unit = next(
-            i for i, lbl in enumerate(labels) if "Temp Unit" in lbl
-        )
-        first_sound = next(
-            i for i, lbl in enumerate(labels) if "Sound" in lbl
-        )
-        first_log = next(
-            i for i, lbl in enumerate(labels) if "Log Effect" in lbl
-        )
+        first_flame = next(i for i, lbl in enumerate(labels) if "Flame Effect" in lbl)
+        first_timer = next(i for i, lbl in enumerate(labels) if "Timer" in lbl)
+        first_sw = next(i for i, lbl in enumerate(labels) if "Software" in lbl)
+        first_temp_unit = next(i for i, lbl in enumerate(labels) if "Temp Unit" in lbl)
+        first_sound = next(i for i, lbl in enumerate(labels) if "Sound" in lbl)
+        first_log = next(i for i, lbl in enumerate(labels) if "Log Effect" in lbl)
         first_error = next(
-            i
-            for i, lbl in enumerate(labels)
-            if "Errors" in lbl or "Error" in lbl
+            i for i, lbl in enumerate(labels) if "Errors" in lbl or "Error" in lbl
         )
         assert (
             first_mode

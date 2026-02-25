@@ -62,17 +62,13 @@ def _parse_login_page(html: str, page_url: str) -> dict[str, str]:
     # Extract CSRF token from var SETTINGS = {..., "csrf":"...", ...}
     csrf_match = re.search(r'"csrf"\s*:\s*"([^"]+)"', html)
     if not csrf_match:
-        raise AuthenticationError(
-            "Could not find CSRF token in B2C login page"
-        )
+        raise AuthenticationError("Could not find CSRF token in B2C login page")
     csrf = csrf_match.group(1)
 
     # Extract transId from SETTINGS
     tx_match = re.search(r'"transId"\s*:\s*"([^"]+)"', html)
     if not tx_match:
-        raise AuthenticationError(
-            "Could not find transId in B2C login page"
-        )
+        raise AuthenticationError("Could not find transId in B2C login page")
     tx = tx_match.group(1)
 
     p = _B2C_POLICY
@@ -84,10 +80,7 @@ def _parse_login_page(html: str, page_url: str) -> dict[str, str]:
     qs = f"tx={tx}&p={p}"
 
     post_url = f"{origin}{base}SelfAsserted?{qs}"
-    confirmed_url = (
-        f"{origin}{base}"
-        f"api/CombinedSigninAndSignup/confirmed"
-    )
+    confirmed_url = f"{origin}{base}api/CombinedSigninAndSignup/confirmed"
 
     return {
         "csrf": csrf,
@@ -110,9 +103,7 @@ def _build_cookie_header(
     ``name=value; name2=value2`` style that B2C requires.
     """
     filtered = cookie_jar.filter_cookies(url)
-    return "; ".join(
-        f"{m.key}={m.value}" for m in filtered.values()
-    )
+    return "; ".join(f"{m.key}={m.value}" for m in filtered.values())
 
 
 def _log_request(
@@ -130,10 +121,7 @@ def _log_request(
     if headers:
         _LOGGER.debug(">>>   headers: %s", headers)
     if data:
-        safe = {
-            k: ("***" if k == "password" else v)
-            for k, v in data.items()
-        }
+        safe = {k: ("***" if k == "password" else v) for k, v in data.items()}
         _LOGGER.debug(">>>   body: %s", safe)
 
 
@@ -143,7 +131,9 @@ def _log_response(
 ) -> None:
     """Log an incoming HTTP response at DEBUG level."""
     _LOGGER.debug(
-        "<<< %s %s", resp.status, resp.url,
+        "<<< %s %s",
+        resp.status,
+        resp.url,
     )
     _LOGGER.debug("<<<   headers: %s", dict(resp.headers))
     if body is not None:
@@ -153,9 +143,7 @@ def _log_response(
         _LOGGER.debug("<<<   body: %s", preview)
 
 
-async def b2c_login_with_credentials(
-    auth_uri: str, email: str, password: str
-) -> str:
+async def b2c_login_with_credentials(auth_uri: str, email: str, password: str) -> str:
     """Submit credentials directly to Azure AD B2C and return the redirect URL.
 
     Performs the same HTTP flow a browser would:
@@ -216,12 +204,8 @@ async def b2c_login_with_credentials(
                 "X-Requested-With": "XMLHttpRequest",
                 "Referer": auth_uri,
                 "Origin": origin,
-                "Accept": (
-                    "application/json, text/javascript, */*; q=0.01"
-                ),
-                "Content-Type": (
-                    "application/x-www-form-urlencoded; charset=UTF-8"
-                ),
+                "Accept": ("application/json, text/javascript, */*; q=0.01"),
+                "Content-Type": ("application/x-www-form-urlencoded; charset=UTF-8"),
             }
 
             # Build an unquoted Cookie header — aiohttp's cookie jar
@@ -255,17 +239,11 @@ async def b2c_login_with_credentials(
                     _log_response(resp, body)
                     if resp.status != 200:
                         raise AuthenticationError(
-                            f"Credential submission returned HTTP"
-                            f" {resp.status}"
+                            f"Credential submission returned HTTP {resp.status}"
                         )
                     # Check for error in the JSON-like response
-                    if (
-                        '"status":"400"' in body
-                        or '"status": "400"' in body
-                    ):
-                        raise AuthenticationError(
-                            "Invalid email or password"
-                        )
+                    if '"status":"400"' in body or '"status": "400"' in body:
+                        raise AuthenticationError("Invalid email or password")
                     # Merge cookies set by the POST response (e.g.
                     # updated x-ms-cpim-cache and x-ms-cpim-trans)
                     # into the cookie header for the confirmed GET.
@@ -276,16 +254,12 @@ async def b2c_login_with_credentials(
                         if "=" in part:
                             n, v = part.split("=", 1)
                             cookies[n] = v
-                    for raw_sc in resp.headers.getall(
-                        "Set-Cookie", []
-                    ):
+                    for raw_sc in resp.headers.getall("Set-Cookie", []):
                         sc_pair = raw_sc.split(";", 1)[0]
                         if "=" in sc_pair:
                             n, v = sc_pair.split("=", 1)
                             cookies[n] = v
-                    cookie_header = "; ".join(
-                        f"{n}={v}" for n, v in cookies.items()
-                    )
+                    cookie_header = "; ".join(f"{n}={v}" for n, v in cookies.items())
 
                 # Step 4: GET the confirmed endpoint — follows redirects
                 # until we hit the custom-scheme redirect
@@ -300,9 +274,7 @@ async def b2c_login_with_credentials(
                 )
 
                 # Follow redirects manually to catch custom-scheme one
-                next_url: str = (
-                    fields["confirmed_url"] + "?" + confirmed_qs
-                )
+                next_url: str = fields["confirmed_url"] + "?" + confirmed_qs
                 confirmed_headers = {
                     "Cookie": cookie_header,
                 }
@@ -316,53 +288,39 @@ async def b2c_login_with_credentials(
                         resp_body = await resp.text()
                         _log_response(resp, resp_body)
                         if resp.status in (301, 302, 303, 307, 308):
-                            location = resp.headers.get(
-                                "Location", ""
-                            )
+                            location = resp.headers.get("Location", "")
                             if not location:
                                 raise AuthenticationError(
-                                    "Redirect without Location"
-                                    " header"
+                                    "Redirect without Location header"
                                 )
                             # Custom-scheme redirect (msal{id}://auth)
-                            if (
-                                location.startswith("msal")
-                                and "://auth" in location
-                            ):
+                            if location.startswith("msal") and "://auth" in location:
                                 _LOGGER.debug(
-                                    "Captured custom-scheme"
-                                    " redirect: %s",
+                                    "Captured custom-scheme redirect: %s",
                                     location[:120] + "...",
                                 )
                                 return location
                             # Resolve relative URLs
                             if not location.startswith("http"):
-                                location = urljoin(
-                                    next_url, location
-                                )
+                                location = urljoin(next_url, location)
                             next_url = location
                             continue
                         if resp.status == 200:
                             redirect_match = re.search(
-                                r'(msal[a-f0-9-]+://auth'
+                                r"(msal[a-f0-9-]+://auth"
                                 r'\?[^\s"\'<]+)',
                                 resp_body,
                             )
                             if redirect_match:
                                 return redirect_match.group(1)
                             raise AuthenticationError(
-                                "Reached 200 response without"
-                                " finding redirect URL"
+                                "Reached 200 response without finding redirect URL"
                             )
                         raise AuthenticationError(
-                            "Unexpected HTTP"
-                            f" {resp.status} during"
-                            " redirect chain"
+                            f"Unexpected HTTP {resp.status} during redirect chain"
                         )
 
-                raise AuthenticationError(
-                    "Too many redirects during B2C login"
-                )
+                raise AuthenticationError("Too many redirects during B2C login")
     except AuthenticationError:
         raise
     except aiohttp.ClientError as exc:

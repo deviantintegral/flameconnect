@@ -32,6 +32,7 @@ def _convert_to_celsius(
     """Convert a Fahrenheit value back to Celsius (rounded to 1 dp)."""
     return round((fahrenheit - 32) * 5 / 9, 1)
 
+
 _CSS = """
 TemperatureScreen {
     align: center middle;
@@ -97,9 +98,7 @@ class TemperatureScreen(ArrowNavMixin, ModalScreen[float | None]):
         unit_str = "\u00b0C" if self._unit == TempUnit.CELSIUS else "\u00b0F"
         celsius = self._unit == TempUnit.CELSIUS
         range_str = "5.0 \u2013 35.0" if celsius else "40.0 \u2013 95.0"
-        display_temp = _convert_temp(
-            self._current_temp, self._unit
-        )
+        display_temp = _convert_temp(self._current_temp, self._unit)
         with Vertical(id="temp-dialog"):
             yield Static(
                 f"Set Temperature (current: {display_temp}{unit_str})",

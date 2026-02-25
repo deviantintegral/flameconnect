@@ -286,9 +286,7 @@ class TestSetMode:
 class TestSetFlameSpeed:
     """Tests for the _set_flame_speed CLI command."""
 
-    async def test_set_flame_speed_valid(
-        self, mock_api, token_auth, overview_payload
-    ):
+    async def test_set_flame_speed_valid(self, mock_api, token_auth, overview_payload):
         mock_api.get(OVERVIEW_URL, payload=overview_payload)
         mock_api.post(WRITE_URL, payload={})
 
@@ -447,18 +445,14 @@ class TestSetHeatMode:
         captured = capsys.readouterr()
         assert "Error" in captured.out
 
-    async def test_set_heat_mode_boost_duration_21(
-        self, mock_api, token_auth, capsys
-    ):
+    async def test_set_heat_mode_boost_duration_21(self, mock_api, token_auth, capsys):
         async with FlameConnectClient(token_auth) as client:
             with pytest.raises(SystemExit):
                 await _set_heat_mode(client, FIRE_ID, "boost:21")
         captured = capsys.readouterr()
         assert "Error" in captured.out
 
-    async def test_set_heat_mode_reject_fan_only(
-        self, mock_api, token_auth, capsys
-    ):
+    async def test_set_heat_mode_reject_fan_only(self, mock_api, token_auth, capsys):
         async with FlameConnectClient(token_auth) as client:
             with pytest.raises(SystemExit):
                 await _set_heat_mode(client, FIRE_ID, "fan-only")
@@ -550,9 +544,7 @@ class TestCmdSetDispatch:
         key = ("POST", URL(WRITE_URL))
         assert len(mock_api.requests[key]) == 1
 
-    async def test_dispatch_flame_color(
-        self, mock_api, token_auth, overview_payload
-    ):
+    async def test_dispatch_flame_color(self, mock_api, token_auth, overview_payload):
         mock_api.get(OVERVIEW_URL, payload=overview_payload)
         mock_api.post(WRITE_URL, payload={})
 
@@ -562,9 +554,7 @@ class TestCmdSetDispatch:
         key = ("POST", URL(WRITE_URL))
         assert len(mock_api.requests[key]) == 1
 
-    async def test_dispatch_media_theme(
-        self, mock_api, token_auth, overview_payload
-    ):
+    async def test_dispatch_media_theme(self, mock_api, token_auth, overview_payload):
         mock_api.get(OVERVIEW_URL, payload=overview_payload)
         mock_api.post(WRITE_URL, payload={})
 
@@ -626,9 +616,7 @@ class TestParseColor:
 class TestSetFlameEffect:
     """Tests for the _set_flame_effect CLI command."""
 
-    async def test_set_flame_effect_on(
-        self, mock_api, token_auth, overview_payload
-    ):
+    async def test_set_flame_effect_on(self, mock_api, token_auth, overview_payload):
         mock_api.get(OVERVIEW_URL, payload=overview_payload)
         mock_api.post(WRITE_URL, payload={})
 
@@ -659,9 +647,7 @@ class TestSetFlameEffect:
 class TestSetMediaLight:
     """Tests for the _set_media_light CLI command."""
 
-    async def test_set_media_light_on(
-        self, mock_api, token_auth, overview_payload
-    ):
+    async def test_set_media_light_on(self, mock_api, token_auth, overview_payload):
         mock_api.get(OVERVIEW_URL, payload=overview_payload)
         mock_api.post(WRITE_URL, payload={})
 
@@ -691,9 +677,7 @@ class TestSetMediaLight:
 class TestSetOverheadLight:
     """Tests for the _set_overhead_light CLI command."""
 
-    async def test_set_overhead_light_on(
-        self, mock_api, token_auth, overview_payload
-    ):
+    async def test_set_overhead_light_on(self, mock_api, token_auth, overview_payload):
         mock_api.get(OVERVIEW_URL, payload=overview_payload)
         mock_api.post(WRITE_URL, payload={})
 
@@ -723,9 +707,7 @@ class TestSetOverheadLight:
 class TestSetAmbientSensor:
     """Tests for the _set_ambient_sensor CLI command."""
 
-    async def test_set_ambient_sensor_on(
-        self, mock_api, token_auth, overview_payload
-    ):
+    async def test_set_ambient_sensor_on(self, mock_api, token_auth, overview_payload):
         mock_api.get(OVERVIEW_URL, payload=overview_payload)
         mock_api.post(WRITE_URL, payload={})
 
@@ -755,9 +737,7 @@ class TestSetAmbientSensor:
 class TestSetMediaColor:
     """Tests for the _set_media_color CLI command."""
 
-    async def test_set_media_color_named(
-        self, mock_api, token_auth, overview_payload
-    ):
+    async def test_set_media_color_named(self, mock_api, token_auth, overview_payload):
         mock_api.get(OVERVIEW_URL, payload=overview_payload)
         mock_api.post(WRITE_URL, payload={})
 
@@ -771,9 +751,7 @@ class TestSetMediaColor:
         assert body["FireId"] == FIRE_ID
         assert body["Parameters"][0]["ParameterId"] == 322
 
-    async def test_set_media_color_rgbw(
-        self, mock_api, token_auth, overview_payload
-    ):
+    async def test_set_media_color_rgbw(self, mock_api, token_auth, overview_payload):
         mock_api.get(OVERVIEW_URL, payload=overview_payload)
         mock_api.post(WRITE_URL, payload={})
 
