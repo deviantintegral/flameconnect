@@ -8,7 +8,7 @@ from rich.text import Text as _Text
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Static
 
-from flameconnect.models import FireMode, FlameColor, LightStatus
+from flameconnect.models import FireMode, FlameColor, LightStatus, TempUnit
 
 if TYPE_CHECKING:
     from enum import IntEnum
@@ -126,9 +126,20 @@ def _temp_suffix(temp_unit: TempUnitParam | None) -> str:
     """Return the temperature unit suffix (e.g. 'C' or 'F'), or empty."""
     if temp_unit is None:
         return ""
-    from flameconnect.models import TempUnit
-
     return "C" if temp_unit.unit == TempUnit.CELSIUS else "F"
+
+
+def _convert_temp(
+    celsius: float, unit: TempUnit
+) -> float:
+    """Convert a Celsius temperature for display.
+
+    Returns the value unchanged when *unit* is CELSIUS, or
+    converts to Fahrenheit (rounded to 1 decimal) when FAHRENHEIT.
+    """
+    if unit == TempUnit.CELSIUS:
+        return celsius
+    return round(celsius * 9 / 5 + 32, 1)
 
 
 def _format_mode(
@@ -143,6 +154,12 @@ def _format_mode(
         param.mode, _display_name(param.mode)
     )
     suffix = _temp_suffix(temp_unit)
+    unit = (
+        temp_unit.unit if temp_unit else TempUnit.CELSIUS
+    )
+    display_temp = _convert_temp(
+        param.target_temperature, unit
+    )
     return [
         (
             "[bold]Mode:[/bold] ",
@@ -151,7 +168,7 @@ def _format_mode(
         ),
         (
             "[bold]Target Temp:[/bold] ",
-            f"{param.target_temperature}\u00b0{suffix}",
+            f"{display_temp}\u00b0{suffix}",
             "set_temperature",
         ),
     ]
@@ -244,6 +261,12 @@ def _format_heat(
         else "Off"
     )
     suffix = _temp_suffix(temp_unit)
+    unit = (
+        temp_unit.unit if temp_unit else TempUnit.CELSIUS
+    )
+    display_temp = _convert_temp(
+        param.setpoint_temperature, unit
+    )
     return [
         (
             "[bold]Heat:[/bold] ",
@@ -257,7 +280,7 @@ def _format_heat(
         ),
         (
             "  Setpoint: ",
-            f"{param.setpoint_temperature}\u00b0{suffix}",
+            f"{display_temp}\u00b0{suffix}",
             "set_heat_mode",
         ),
         ("  Boost: ", boost_value, "set_heat_mode"),

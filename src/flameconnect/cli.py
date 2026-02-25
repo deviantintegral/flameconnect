@@ -184,13 +184,44 @@ def _temp_suffix(parameters: list[Parameter]) -> str:
     return ""
 
 
-def _display_mode(param: ModeParam, unit_suffix: str = "") -> None:
+def _find_temp_unit(
+    parameters: list[Parameter],
+) -> TempUnitParam | None:
+    """Return the TempUnitParam from *parameters*, or ``None``."""
+    for p in parameters:
+        if isinstance(p, TempUnitParam):
+            return p
+    return None
+
+
+def _convert_temp(celsius: float, unit: TempUnit) -> float:
+    """Convert a Celsius temperature for display.
+
+    Returns the value unchanged when *unit* is CELSIUS, or
+    converts to Fahrenheit (rounded to 1 decimal) when FAHRENHEIT.
+    """
+    if unit == TempUnit.CELSIUS:
+        return celsius
+    return round(celsius * 9 / 5 + 32, 1)
+
+
+def _display_mode(
+    param: ModeParam,
+    temp_unit: TempUnitParam | None = None,
+) -> None:
     """Display Mode parameter."""
+    unit = temp_unit.unit if temp_unit else TempUnit.CELSIUS
+    unit_suffix = (
+        "C" if unit == TempUnit.CELSIUS else "F"
+    ) if temp_unit else ""
+    display_temp = _convert_temp(
+        param.target_temperature, unit
+    )
     print("\n  [321] Mode")
     print(f"  {'─' * 40}")
     mode = _enum_name(_FIRE_MODE_NAMES, param.mode)
     print(f"    Mode:           {mode}")
-    print(f"    Target Temp:    {param.target_temperature}\u00b0{unit_suffix}")
+    print(f"    Target Temp:    {display_temp}\u00b0{unit_suffix}")
 
 
 def _display_flame_effect(param: FlameEffectParam) -> None:
@@ -216,15 +247,25 @@ def _display_flame_effect(param: FlameEffectParam) -> None:
     print(f"    Ambient Sensor: {ambient}")
 
 
-def _display_heat(param: HeatParam, unit_suffix: str = "") -> None:
+def _display_heat(
+    param: HeatParam,
+    temp_unit: TempUnitParam | None = None,
+) -> None:
     """Display HeatSettings parameter."""
+    unit = temp_unit.unit if temp_unit else TempUnit.CELSIUS
+    unit_suffix = (
+        "C" if unit == TempUnit.CELSIUS else "F"
+    ) if temp_unit else ""
+    display_temp = _convert_temp(
+        param.setpoint_temperature, unit
+    )
     print("\n  [323] Heat Settings")
     print(f"  {'─' * 40}")
     status = _enum_name(_HEAT_STATUS_NAMES, param.heat_status)
     print(f"    Heat:           {status}")
     mode = _enum_name(_HEAT_MODE_NAMES, param.heat_mode)
     print(f"    Heat Mode:      {mode}")
-    print(f"    Setpoint Temp:  {param.setpoint_temperature}\u00b0{unit_suffix}")
+    print(f"    Setpoint Temp:  {display_temp}\u00b0{unit_suffix}")
     print(f"    Boost Duration: {param.boost_duration}")
 
 
@@ -313,15 +354,16 @@ def _display_log_effect(param: LogEffectParam) -> None:
 
 
 def _display_parameter(
-    param: Parameter, unit_suffix: str = ""
+    param: Parameter,
+    temp_unit: TempUnitParam | None = None,
 ) -> None:
     """Display a single parameter in human-readable form."""
     if isinstance(param, ModeParam):
-        _display_mode(param, unit_suffix)
+        _display_mode(param, temp_unit)
     elif isinstance(param, FlameEffectParam):
         _display_flame_effect(param)
     elif isinstance(param, HeatParam):
-        _display_heat(param, unit_suffix)
+        _display_heat(param, temp_unit)
     elif isinstance(param, HeatModeParam):
         _display_heat_mode(param)
     elif isinstance(param, TimerParam):
@@ -373,10 +415,10 @@ async def cmd_status(client: FlameConnectClient, fire_id: str) -> None:
         return
 
     count = len(overview.parameters)
-    unit_suffix = _temp_suffix(overview.parameters)
+    temp_unit = _find_temp_unit(overview.parameters)
     print(f"\n{count} parameter(s) reported:")
     for param in overview.parameters:
-        _display_parameter(param, unit_suffix)
+        _display_parameter(param, temp_unit)
 
 
 async def cmd_on(client: FlameConnectClient, fire_id: str) -> None:
