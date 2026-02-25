@@ -12,7 +12,7 @@ jobs:
       - uses: astral-sh/setup-uv@v3
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - run: uv sync --all-extras --dev
       - name: Lint
         run: uv run ruff check .
