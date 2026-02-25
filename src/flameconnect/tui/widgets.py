@@ -583,6 +583,56 @@ class FireplaceVisual(Static):
         )
 
 
+def _expand_piped_line(line: str) -> str:
+    """Expand every ``  |  `` separator into a new indented line."""
+    sep = "  |  "
+    segments = line.split(sep)
+    if len(segments) <= 1:
+        return line
+    return "\n".join(
+        [segments[0], *(f"  {seg}" for seg in segments[1:])]
+    )
+
+
+def _expand_piped_text(text: str) -> str:
+    """Expand all pipe separators in *text* to separate lines."""
+    return "\n".join(
+        _expand_piped_line(line) for line in text.split("\n")
+    )
+
+
+def _wrap_piped_line(line: str, width: int) -> str:
+    """Wrap a pipe-separated line to fit within *width* columns.
+
+    Segments are split on ``  |  `` and accumulated greedily.
+    When the next segment would overflow, it starts a new line
+    with a 2-space indent.
+    """
+    sep = "  |  "
+    segments = line.split(sep)
+    if len(segments) <= 1:
+        return line
+
+    rows: list[str] = []
+    current = segments[0]
+    for seg in segments[1:]:
+        candidate = current + sep + seg
+        if _Text.from_markup(candidate).cell_len > width:
+            rows.append(current)
+            current = "  " + seg
+        else:
+            current = candidate
+    rows.append(current)
+    return "\n".join(rows)
+
+
+def _wrap_piped_text(text: str, width: int) -> str:
+    """Apply pipe-aware wrapping to every line of *text*."""
+    return "\n".join(
+        _wrap_piped_line(line, width) for line in text.split("\n")
+    )
+
+
 class ParameterPanel(Static):
     """Widget displaying decoded parameters in a panel."""
 
@@ -592,7 +642,22 @@ class ParameterPanel(Static):
 
     def render(self) -> str:
         """Render the parameter panel content."""
-        return self.content_text
+        if self.has_class("compact"):
+            width = self.content_region.width
+            parent = self.parent
+            if parent is not None:
+                constrained = (
+                    parent.content_region.width
+                    - self.gutter.width
+                )
+                if 0 < constrained < width:
+                    width = constrained
+            if width > 0:
+                return _wrap_piped_text(
+                    self.content_text, width
+                )
+            return self.content_text
+        return _expand_piped_text(self.content_text)
 
     def watch_content_text(self) -> None:
         """Force a layout recalculation on change."""
