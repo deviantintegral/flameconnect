@@ -167,7 +167,8 @@ class DashboardScreen(Screen[None]):
         """Install log handler and do initial data load."""
         rich_log = self.query_one("#messages-panel", RichLog)
         self._log_handler = _TuiLogHandler(rich_log)
-        self._log_handler.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+        fmt = "%(levelname)s %(name)s: %(message)s"
+        self._log_handler.setFormatter(logging.Formatter(fmt))
         fc_logger = logging.getLogger("flameconnect")
         fc_logger.addHandler(self._log_handler)
 
@@ -297,7 +298,10 @@ class DashboardScreen(Screen[None]):
                 new_val = getattr(new_param, field.name)
                 if old_val != new_val:
                     label = field.name.replace("_", " ").title()
-                    self.log_message(f"[bold]{name}[/bold] {label}: {old_val} → {new_val}")
+                    self.log_message(
+                        f"[bold]{name}[/bold] "
+                        f"{label}: {old_val} → {new_val}"
+                    )
 
     @property
     def current_parameters(self) -> dict[type, Parameter]:

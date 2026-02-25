@@ -8,7 +8,7 @@ import sys
 from dataclasses import replace
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Awaitable
+from typing import TYPE_CHECKING
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -23,6 +23,7 @@ from flameconnect.tui.widgets import _display_name
 
 if TYPE_CHECKING:
     import asyncio
+    from collections.abc import Awaitable
 
     from flameconnect.client import FlameConnectClient
     from flameconnect.models import (
