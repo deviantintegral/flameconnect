@@ -242,7 +242,7 @@ def _display_flame_effect(param: FlameEffectParam) -> None:
     print(f"    Media Light:    {theme} | {rgbw}")
     print(f"    Overhead Light: {_format_rgbw(param.overhead_color)}")
     light = _enum_name(_LIGHT_STATUS_NAMES, param.light_status)
-    print(f"    Overhead Light: {light}")
+    print(f"    Light Status:   {light}")
     ambient = _enum_name(_LIGHT_STATUS_NAMES, param.ambient_sensor)
     print(f"    Ambient Sensor: {ambient}")
 

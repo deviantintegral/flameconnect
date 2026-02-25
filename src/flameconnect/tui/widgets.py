@@ -8,7 +8,13 @@ from rich.text import Text as _Text
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Static
 
-from flameconnect.models import FireMode, FlameColor, LightStatus, TempUnit
+from flameconnect.models import (
+    FireMode,
+    FlameColor,
+    FlameEffect,
+    LightStatus,
+    TempUnit,
+)
 
 if TYPE_CHECKING:
     from enum import IntEnum
@@ -70,10 +76,10 @@ class _ClickableValue(Static):
         if action:
             self.add_class("clickable")
 
-    def on_click(self) -> None:
+    async def on_click(self) -> None:
         """Invoke the associated action when clicked."""
         if self._action:
-            self.app.run_action(self._action)
+            await self.app.run_action(self._action)
 
 
 class ClickableParam(Horizontal):
@@ -209,7 +215,7 @@ def _format_flame_effect(
             "set_flame_color",
         ),
         (
-            "  Overhead Light: ",
+            "  Light Status: ",
             _display_name(param.light_status),
             "toggle_light_status",
         ),
@@ -877,10 +883,16 @@ class FireplaceVisual(Static):
         else:
             self._heat_on = False
 
-        # Determine fire-on state
+        # Determine fire-on state (power on AND flame effect on)
         fire_on = True
         if mode is not None:
             fire_on = mode.mode == FireMode.MANUAL
+        if (
+            fire_on
+            and flame_effect is not None
+            and flame_effect.flame_effect != FlameEffect.ON
+        ):
+            fire_on = False
 
         # Determine desired flame speed
         new_speed = 3
@@ -926,15 +938,17 @@ class FireplaceVisual(Static):
         mode = getattr(self, "_mode", None)
         flame_effect = getattr(self, "_flame_effect", None)
 
-        fire_on = True
+        power_on = True
         palette = _DEFAULT_PALETTE
         led_style = "dim"
         media_style = "dim"
 
         if mode is not None:
-            fire_on = mode.mode == FireMode.MANUAL
+            power_on = mode.mode == FireMode.MANUAL
 
-        if fire_on and flame_effect is not None:
+        # LED and media styling applies when power is on,
+        # regardless of flame effect state.
+        if power_on and flame_effect is not None:
             palette = _FLAME_PALETTES.get(
                 flame_effect.flame_color, _DEFAULT_PALETTE
             )
@@ -945,6 +959,16 @@ class FireplaceVisual(Static):
             media_style = _rgbw_to_style(
                 flame_effect.media_color
             )
+
+        # Flames are only visible when power is on AND
+        # flame effect is ON (or not yet received).
+        fire_on = power_on
+        if (
+            fire_on
+            and flame_effect is not None
+            and flame_effect.flame_effect != FlameEffect.ON
+        ):
+            fire_on = False
 
         return _build_fire_art(
             w, h,
