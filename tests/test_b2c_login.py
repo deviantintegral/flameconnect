@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 import pytest
+import yarl
 from multidict import CIMultiDict
 
 from flameconnect.b2c_login import (
@@ -184,7 +185,7 @@ class TestBuildCookieHeader:
         jar.filter_cookies.return_value = {"a": m1, "b": m2}
 
         result = _build_cookie_header(jar, "https://example.com/path")
-        jar.filter_cookies.assert_called_once_with("https://example.com/path")
+        jar.filter_cookies.assert_called_once_with(yarl.URL("https://example.com/path"))
         assert result == "session=abc+123; token=xyz=456"
 
     def test_empty_jar(self):

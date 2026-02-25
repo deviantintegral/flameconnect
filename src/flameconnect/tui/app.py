@@ -1070,12 +1070,13 @@ async def run_tui(*, verbose: bool = False) -> None:
         import curses as _curses
 
         try:
-            _curses.setupterm(fd=sys.__stderr__.fileno())
-            rmcup = _curses.tigetstr("rmcup") or b""
-            cnorm = _curses.tigetstr("cnorm") or b""
-            clear = _curses.tigetstr("clear") or b""
-            sys.__stderr__.buffer.write(rmcup + cnorm + clear)
-            sys.__stderr__.flush()
+            if sys.__stderr__ is not None:
+                _curses.setupterm(fd=sys.__stderr__.fileno())
+                rmcup = _curses.tigetstr("rmcup") or b""
+                cnorm = _curses.tigetstr("cnorm") or b""
+                clear = _curses.tigetstr("clear") or b""
+                sys.__stderr__.buffer.write(rmcup + cnorm + clear)
+                sys.__stderr__.flush()
         except Exception:  # noqa: BLE001
             pass
 

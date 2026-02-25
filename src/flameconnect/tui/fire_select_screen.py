@@ -13,6 +13,7 @@ from flameconnect.tui.widgets import _display_name
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
+    from textual.widgets._button import ButtonVariant
 
 _CSS = """
 FireSelectScreen {
@@ -84,7 +85,7 @@ class FireSelectScreen(ModalScreen[Fire | None]):
                         f" \u2014 {fire.brand} {fire.product_model}"
                         f" ({conn})"
                     )
-                    variant = (
+                    variant: ButtonVariant = (
                         "primary"
                         if fire.fire_id == self._current_fire_id
                         else "default"

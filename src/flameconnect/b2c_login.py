@@ -102,7 +102,7 @@ def _build_cookie_header(
     browsers send them).  This function formats cookies in the plain
     ``name=value; name2=value2`` style that B2C requires.
     """
-    filtered = cookie_jar.filter_cookies(url)
+    filtered = cookie_jar.filter_cookies(yarl.URL(url))
     return "; ".join(f"{m.key}={m.value}" for m in filtered.values())
 
 
