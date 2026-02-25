@@ -195,6 +195,11 @@ def _format_flame_effect(
             "toggle_flame_effect",
         ),
         (
+            "  Flame Color: ",
+            _display_name(param.flame_color),
+            "set_flame_color",
+        ),
+        (
             "  Speed: ",
             f"{param.flame_speed}/5",
             "set_flame_speed",
@@ -208,21 +213,6 @@ def _format_flame_effect(
             "  Pulsating: ",
             _display_name(param.pulsating_effect),
             "toggle_pulsating",
-        ),
-        (
-            "  Flame Color: ",
-            _display_name(param.flame_color),
-            "set_flame_color",
-        ),
-        (
-            "  Overhead Light: ",
-            _display_name(param.light_status),
-            "toggle_overhead_light",
-        ),
-        (
-            "  Ambient Sensor: ",
-            _display_name(param.ambient_sensor),
-            "toggle_ambient_sensor",
         ),
         (
             "  Media Theme: ",
@@ -240,9 +230,19 @@ def _format_flame_effect(
             "set_media_color",
         ),
         (
+            "  Overhead Light: ",
+            _display_name(param.light_status),
+            "toggle_overhead_light",
+        ),
+        (
             "  Overhead Color: ",
             _format_rgbw(param.overhead_color),
             "set_overhead_color",
+        ),
+        (
+            "  Ambient Sensor: ",
+            _display_name(param.ambient_sensor),
+            "toggle_ambient_sensor",
         ),
     ]
 
