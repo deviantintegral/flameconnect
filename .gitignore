@@ -9,6 +9,6 @@ dist/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
-.mutmut-cache/
+mutants/
 .coverage
 node_modules/
