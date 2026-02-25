@@ -591,7 +591,7 @@ def _rgbw_to_style(color: RGBWColor) -> str:
 
 # Flame color palettes: (tip, mid, base) Rich style strings
 _FLAME_PALETTES: dict[FlameColor, tuple[str, str, str]] = {
-    FlameColor.ALL: ("yellow", "bright_green", "bright_magenta"),
+    FlameColor.ALL: ("yellow", "rgb(255,100,0)", "bright_blue"),
     FlameColor.YELLOW_RED: ("yellow", "bright_red", "red"),
     FlameColor.YELLOW_BLUE: ("yellow", "bright_cyan", "blue"),
     FlameColor.BLUE: ("bright_cyan", "bright_blue", "blue"),
