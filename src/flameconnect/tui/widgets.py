@@ -273,7 +273,7 @@ def _format_heat(
         (
             "[bold]Heat:[/bold] ",
             _display_name(param.heat_status),
-            "set_heat_mode",
+            "toggle_heat",
         ),
         (
             "  Mode: ",

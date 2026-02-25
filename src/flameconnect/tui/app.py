@@ -97,6 +97,7 @@ _CONTROL_COMMANDS: list[tuple[str, str, str]] = [
     ("Overhead Light", "Toggle overhead light on/off", "toggle_overhead_light"),
     ("Overhead Color", "Set overhead color", "set_overhead_color"),
     ("Ambient Sensor", "Toggle ambient sensor", "toggle_ambient_sensor"),
+    ("Heat On/Off", "Toggle heater on/off", "toggle_heat"),
     ("Heat Mode", "Set heat mode", "set_heat_mode"),
     ("Switch Fire", "Switch between fireplaces", "switch_fire"),
     ("Timer", "Toggle timer on/off", "toggle_timer"),
@@ -161,6 +162,7 @@ class FlameConnectApp(App[None]):
         Binding("o", "toggle_overhead_light", "Overhead Light", show=False),
         Binding("v", "set_overhead_color", "Overhead Color", show=False),
         Binding("a", "toggle_ambient_sensor", "Ambient Sensor", show=False),
+        Binding("s", "toggle_heat", "Heat On/Off", show=False),
         Binding("h", "set_heat_mode", "Heat Mode", show=False),
         Binding("w", "switch_fire", "Switch Fire", show=False),
         Binding("t", "toggle_timer", "Timer", show=False),
@@ -780,6 +782,35 @@ class FlameConnectApp(App[None]):
             f"Setting overhead color to R={color.red} G={color.green} "
             f"B={color.blue} W={color.white}...",
             "Overhead color change failed",
+        )
+
+    def action_toggle_heat(self) -> None:
+        """Handle the 's' key binding to toggle heater on/off."""
+        from flameconnect.models import HeatParam, HeatStatus
+
+        screen = self.screen
+        if not isinstance(screen, DashboardScreen):
+            return
+        if self.fire_id is None or self._write_in_progress:
+            return
+
+        params = screen.current_parameters
+        current = params.get(HeatParam)
+        if not isinstance(current, HeatParam):
+            return
+        new_val = (
+            HeatStatus.OFF
+            if current.heat_status == HeatStatus.ON
+            else HeatStatus.ON
+        )
+        new_param = replace(current, heat_status=new_val)
+        label = "On" if new_val == HeatStatus.ON else "Off"
+        self._run_command(
+            self.client.write_parameters(
+                self.fire_id, [new_param]
+            ),
+            f"Setting heat to {label}...",
+            "Heat toggle failed",
         )
 
     def action_set_heat_mode(self) -> None:
