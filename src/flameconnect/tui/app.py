@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import subprocess
 import sys
 from dataclasses import replace
 from functools import partial
@@ -34,6 +35,55 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
+
+def _resolve_version() -> str:
+    """Return a human-readable build identifier.
+
+    Strategy:
+    1. If the current commit has a tag matching ``__version__``, return
+       ``v{__version__}`` (e.g. ``v0.1.0``).
+    2. Otherwise return the short git hash, with a ``-dirty`` suffix when
+       the working tree has uncommitted changes **or** untracked files.
+    3. If git is unavailable (not installed, not a repo, timeout), fall
+       back to ``v{__version__}``.
+    """
+    try:
+        tag_result = subprocess.run(
+            ["git", "describe", "--tags", "--exact-match", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if tag_result.returncode == 0 and __version__ in tag_result.stdout.strip():
+            return f"v{__version__}"
+
+        hash_result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if hash_result.returncode != 0:
+            return f"v{__version__}"
+
+        short_hash = hash_result.stdout.strip()
+
+        status_result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if status_result.returncode == 0 and status_result.stdout.strip():
+            short_hash += "-dirty"
+
+        return short_hash
+    except Exception:  # noqa: BLE001
+        return f"v{__version__}"
+
+
+_resolved_version: str = _resolve_version()
+
 _CONTROL_COMMANDS: list[tuple[str, str, str]] = [
     ("Power On/Off", "Toggle fireplace power", "toggle_power"),
     ("Flame Effect", "Toggle flame effect on/off", "toggle_flame_effect"),
@@ -43,7 +93,7 @@ _CONTROL_COMMANDS: list[tuple[str, str, str]] = [
     ("Flame Color", "Set flame color", "set_flame_color"),
     ("Media Theme", "Set media theme", "set_media_theme"),
     ("Media Light", "Toggle media light on/off", "toggle_media_light"),
-    ("Media Color", "Set fuel bed color", "set_media_color"),
+    ("Media Color", "Set media color", "set_media_color"),
     ("Overhead Light", "Toggle overhead light on/off", "toggle_overhead_light"),
     ("Overhead Color", "Set overhead color", "set_overhead_color"),
     ("Overhead Light", "Toggle light status on/off", "toggle_light_status"),
@@ -91,7 +141,7 @@ _APP_CSS = """
 class FlameConnectApp(App[None]):
     """Textual TUI application for monitoring and controlling fireplaces."""
 
-    TITLE = f"FlameConnect v{__version__}"
+    TITLE = f"FlameConnect {_resolved_version}"
     CSS = _APP_CSS
     COMMANDS = App.COMMANDS | {_get_fireplace_commands}
 
@@ -688,7 +738,7 @@ class FlameConnectApp(App[None]):
                 self.call_later(self._apply_media_color, color)
 
         self.push_screen(
-            ColorScreen(current.media_color, "Fuel Bed Color"),
+            ColorScreen(current.media_color, "Media Color"),
             callback=_on_color_selected,
         )
 

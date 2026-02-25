@@ -208,7 +208,7 @@ def _display_flame_effect(param: FlameEffectParam) -> None:
     print(f"    Flame Color:    {color}")
     theme = _enum_name(_MEDIA_THEME_NAMES, param.media_theme)
     rgbw = _format_rgbw(param.media_color)
-    print(f"    Fuel Bed Light: {theme} | {rgbw}")
+    print(f"    Media Light:    {theme} | {rgbw}")
     print(f"    Overhead Light: {_format_rgbw(param.overhead_color)}")
     light = _enum_name(_LIGHT_STATUS_NAMES, param.light_status)
     print(f"    Overhead Light: {light}")

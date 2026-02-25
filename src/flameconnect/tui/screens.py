@@ -56,7 +56,7 @@ _DASHBOARD_CSS = """
 }
 #param-scroll {
     height: auto;
-    width: 2fr;
+    width: 1fr;
 }
 #param-panel {
     height: auto;
