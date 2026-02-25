@@ -15,6 +15,7 @@ from textual.command import Hit, Hits, Provider
 from textual.widgets import Footer, Header, OptionList, Static
 from textual.widgets.option_list import Option
 
+from flameconnect import __version__
 from flameconnect.tui.auth_screen import AuthScreen
 from flameconnect.tui.screens import DashboardScreen
 from flameconnect.tui.widgets import _display_name
@@ -45,7 +46,7 @@ _CONTROL_COMMANDS: list[tuple[str, str, str]] = [
     ("Media Color", "Set fuel bed color", "set_media_color"),
     ("Overhead Light", "Toggle overhead light on/off", "toggle_overhead_light"),
     ("Overhead Color", "Set overhead color", "set_overhead_color"),
-    ("Light Status", "Toggle light status on/off", "toggle_light_status"),
+    ("Overhead Light", "Toggle light status on/off", "toggle_light_status"),
     ("Ambient Sensor", "Toggle ambient sensor", "toggle_ambient_sensor"),
     ("Heat Mode", "Set heat mode", "set_heat_mode"),
     ("Switch Fire", "Switch between fireplaces", "switch_fire"),
@@ -89,7 +90,7 @@ _APP_CSS = """
 class FlameConnectApp(App[None]):
     """Textual TUI application for monitoring and controlling fireplaces."""
 
-    TITLE = "FlameConnect"
+    TITLE = f"FlameConnect v{__version__}"
     CSS = _APP_CSS
     COMMANDS = App.COMMANDS | {_get_fireplace_commands}
 
@@ -109,7 +110,7 @@ class FlameConnectApp(App[None]):
         Binding("d", "set_media_color", "Media Color", show=False),
         Binding("o", "toggle_overhead_light", "Overhead Light", show=False),
         Binding("v", "set_overhead_color", "Overhead Color", show=False),
-        Binding("s", "toggle_light_status", "Light Status", show=False),
+        Binding("s", "toggle_light_status", "Overhead Light", show=False),
         Binding("a", "toggle_ambient_sensor", "Ambient Sensor", show=False),
         Binding("h", "set_heat_mode", "Heat Mode", show=False),
         Binding("w", "switch_fire", "Switch Fire", show=False),
@@ -123,6 +124,7 @@ class FlameConnectApp(App[None]):
         self.fire_id: str | None = None
         self.fires: list[Fire] = []
         self._write_in_progress = False
+        self._help_visible: bool = False
 
     def compose(self) -> ComposeResult:
         """Compose the initial app layout with fireplace selector."""
@@ -256,10 +258,12 @@ class FlameConnectApp(App[None]):
 
     def action_toggle_help(self) -> None:
         """Toggle the help panel open or closed."""
-        if self.query("HelpPanel"):
+        if self._help_visible:
             self.action_hide_help_panel()
+            self._help_visible = False
         else:
             self.action_show_help_panel()
+            self._help_visible = True
 
     def deliver_screenshot(
         self,
@@ -625,13 +629,41 @@ class FlameConnectApp(App[None]):
         current = params.get(FlameEffectParam)
         if not isinstance(current, FlameEffectParam):
             return
+
+        _LOGGER.debug("Media theme change: current=%s", current)
+
         new_param = replace(current, media_theme=theme)
+
+        _LOGGER.debug("Media theme change: sending=%s", new_param)
+
         label = _display_name(theme)
-        self._run_command(
-            self.client.write_parameters(self.fire_id, [new_param]),
-            f"Setting media theme to {label}...",
-            "Media theme change failed",
-        )
+        fire_id = self.fire_id
+        self._write_in_progress = True
+        screen.log_message(f"Setting media theme to {label}...")
+
+        async def _worker() -> None:
+            try:
+                await self.client.write_parameters(fire_id, [new_param])
+                s = self.screen
+                if isinstance(s, DashboardScreen):
+                    await s.refresh_state()
+                    refreshed_params = s.current_parameters
+                    refreshed = refreshed_params.get(FlameEffectParam)
+                    _LOGGER.debug(
+                        "Media theme change: after_refresh=%s", refreshed
+                    )
+            except Exception as exc:
+                _LOGGER.exception("Media theme change failed")
+                s = self.screen
+                if isinstance(s, DashboardScreen):
+                    s.log_message(
+                        f"Media theme change failed: {exc}",
+                        level=logging.ERROR,
+                    )
+            finally:
+                self._write_in_progress = False
+
+        self.run_worker(_worker(), exclusive=True, thread=False)
 
     def action_set_media_color(self) -> None:
         """Handle the 'd' key binding to open media color dialog."""

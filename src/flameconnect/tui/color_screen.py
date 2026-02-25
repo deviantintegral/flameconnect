@@ -9,6 +9,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Static
 
 from flameconnect.models import NAMED_COLORS, RGBWColor
+from flameconnect.tui.widgets import ArrowNavMixin
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
@@ -32,7 +33,7 @@ ColorScreen {
 }
 
 #color-dialog {
-    width: 70;
+    width: 86;
     height: auto;
     padding: 1 2;
     border: thick $primary;
@@ -57,7 +58,7 @@ ColorScreen {
 """
 
 
-class ColorScreen(ModalScreen[RGBWColor | None]):
+class ColorScreen(ArrowNavMixin, ModalScreen[RGBWColor | None]):
     """Modal screen for selecting an RGBW colour via presets or numeric input."""
 
     CSS = _CSS
@@ -140,6 +141,9 @@ class ColorScreen(ModalScreen[RGBWColor | None]):
             self.dismiss(NAMED_COLORS[preset_name])
         elif button_id == "set-rgbw":
             self._apply_custom_rgbw()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        self._apply_custom_rgbw()
 
     def _apply_custom_rgbw(self) -> None:
         """Validate RGBW inputs and dismiss with the custom colour."""

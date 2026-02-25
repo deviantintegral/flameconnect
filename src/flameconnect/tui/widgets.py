@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from enum import IntEnum
 
     from textual.app import ComposeResult
+    from textual.timer import Timer
 
     from flameconnect.models import (
         ConnectionState,
@@ -31,6 +32,26 @@ if TYPE_CHECKING:
         TempUnitParam,
         TimerParam,
     )
+
+
+class ArrowNavMixin:
+    """Mixin for arrow key navigation between buttons in dialog screens."""
+
+    def on_key(self, event: object) -> None:
+        from textual import events
+        from textual.widgets import Button
+
+        if not isinstance(event, events.Key):
+            return
+        if isinstance(self.focused, Button):  # type: ignore[attr-defined]
+            if event.key in ("left", "up"):
+                self.focus_previous()  # type: ignore[attr-defined]
+                event.prevent_default()
+                event.stop()
+            elif event.key in ("right", "down"):
+                self.focus_next()  # type: ignore[attr-defined]
+                event.prevent_default()
+                event.stop()
 
 
 def _display_name(value: IntEnum) -> str:
@@ -52,15 +73,28 @@ _MODE_DISPLAY: dict[FireMode, str] = {
 }
 
 
-def _format_mode(param: ModeParam) -> str:
+def _temp_suffix(temp_unit: TempUnitParam | None) -> str:
+    """Return the temperature unit suffix (e.g. 'C' or 'F'), or empty."""
+    if temp_unit is None:
+        return ""
+    from flameconnect.models import TempUnit
+
+    return "C" if temp_unit.unit == TempUnit.CELSIUS else "F"
+
+
+def _format_mode(
+    param: ModeParam,
+    temp_unit: TempUnitParam | None = None,
+) -> str:
     """Format the mode parameter for display."""
     mode_label = _MODE_DISPLAY.get(
         param.mode, _display_name(param.mode)
     )
+    suffix = _temp_suffix(temp_unit)
     return (
         f"[bold]Mode:[/bold] {mode_label}  |  "
         f"[bold]Target Temp:[/bold] "
-        f"{param.target_temperature}\u00b0"
+        f"{param.target_temperature}\u00b0{suffix}"
     )
 
 
@@ -79,7 +113,7 @@ def _format_flame_effect(param: FlameEffectParam) -> str:
         (
             f"  Flame Color: "
             f"{_display_name(param.flame_color)}  |  "
-            f"Light: {_display_name(param.light_status)}"
+            f"Overhead Light: {_display_name(param.light_status)}"
             f"  |  "
             f"Ambient Sensor: "
             f"{_display_name(param.ambient_sensor)}"
@@ -101,7 +135,10 @@ def _format_flame_effect(param: FlameEffectParam) -> str:
     return "\n".join(lines)
 
 
-def _format_heat(param: HeatParam) -> str:
+def _format_heat(
+    param: HeatParam,
+    temp_unit: TempUnitParam | None = None,
+) -> str:
     """Format the heat settings parameter for display."""
     from flameconnect.models import HeatMode
 
@@ -110,11 +147,12 @@ def _format_heat(param: HeatParam) -> str:
         if param.heat_mode == HeatMode.BOOST
         else "Boost: Off"
     )
+    suffix = _temp_suffix(temp_unit)
     return (
         f"[bold]Heat:[/bold] "
         f"{_display_name(param.heat_status)}  |  "
         f"Mode: {_display_name(param.heat_mode)}  |  "
-        f"Setpoint: {param.setpoint_temperature}\u00b0"
+        f"Setpoint: {param.setpoint_temperature}\u00b0{suffix}"
         f"  |  {boost_text}"
     )
 
@@ -237,13 +275,24 @@ def format_parameters(params: list[Parameter]) -> str:
         TimerParam,
     )
 
+    # Extract the temperature unit (if present) for use in formatters.
+    temp_unit: TempUnitParam | None = None
+    for param in params:
+        if isinstance(param, TempUnitParam):
+            temp_unit = param
+            break
+
     # Collect formatted lines keyed by type.
     formatted: dict[type, str] = {}
     for param in params:
         if isinstance(param, ModeParam):
-            formatted[ModeParam] = _format_mode(param)
+            formatted[ModeParam] = _format_mode(
+                param, temp_unit
+            )
         elif isinstance(param, HeatParam):
-            formatted[HeatParam] = _format_heat(param)
+            formatted[HeatParam] = _format_heat(
+                param, temp_unit
+            )
         elif isinstance(param, HeatModeParam):
             formatted[HeatModeParam] = (
                 _format_heat_mode(param)
@@ -358,6 +407,18 @@ _FLAME_PALETTES: dict[FlameColor, tuple[str, str, str]] = {
 }
 _DEFAULT_PALETTE: tuple[str, str, str] = ("yellow", "bright_red", "red")
 
+# Animation speed mapping: flame_speed (1-5) -> interval in seconds
+_FLAME_SPEED_INTERVALS: dict[int, float] = {
+    1: 0.6,
+    2: 0.45,
+    3: 0.3,
+    4: 0.2,
+    5: 0.15,
+}
+
+# Number of heat indicator rows rendered above the flames
+_HEAT_ROWS = 2
+
 # Flame row definitions: (body_width_fraction, zone_index, atoms)
 # zone_index: 0=tip, 1=mid, 2=base (indexes into palette tuple)
 # atoms: (text, trailing_gap_weight)
@@ -410,6 +471,24 @@ _FLAME_DEFS: list[tuple[float, int, list[tuple[str, int]]]] = [
 ]
 
 
+def _rotate_palette(
+    palette: tuple[str, str, str],
+    frame: int,
+) -> tuple[str, str, str]:
+    """Rotate a (tip, mid, base) palette by *frame* positions.
+
+    Frame 0: (tip, mid, base) -- original
+    Frame 1: (base, tip, mid)
+    Frame 2: (mid, base, tip)
+    """
+    idx = frame % 3
+    if idx == 0:
+        return palette
+    if idx == 1:
+        return (palette[2], palette[0], palette[1])
+    return (palette[1], palette[2], palette[0])
+
+
 def _expand_flame(
     atoms: list[tuple[str, int]],
     body_width: int,
@@ -441,90 +520,133 @@ def _build_fire_art(
     flame_palette: tuple[str, str, str] = _DEFAULT_PALETTE,
     led_style: str = "dim",
     media_style: str = "red",
+    anim_frame: int = 0,
+    heat_on: bool = False,
 ) -> _Text:
-    """Generate fireplace ASCII art at outer width *w* and height *h*."""
+    """Generate fireplace ASCII art at outer width *w* and height *h*.
+
+    Parameters
+    ----------
+    anim_frame:
+        Animation frame index (0-2) used to rotate the flame palette
+        colors, creating a cycling colour animation.
+    heat_on:
+        When ``True``, render wavy heat-indicator rows above the flame
+        zone (reducing the flame row budget to keep total height
+        constant).
+    """
     ow = w - 2   # fill width between outer frame borders
     iw = w - 4   # content width between inner frame borders
+
+    # Rotate palette for animation
+    palette = _rotate_palette(flame_palette, anim_frame)
 
     result = _Text()
 
     def _nl() -> None:
         result.append("\n")
 
-    # ── top edge ──
-    result.append("▁" * w, style="dim")
+    # -- top edge --
+    result.append("\u2581" * w, style="dim")
     _nl()
 
-    # ── outer frame top ──
-    result.append("┌" + "─" * ow + "┐", style="dim")
+    # -- outer frame top --
+    result.append("\u250c" + "\u2500" * ow + "\u2510", style="dim")
     _nl()
 
-    # ── inner frame top ──
-    result.append("│", style="dim")
-    result.append("┌" + "─" * (ow - 2) + "┐", style="dim")
-    result.append("│", style="dim")
+    # -- inner frame top --
+    result.append("\u2502", style="dim")
+    result.append("\u250c" + "\u2500" * (ow - 2) + "\u2510", style="dim")
+    result.append("\u2502", style="dim")
     _nl()
 
-    # ── LED strip ──
-    result.append("││", style="dim")
-    result.append("░" * iw, style=led_style)
-    result.append("││", style="dim")
+    # -- LED strip --
+    result.append("\u2502\u2502", style="dim")
+    result.append("\u2591" * iw, style=led_style)
+    result.append("\u2502\u2502", style="dim")
     _nl()
 
-    # ── flame zone ──
+    # -- flame zone --
     flame_rows = max(h - _FIXED_ROWS, _MIN_FLAME_ROWS)
+
+    # Reserve rows for heat indicators (reduce flame budget)
+    heat_row_count = _HEAT_ROWS if heat_on else 0
+    flame_rows_effective = max(
+        flame_rows - heat_row_count, _MIN_FLAME_ROWS
+    )
+
     num_defs = len(_FLAME_DEFS)
-    if flame_rows >= num_defs:
-        blank_above = flame_rows - num_defs
+    if flame_rows_effective >= num_defs:
+        blank_above = flame_rows_effective - num_defs
         defs_to_render = _FLAME_DEFS
     else:
         blank_above = 0
-        defs_to_render = _FLAME_DEFS[num_defs - flame_rows:]
+        defs_to_render = _FLAME_DEFS[
+            num_defs - flame_rows_effective:
+        ]
+
+    # -- heat indicator rows --
+    if heat_on:
+        # Alternate two wave patterns for visual variety
+        wave_chars = [
+            "\u2248" * iw,   # (approx-equal signs)
+            "~" * iw,        # (tildes)
+        ]
+        actual_heat_rows = flame_rows - flame_rows_effective
+        for i in range(actual_heat_rows):
+            result.append("\u2502\u2502", style="dim")
+            result.append(
+                wave_chars[i % len(wave_chars)],
+                style="bright_red",
+            )
+            result.append("\u2502\u2502", style="dim")
+            _nl()
 
     # Blank rows above flames
     for _ in range(blank_above):
-        result.append("││", style="dim")
+        result.append("\u2502\u2502", style="dim")
         result.append(" " * iw)
-        result.append("││", style="dim")
+        result.append("\u2502\u2502", style="dim")
         _nl()
 
     # Flame rows (or blank if standby)
     for body_frac, zone, atoms in defs_to_render:
-        result.append("││", style="dim")
+        result.append("\u2502\u2502", style="dim")
         if fire_on:
             min_w = sum(len(a[0]) for a in atoms) + len(atoms) - 1
             body_w = max(int(iw * body_frac), min_w)
             lead = (iw - body_w) // 2
-            style = flame_palette[zone]
+            style = palette[zone]
             flame_line = _Text(" " * lead)
             flame_line.append_text(_expand_flame(atoms, body_w, style))
             result.append_text(flame_line)
             result.append(" " * max(iw - lead - body_w, 0))
         else:
             result.append(" " * iw)
-        result.append("││", style="dim")
+        result.append("\u2502\u2502", style="dim")
         _nl()
 
-    # ── inner media bed ──
-    result.append("││", style="dim")
-    result.append("▓" * iw, style=media_style)
-    result.append("││", style="dim")
+    # -- inner media bed --
+    result.append("\u2502\u2502", style="dim")
+    result.append("\u2593" * iw, style=media_style)
+    result.append("\u2502\u2502", style="dim")
     _nl()
 
-    # ── inner frame bottom ──
-    result.append("│", style="dim")
-    result.append("└" + "─" * (ow - 2) + "┘", style="dim")
-    result.append("│", style="dim")
+    # -- inner frame bottom --
+    result.append("\u2502", style="dim")
+    result.append("\u2514" + "\u2500" * (ow - 2) + "\u2518", style="dim")
+    result.append("\u2502", style="dim")
     _nl()
 
-    # ── outer hearth (fixed dim) ──
-    result.append("│", style="dim")
-    result.append("▓" * ow, style="dim")
-    result.append("│", style="dim")
+    # -- outer hearth (fixed dim) --
+    result.append("\u2502", style="dim")
+    result.append("\u2593" * ow, style="dim")
+    result.append("\u2502", style="dim")
     _nl()
 
-    # ── outer frame bottom ──
-    result.append("└" + "─" * ow + "┘", style="dim")  # no trailing newline
+    # -- outer frame bottom --
+    bottom = "\u2514" + "\u2500" * ow + "\u2518"
+    result.append(bottom, style="dim")  # no trailing newline
 
     return result
 
@@ -532,14 +654,71 @@ def _build_fire_art(
 class FireplaceVisual(Static):
     """Dynamically sized ASCII-art fireplace visual."""
 
+    _anim_frame: int = 0
+    _anim_timer: Timer | None = None
+    _flame_speed: int = 3
+    _heat_on: bool = False
+
+    def _advance_frame(self) -> None:
+        """Advance the animation frame and trigger a repaint."""
+        self._anim_frame = (self._anim_frame + 1) % 3
+        self.refresh()
+
     def update_state(
         self,
         mode: ModeParam | None,
         flame_effect: FlameEffectParam | None,
+        heat_param: HeatParam | None = None,
     ) -> None:
         """Update the visual with new fireplace state."""
         self._mode = mode
         self._flame_effect = flame_effect
+
+        # Determine heat-on state
+        if heat_param is not None:
+            from flameconnect.models import HeatStatus
+
+            self._heat_on = (
+                heat_param.heat_status == HeatStatus.ON
+            )
+        else:
+            self._heat_on = False
+
+        # Determine fire-on state
+        fire_on = True
+        if mode is not None:
+            fire_on = mode.mode == FireMode.MANUAL
+
+        # Determine desired flame speed
+        new_speed = 3
+        if flame_effect is not None:
+            new_speed = flame_effect.flame_speed
+
+        # Manage animation timer
+        if fire_on:
+            speed_changed = new_speed != self._flame_speed
+            self._flame_speed = new_speed
+            if (
+                self._anim_timer is None
+                or speed_changed
+            ):
+                # Cancel existing timer if any
+                if self._anim_timer is not None:
+                    self._anim_timer.stop()
+                    self._anim_timer = None
+                interval = _FLAME_SPEED_INTERVALS.get(
+                    self._flame_speed, 0.3
+                )
+                self._anim_timer = self.set_interval(
+                    interval, self._advance_frame
+                )
+        else:
+            # Fire is off -- stop animation
+            if self._anim_timer is not None:
+                self._anim_timer.stop()
+                self._anim_timer = None
+            self._anim_frame = 0
+
         self.refresh()
 
     def render(self) -> _Text:
@@ -580,24 +759,49 @@ class FireplaceVisual(Static):
             flame_palette=palette,
             led_style=led_style,
             media_style=media_style,
+            anim_frame=self._anim_frame,
+            heat_on=self._heat_on,
         )
 
 
-def _expand_piped_line(line: str) -> str:
-    """Expand every ``  |  `` separator into a new indented line."""
+def _expand_piped_line(line: str, width: int = 0) -> str:
+    """Expand every ``  |  `` separator into a new indented line.
+
+    When *width* > 0, segments are wrapped using the same greedy
+    algorithm as :func:`_wrap_piped_line` after expansion so that
+    lines exceeding the panel width are broken correctly.
+    """
     sep = "  |  "
     segments = line.split(sep)
     if len(segments) <= 1:
         return line
+
+    if width > 0:
+        rows: list[str] = []
+        current = segments[0]
+        for seg in segments[1:]:
+            candidate = current + sep + seg
+            if _Text.from_markup(candidate).cell_len > width:
+                rows.append(current)
+                current = "  " + seg
+            else:
+                current = candidate
+        rows.append(current)
+        return "\n".join(rows)
+
     return "\n".join(
         [segments[0], *(f"  {seg}" for seg in segments[1:])]
     )
 
 
-def _expand_piped_text(text: str) -> str:
-    """Expand all pipe separators in *text* to separate lines."""
+def _expand_piped_text(text: str, width: int = 0) -> str:
+    """Expand all pipe separators in *text* to separate lines.
+
+    When *width* > 0, each line is wrapped to fit within *width*
+    columns instead of unconditionally splitting every separator.
+    """
     return "\n".join(
-        _expand_piped_line(line) for line in text.split("\n")
+        _expand_piped_line(line, width) for line in text.split("\n")
     )
 
 
@@ -642,22 +846,14 @@ class ParameterPanel(Static):
 
     def render(self) -> str:
         """Render the parameter panel content."""
+        width = self.content_region.width
         if self.has_class("compact"):
-            width = self.content_region.width
-            parent = self.parent
-            if parent is not None:
-                constrained = (
-                    parent.content_region.width
-                    - self.gutter.width
-                )
-                if 0 < constrained < width:
-                    width = constrained
             if width > 0:
                 return _wrap_piped_text(
                     self.content_text, width
                 )
             return self.content_text
-        return _expand_piped_text(self.content_text)
+        return _expand_piped_text(self.content_text, width)
 
     def watch_content_text(self) -> None:
         """Force a layout recalculation on change."""

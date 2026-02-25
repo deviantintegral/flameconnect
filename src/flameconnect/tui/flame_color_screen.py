@@ -9,6 +9,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
 from flameconnect.models import FlameColor
+from flameconnect.tui.widgets import ArrowNavMixin
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
@@ -56,7 +57,7 @@ FlameColorScreen {
 """
 
 
-class FlameColorScreen(ModalScreen[FlameColor | None]):
+class FlameColorScreen(ArrowNavMixin, ModalScreen[FlameColor | None]):
     """Modal screen for selecting flame color preset."""
 
     CSS = _CSS

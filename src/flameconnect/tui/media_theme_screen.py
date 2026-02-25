@@ -9,6 +9,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
 from flameconnect.models import MediaTheme
+from flameconnect.tui.widgets import ArrowNavMixin
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
@@ -58,7 +59,7 @@ MediaThemeScreen {
 """
 
 
-class MediaThemeScreen(ModalScreen[MediaTheme | None]):
+class MediaThemeScreen(ArrowNavMixin, ModalScreen[MediaTheme | None]):
     """Modal screen for selecting media theme preset."""
 
     CSS = _CSS

@@ -8,6 +8,8 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
+from flameconnect.tui.widgets import ArrowNavMixin
+
 if TYPE_CHECKING:
     from textual.app import ComposeResult
 
@@ -42,7 +44,7 @@ FlameSpeedScreen {
 """
 
 
-class FlameSpeedScreen(ModalScreen[int | None]):
+class FlameSpeedScreen(ArrowNavMixin, ModalScreen[int | None]):
     """Modal screen for selecting flame speed (1-5)."""
 
     CSS = _CSS

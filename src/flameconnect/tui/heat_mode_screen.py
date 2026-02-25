@@ -9,6 +9,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Static
 
 from flameconnect.models import HeatMode
+from flameconnect.tui.widgets import ArrowNavMixin
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
@@ -58,7 +59,7 @@ HeatModeScreen {
 """
 
 
-class HeatModeScreen(ModalScreen[tuple[HeatMode, int | None] | None]):
+class HeatModeScreen(ArrowNavMixin, ModalScreen[tuple[HeatMode, int | None] | None]):
     """Modal screen for selecting heat mode (Normal / Eco / Boost)."""
 
     CSS = _CSS

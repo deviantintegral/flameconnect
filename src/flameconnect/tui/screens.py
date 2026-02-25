@@ -56,10 +56,11 @@ _DASHBOARD_CSS = """
 }
 #param-scroll {
     height: auto;
+    width: 2fr;
 }
 #param-panel {
     height: auto;
-    width: 2fr;
+    width: 1fr;
     padding: 1 2;
     border: solid $secondary;
 }
@@ -238,7 +239,7 @@ class DashboardScreen(Screen[None]):
         Args:
             overview: The latest FireOverview from the API.
         """
-        from flameconnect.models import FlameEffectParam, ModeParam
+        from flameconnect.models import FlameEffectParam, HeatParam, ModeParam
 
         param_panel = self.query_one("#param-panel", ParameterPanel)
         param_panel.update_parameters(overview.parameters)
@@ -251,18 +252,21 @@ class DashboardScreen(Screen[None]):
             self._log_param_changes(self._previous_params, current_params)
         self._previous_params = current_params
 
-        # Track the current mode and flame effect for power toggle / visual
+        # Track the current mode, flame effect and heat for visual
         mode_param: ModeParam | None = None
         flame_effect_param: FlameEffectParam | None = None
+        heat_param: HeatParam | None = None
         for param in overview.parameters:
             if isinstance(param, ModeParam):
                 mode_param = param
             elif isinstance(param, FlameEffectParam):
                 flame_effect_param = param
+            elif isinstance(param, HeatParam):
+                heat_param = param
         self._current_mode = mode_param
 
         visual = self.query_one("#fireplace-visual", FireplaceVisual)
-        visual.update_state(mode_param, flame_effect_param)
+        visual.update_state(mode_param, flame_effect_param, heat_param)
 
         parts: list[str] = [f"{self._fire.friendly_name} ({overview.fire.fire_id})"]
         brand_model = f"{self._fire.brand} {self._fire.product_model}".strip()
