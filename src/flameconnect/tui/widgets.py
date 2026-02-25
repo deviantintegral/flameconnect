@@ -215,9 +215,9 @@ def _format_flame_effect(
             "set_flame_color",
         ),
         (
-            "  Light Status: ",
+            "  Overhead Light: ",
             _display_name(param.light_status),
-            "toggle_light_status",
+            "toggle_overhead_light",
         ),
         (
             "  Ambient Sensor: ",
@@ -238,11 +238,6 @@ def _format_flame_effect(
             "  Media Color: ",
             _format_rgbw(param.media_color),
             "set_media_color",
-        ),
-        (
-            "  Overhead Light: ",
-            _display_name(param.overhead_light),
-            "toggle_overhead_light",
         ),
         (
             "  Overhead Color: ",
@@ -952,7 +947,7 @@ class FireplaceVisual(Static):
             palette = _FLAME_PALETTES.get(
                 flame_effect.flame_color, _DEFAULT_PALETTE
             )
-            if flame_effect.overhead_light == LightStatus.ON:
+            if flame_effect.light_status == LightStatus.ON:
                 led_style = _rgbw_to_style(
                     flame_effect.overhead_color
                 )

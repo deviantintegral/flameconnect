@@ -96,7 +96,6 @@ _CONTROL_COMMANDS: list[tuple[str, str, str]] = [
     ("Media Color", "Set media color", "set_media_color"),
     ("Overhead Light", "Toggle overhead light on/off", "toggle_overhead_light"),
     ("Overhead Color", "Set overhead color", "set_overhead_color"),
-    ("Light Status", "Toggle light status on/off", "toggle_light_status"),
     ("Ambient Sensor", "Toggle ambient sensor", "toggle_ambient_sensor"),
     ("Heat Mode", "Set heat mode", "set_heat_mode"),
     ("Switch Fire", "Switch between fireplaces", "switch_fire"),
@@ -161,7 +160,6 @@ class FlameConnectApp(App[None]):
         Binding("d", "set_media_color", "Media Color", show=False),
         Binding("o", "toggle_overhead_light", "Overhead Light", show=False),
         Binding("v", "set_overhead_color", "Overhead Color", show=False),
-        Binding("s", "toggle_light_status", "Light Status", show=False),
         Binding("a", "toggle_ambient_sensor", "Ambient Sensor", show=False),
         Binding("h", "set_heat_mode", "Heat Mode", show=False),
         Binding("w", "switch_fire", "Switch Fire", show=False),
@@ -528,33 +526,6 @@ class FlameConnectApp(App[None]):
             return
         new_val = (
             LightStatus.OFF
-            if current.overhead_light == LightStatus.ON
-            else LightStatus.ON
-        )
-        new_param = replace(current, overhead_light=new_val)
-        label = "On" if new_val == LightStatus.ON else "Off"
-        self._run_command(
-            self.client.write_parameters(self.fire_id, [new_param]),
-            f"Setting overhead light to {label}...",
-            "Overhead light toggle failed",
-        )
-
-    def action_toggle_light_status(self) -> None:
-        """Handle the 's' key binding to toggle light status on/off."""
-        from flameconnect.models import FlameEffectParam, LightStatus
-
-        screen = self.screen
-        if not isinstance(screen, DashboardScreen):
-            return
-        if self.fire_id is None or self._write_in_progress:
-            return
-
-        params = screen.current_parameters
-        current = params.get(FlameEffectParam)
-        if not isinstance(current, FlameEffectParam):
-            return
-        new_val = (
-            LightStatus.OFF
             if current.light_status == LightStatus.ON
             else LightStatus.ON
         )
@@ -562,8 +533,8 @@ class FlameConnectApp(App[None]):
         label = "On" if new_val == LightStatus.ON else "Off"
         self._run_command(
             self.client.write_parameters(self.fire_id, [new_param]),
-            f"Setting light status to {label}...",
-            "Light status toggle failed",
+            f"Setting overhead light to {label}...",
+            "Overhead light toggle failed",
         )
 
     def action_toggle_ambient_sensor(self) -> None:

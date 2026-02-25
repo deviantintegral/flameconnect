@@ -605,39 +605,6 @@ class TestToggleOverheadLight:
 
         written_param = mock_client.write_parameters.call_args[0][1][0]
         assert isinstance(written_param, FlameEffectParam)
-        assert written_param.overhead_light == LightStatus.OFF
-
-    async def test_no_op_when_write_in_progress(self, mock_client, mock_dashboard):
-        app = _make_app(mock_client, mock_dashboard)
-        app._write_in_progress = True
-
-        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
-            prop.return_value = mock_dashboard
-            app.action_toggle_overhead_light()
-            await _run_workers(app)
-
-        mock_client.write_parameters.assert_not_awaited()
-
-
-# ---------------------------------------------------------------------------
-# action_toggle_light_status
-# ---------------------------------------------------------------------------
-
-
-class TestToggleLightStatus:
-    """Tests for FlameConnectApp.action_toggle_light_status."""
-
-    async def test_toggles_on_to_off(self, mock_client, mock_dashboard):
-        # Default fixture has light_status ON
-        app = _make_app(mock_client, mock_dashboard)
-
-        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
-            prop.return_value = mock_dashboard
-            app.action_toggle_light_status()
-            await _run_workers(app)
-
-        written_param = mock_client.write_parameters.call_args[0][1][0]
-        assert isinstance(written_param, FlameEffectParam)
         assert written_param.light_status == LightStatus.OFF
 
     async def test_no_op_when_write_in_progress(self, mock_client, mock_dashboard):
@@ -646,7 +613,7 @@ class TestToggleLightStatus:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            app.action_toggle_light_status()
+            app.action_toggle_overhead_light()
             await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()

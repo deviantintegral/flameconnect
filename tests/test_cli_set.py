@@ -18,7 +18,6 @@ from flameconnect.cli import (
     _set_flame_speed,
     _set_heat_mode,
     _set_heat_temp,
-    _set_light_status,
     _set_media_color,
     _set_media_light,
     _set_media_theme,
@@ -712,38 +711,6 @@ class TestSetOverheadLight:
         async with FlameConnectClient(token_auth) as client:
             with pytest.raises(SystemExit):
                 await _set_overhead_light(client, FIRE_ID, "maybe")
-        captured = capsys.readouterr()
-        assert "Error" in captured.out
-
-
-# ---------------------------------------------------------------------------
-# _set_light_status
-# ---------------------------------------------------------------------------
-
-
-class TestSetLightStatus:
-    """Tests for the _set_light_status CLI command."""
-
-    async def test_set_light_status_on(
-        self, mock_api, token_auth, overview_payload
-    ):
-        mock_api.get(OVERVIEW_URL, payload=overview_payload)
-        mock_api.post(WRITE_URL, payload={})
-
-        async with FlameConnectClient(token_auth) as client:
-            await _set_light_status(client, FIRE_ID, "on")
-
-        key = ("POST", URL(WRITE_URL))
-        calls = mock_api.requests[key]
-        assert len(calls) == 1
-        body = calls[0].kwargs["json"]
-        assert body["FireId"] == FIRE_ID
-        assert body["Parameters"][0]["ParameterId"] == 322
-
-    async def test_set_light_status_invalid(self, mock_api, token_auth, capsys):
-        async with FlameConnectClient(token_auth) as client:
-            with pytest.raises(SystemExit):
-                await _set_light_status(client, FIRE_ID, "maybe")
         captured = capsys.readouterr()
         assert "Error" in captured.out
 
