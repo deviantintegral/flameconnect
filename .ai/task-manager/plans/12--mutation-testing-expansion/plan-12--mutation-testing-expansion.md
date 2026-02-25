@@ -126,3 +126,16 @@ Update the mutation test step in `.github/workflows/ci.yml` to run mutmut on all
 - The `mutants/` directory is mutmut v3's working directory and should be gitignored.
 - TUI modules and `cli.py` are intentionally excluded from this plan. They can be added later if desired.
 - Some surviving mutants will be equivalent (semantically identical to the original). These should be documented rather than chased with brittle tests.
+
+---
+
+## Execution Blueprint
+
+### ✅ Phase 1: Configuration Setup
+- ✔️ Task 01: Setup mutmut configuration, .gitignore, and CI update (`01--mutmut-config-and-ci.md`)
+
+### Phase 2: Kill Surviving Mutants (parallel)
+- Task 02: Kill surviving mutants in protocol.py (`02--kill-protocol-mutants.md`)
+- Task 03: Kill surviving mutants in client.py (`03--kill-client-mutants.md`)
+- Task 04: Kill surviving mutants in auth.py (`04--kill-auth-mutants.md`)
+- Task 05: Kill surviving mutants in b2c_login.py (`05--kill-b2c-mutants.md`)
