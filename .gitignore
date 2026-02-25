@@ -10,4 +10,5 @@ dist/
 .ruff_cache/
 .pytest_cache/
 .mutmut-cache/
+.coverage
 node_modules/
