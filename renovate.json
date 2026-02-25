@@ -3,12 +3,5 @@
   "extends": [
     "config:recommended",
     "helpers:pinGitHubActionDigests"
-  ],
-  "packageRules": [
-    {
-      "description": "Trail one minor version behind current Python to match Home Assistant policy",
-      "matchDepNames": ["python"],
-      "allowedVersions": "<3.14"
-    }
   ]
 }
