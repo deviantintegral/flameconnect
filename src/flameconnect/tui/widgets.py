@@ -81,6 +81,7 @@ class ClickableParam(Horizontal):
 
     DEFAULT_CSS = """
     ClickableParam { width: 1fr; height: auto; }
+    ClickableParam > .param-label { width: auto; }
     """
 
     def __init__(
