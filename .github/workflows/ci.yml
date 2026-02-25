@@ -21,6 +21,6 @@ jobs:
       - name: Type check
         run: uv run mypy src/
       - name: Test
-        run: uv run pytest --tb=short
+        run: uv run pytest --cov=flameconnect --cov-report=term-missing --tb=short
       - name: Mutation test
         run: uv run mutmut run --paths-to-mutate=src/flameconnect/protocol.py --no-progress
