@@ -267,4 +267,4 @@ commit messages.
 
 ## License
 
-MIT
+Apache-2.0
