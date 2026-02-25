@@ -395,9 +395,7 @@ class HeatModeApp(App[None]):
         def _on_dismiss(result):
             self.dismiss_result = result
 
-        self.push_screen(
-            HeatModeScreen(self._mode, self._boost), callback=_on_dismiss
-        )
+        self.push_screen(HeatModeScreen(self._mode, self._boost), callback=_on_dismiss)
 
 
 class TestHeatModeScreen:
@@ -789,18 +787,14 @@ class ColorScreenApp(App[None]):
         def _on_dismiss(result):
             self.dismiss_result = result
 
-        self.push_screen(
-            ColorScreen(self._current, self._title), callback=_on_dismiss
-        )
+        self.push_screen(ColorScreen(self._current, self._title), callback=_on_dismiss)
 
 
 class TestColorScreen:
     """Tests for ColorScreen."""
 
     async def test_compose_shows_title_and_current(self):
-        app = ColorScreenApp(
-            RGBWColor(red=10, green=20, blue=30, white=40), "My Color"
-        )
+        app = ColorScreenApp(RGBWColor(red=10, green=20, blue=30, white=40), "My Color")
         async with app.run_test(size=(100, 30)):
             title = app.screen.query_one("#color-title", Static)
             rendered = str(title._Static__content)
@@ -860,9 +854,7 @@ class TestColorScreen:
             btn = app.screen.query_one("#set-rgbw", Button)
             btn.press()
             await pilot.pause()
-            assert app.dismiss_result == RGBWColor(
-                red=128, green=64, blue=32, white=16
-            )
+            assert app.dismiss_result == RGBWColor(red=128, green=64, blue=32, white=16)
 
     async def test_set_rgbw_invalid_value_does_not_dismiss(self):
         app = ColorScreenApp()
@@ -1486,9 +1478,7 @@ class TestDashboardScreen:
             parameters=[changed_mode, _DEFAULT_FLAME_EFFECT],
         )
         client = MagicMock()
-        client.get_fire_overview = AsyncMock(
-            side_effect=[overview1, overview2]
-        )
+        client.get_fire_overview = AsyncMock(side_effect=[overview1, overview2])
         app = DashboardApp(client=client, fire=_TEST_FIRE)
         async with app.run_test(size=(120, 40)) as pilot:
             await app.screen.refresh_state()
@@ -1675,9 +1665,7 @@ class TestLogParamChanges:
         overview1 = FireOverview(fire=_TEST_FIRE, parameters=[old_mode])
         overview2 = FireOverview(fire=_TEST_FIRE, parameters=[new_mode])
         client = MagicMock()
-        client.get_fire_overview = AsyncMock(
-            side_effect=[overview1, overview2]
-        )
+        client.get_fire_overview = AsyncMock(side_effect=[overview1, overview2])
         app = DashboardApp(client=client, fire=_TEST_FIRE)
         async with app.run_test(size=(120, 40)) as pilot:
             await app.screen.refresh_state()
@@ -1687,9 +1675,7 @@ class TestLogParamChanges:
 
     async def test_no_log_for_unchanged_params(self):
         """Identical params between refreshes should not trigger log."""
-        overview = FireOverview(
-            fire=_TEST_FIRE, parameters=[_DEFAULT_MODE]
-        )
+        overview = FireOverview(fire=_TEST_FIRE, parameters=[_DEFAULT_MODE])
         client = MagicMock()
         client.get_fire_overview = AsyncMock(return_value=overview)
         app = DashboardApp(client=client, fire=_TEST_FIRE)
@@ -1707,9 +1693,7 @@ class TestLogParamChanges:
             parameters=[_DEFAULT_MODE, _DEFAULT_FLAME_EFFECT],
         )
         client = MagicMock()
-        client.get_fire_overview = AsyncMock(
-            side_effect=[overview1, overview2]
-        )
+        client.get_fire_overview = AsyncMock(side_effect=[overview1, overview2])
         app = DashboardApp(client=client, fire=_TEST_FIRE)
         async with app.run_test(size=(120, 40)) as pilot:
             await app.screen.refresh_state()
@@ -1724,9 +1708,7 @@ class TestLogParamChanges:
         overview1 = FireOverview(fire=_TEST_FIRE, parameters=[old_mode])
         overview2 = FireOverview(fire=_TEST_FIRE, parameters=[new_mode])
         client = MagicMock()
-        client.get_fire_overview = AsyncMock(
-            side_effect=[overview1, overview2]
-        )
+        client.get_fire_overview = AsyncMock(side_effect=[overview1, overview2])
         app = DashboardApp(client=client, fire=_TEST_FIRE)
         async with app.run_test(size=(120, 40)) as pilot:
             await app.screen.refresh_state()
@@ -1837,9 +1819,7 @@ class TimerApp(App[None]):
         def _on_dismiss(result):
             self.dismiss_result = result
 
-        self.push_screen(
-            TimerScreen(self._duration), callback=_on_dismiss
-        )
+        self.push_screen(TimerScreen(self._duration), callback=_on_dismiss)
 
 
 class TestTimerScreen:

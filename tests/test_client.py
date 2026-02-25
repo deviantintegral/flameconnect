@@ -61,16 +61,12 @@ def token_auth() -> TokenAuth:
 
 @pytest.fixture
 def get_fires_payload() -> list[dict]:
-    return json.loads(
-        (FIXTURES_DIR / "get_fires.json").read_text()
-    )
+    return json.loads((FIXTURES_DIR / "get_fires.json").read_text())
 
 
 @pytest.fixture
 def get_fire_overview_payload() -> dict:
-    return json.loads(
-        (FIXTURES_DIR / "get_fire_overview.json").read_text()
-    )
+    return json.loads((FIXTURES_DIR / "get_fire_overview.json").read_text())
 
 
 def _make_overview_payload(
@@ -120,9 +116,7 @@ def _make_overview_payload(
 class TestGetFires:
     """Test the get_fires() method."""
 
-    async def test_returns_fire_list(
-        self, mock_api, token_auth, get_fires_payload
-    ):
+    async def test_returns_fire_list(self, mock_api, token_auth, get_fires_payload):
         url = f"{API_BASE}/api/Fires/GetFires"
         mock_api.get(url, payload=get_fires_payload)
 
@@ -181,10 +175,7 @@ class TestGetFireOverview:
         self, mock_api, token_auth, get_fire_overview_payload
     ):
         fire_id = "test-fire-001"
-        url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
         mock_api.get(url, payload=get_fire_overview_payload)
 
         async with FlameConnectClient(token_auth) as client:
@@ -210,20 +201,13 @@ class TestGetFireOverview:
         self, mock_api, token_auth, get_fire_overview_payload
     ):
         fire_id = "test-fire-001"
-        url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
         mock_api.get(url, payload=get_fire_overview_payload)
 
         async with FlameConnectClient(token_auth) as client:
             overview = await client.get_fire_overview(fire_id)
 
-        mode = next(
-            p
-            for p in overview.parameters
-            if isinstance(p, ModeParam)
-        )
+        mode = next(p for p in overview.parameters if isinstance(p, ModeParam))
         assert mode.mode == FireMode.MANUAL
         assert mode.target_temperature == pytest.approx(22.5)
 
@@ -231,20 +215,13 @@ class TestGetFireOverview:
         self, mock_api, token_auth, get_fire_overview_payload
     ):
         fire_id = "test-fire-001"
-        url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
         mock_api.get(url, payload=get_fire_overview_payload)
 
         async with FlameConnectClient(token_auth) as client:
             overview = await client.get_fire_overview(fire_id)
 
-        flame = next(
-            p
-            for p in overview.parameters
-            if isinstance(p, FlameEffectParam)
-        )
+        flame = next(p for p in overview.parameters if isinstance(p, FlameEffectParam))
         assert flame.flame_effect == FlameEffect.ON
         assert flame.flame_speed == 3
         assert flame.brightness == Brightness.LOW
@@ -258,20 +235,13 @@ class TestGetFireOverview:
         self, mock_api, token_auth, get_fire_overview_payload
     ):
         fire_id = "test-fire-001"
-        url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
         mock_api.get(url, payload=get_fire_overview_payload)
 
         async with FlameConnectClient(token_auth) as client:
             overview = await client.get_fire_overview(fire_id)
 
-        heat = next(
-            p
-            for p in overview.parameters
-            if isinstance(p, HeatParam)
-        )
+        heat = next(p for p in overview.parameters if isinstance(p, HeatParam))
         assert heat.heat_status == HeatStatus.ON
         assert heat.heat_mode == HeatMode.NORMAL
         assert heat.setpoint_temperature == pytest.approx(22.0)
@@ -281,20 +251,13 @@ class TestGetFireOverview:
         self, mock_api, token_auth, get_fire_overview_payload
     ):
         fire_id = "test-fire-001"
-        url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
         mock_api.get(url, payload=get_fire_overview_payload)
 
         async with FlameConnectClient(token_auth) as client:
             overview = await client.get_fire_overview(fire_id)
 
-        sw = next(
-            p
-            for p in overview.parameters
-            if isinstance(p, SoftwareVersionParam)
-        )
+        sw = next(p for p in overview.parameters if isinstance(p, SoftwareVersionParam))
         assert sw.ui_major == 1
         assert sw.ui_minor == 2
         assert sw.ui_test == 3
@@ -310,10 +273,7 @@ class TestGetFireOverview:
     ):
         """Kills mutant overview__mutmut_8: 'GET' -> 'get'."""
         fire_id = "test-fire-001"
-        url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
         mock_api.get(url, payload=get_fire_overview_payload)
 
         async with FlameConnectClient(token_auth) as client:
@@ -331,10 +291,7 @@ class TestGetFireOverview:
         and mutants 46-102 (wrong .get() keys/defaults).
         """
         fire_id = "test-fire-001"
-        url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
         mock_api.get(url, payload=get_fire_overview_payload)
 
         async with FlameConnectClient(token_auth) as client:
@@ -351,22 +308,15 @@ class TestGetFireOverview:
         assert f.with_heat is True
         assert f.is_iot_fire is True
 
-    async def test_overview_defaults_when_keys_missing(
-        self, mock_api, token_auth
-    ):
+    async def test_overview_defaults_when_keys_missing(self, mock_api, token_auth):
         """When optional keys are absent, defaults are used.
 
         Kills mutants for .get() default values (brand="",
         product_type="", etc.) and .get() key name mutations.
         """
         fire_id = "minimal-fire"
-        url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
-        payload = _make_overview_payload(
-            fire_id=fire_id, parameters=[]
-        )
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = _make_overview_payload(fire_id=fire_id, parameters=[])
         mock_api.get(url, payload=payload)
 
         async with FlameConnectClient(token_auth) as client:
@@ -388,22 +338,15 @@ class TestGetFireOverview:
         # No parameters
         assert overview.parameters == []
 
-    async def test_overview_no_parameters_key(
-        self, mock_api, token_auth
-    ):
+    async def test_overview_no_parameters_key(self, mock_api, token_auth):
         """When Parameters key is absent, defaults to empty list.
 
         Kills mutants 105/107: Parameters default None or removed.
         """
         fire_id = "no-params-fire"
-        url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
         # Don't include "Parameters" key at all
-        payload = {
-            "WifiFireOverview": {"FireId": fire_id}
-        }
+        payload = {"WifiFireOverview": {"FireId": fire_id}}
         mock_api.get(url, payload=payload)
 
         async with FlameConnectClient(token_auth) as client:
@@ -411,19 +354,14 @@ class TestGetFireOverview:
 
         assert overview.parameters == []
 
-    async def test_continue_on_decode_failure_not_break(
-        self, mock_api, token_auth
-    ):
+    async def test_continue_on_decode_failure_not_break(self, mock_api, token_auth):
         """After a bad parameter, good ones still decode.
 
         Kills mutant 135: continue -> break. Place the bad
         param between two good ones.
         """
         fire_id = "test-fire-001"
-        url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
         mode_val = encode_parameter(
             ModeParam(
                 mode=FireMode.MANUAL,
@@ -463,20 +401,14 @@ class TestGetFireOverview:
 class TestWriteParameters:
     """Test the write_parameters() method."""
 
-    async def test_sends_correct_payload(
-        self, mock_api, token_auth
-    ):
+    async def test_sends_correct_payload(self, mock_api, token_auth):
         url = f"{API_BASE}/api/Fires/WriteWifiParameters"
         mock_api.post(url, payload={})
 
-        mode = ModeParam(
-            mode=FireMode.MANUAL, target_temperature=22.0
-        )
+        mode = ModeParam(mode=FireMode.MANUAL, target_temperature=22.0)
 
         async with FlameConnectClient(token_auth) as client:
-            await client.write_parameters(
-                "test-fire-001", [mode]
-            )
+            await client.write_parameters("test-fire-001", [mode])
 
         key = ("POST", URL(url))
         calls = mock_api.requests[key]
@@ -492,37 +424,25 @@ class TestWriteParameters:
         url = f"{API_BASE}/api/Fires/WriteWifiParameters"
         mock_api.post(url, payload={})
 
-        mode = ModeParam(
-            mode=FireMode.MANUAL, target_temperature=22.0
-        )
-        heat_mode = HeatModeParam(
-            heat_control=HeatControl.ENABLED
-        )
+        mode = ModeParam(mode=FireMode.MANUAL, target_temperature=22.0)
+        heat_mode = HeatModeParam(heat_control=HeatControl.ENABLED)
 
         async with FlameConnectClient(token_auth) as client:
-            await client.write_parameters(
-                "test-fire-001", [mode, heat_mode]
-            )
+            await client.write_parameters("test-fire-001", [mode, heat_mode])
 
         key = ("POST", URL(url))
         calls = mock_api.requests[key]
         body = calls[0].kwargs["json"]
         assert len(body["Parameters"]) == 2
-        param_ids = {
-            p["ParameterId"] for p in body["Parameters"]
-        }
+        param_ids = {p["ParameterId"] for p in body["Parameters"]}
         assert param_ids == {321, 325}
 
-    async def test_write_uses_post_method(
-        self, mock_api, token_auth
-    ):
+    async def test_write_uses_post_method(self, mock_api, token_auth):
         """Verify write uses POST (not lowercase)."""
         url = f"{API_BASE}/api/Fires/WriteWifiParameters"
         mock_api.post(url, payload={})
 
-        mode = ModeParam(
-            mode=FireMode.MANUAL, target_temperature=22.0
-        )
+        mode = ModeParam(mode=FireMode.MANUAL, target_temperature=22.0)
 
         async with FlameConnectClient(token_auth) as client:
             await client.write_parameters("fire-1", [mode])
@@ -546,17 +466,10 @@ class TestTurnOn:
         get_fire_overview_payload,
     ):
         fire_id = "test-fire-001"
-        overview_url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
-        write_url = (
-            f"{API_BASE}/api/Fires/WriteWifiParameters"
-        )
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
 
-        mock_api.get(
-            overview_url, payload=get_fire_overview_payload
-        )
+        mock_api.get(overview_url, payload=get_fire_overview_payload)
         mock_api.post(write_url, payload={})
 
         async with FlameConnectClient(token_auth) as client:
@@ -569,9 +482,7 @@ class TestTurnOn:
         body = calls[0].kwargs["json"]
         assert body["FireId"] == fire_id
 
-        param_ids = {
-            p["ParameterId"] for p in body["Parameters"]
-        }
+        param_ids = {p["ParameterId"] for p in body["Parameters"]}
         assert 321 in param_ids
         assert 322 in param_ids
 
@@ -589,16 +500,9 @@ class TestTurnOn:
         be preserved in the written ModeParam.
         """
         fire_id = "test-fire-001"
-        overview_url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
-        write_url = (
-            f"{API_BASE}/api/Fires/WriteWifiParameters"
-        )
-        mock_api.get(
-            overview_url, payload=get_fire_overview_payload
-        )
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mock_api.get(overview_url, payload=get_fire_overview_payload)
         mock_api.post(write_url, payload={})
 
         async with FlameConnectClient(token_auth) as client:
@@ -607,11 +511,7 @@ class TestTurnOn:
         key = ("POST", URL(write_url))
         body = mock_api.requests[key][0].kwargs["json"]
         # Decode the written ModeParam
-        mode_wire = next(
-            p
-            for p in body["Parameters"]
-            if p["ParameterId"] == 321
-        )
+        mode_wire = next(p for p in body["Parameters"] if p["ParameterId"] == 321)
         raw = base64.b64decode(mode_wire["Value"])
         # Byte 3 is mode (1=MANUAL), bytes 4-5 are temperature
         assert raw[3] == FireMode.MANUAL
@@ -630,16 +530,9 @@ class TestTurnOn:
         no args (which would preserve OFF if it was OFF).
         """
         fire_id = "test-fire-001"
-        overview_url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
-        write_url = (
-            f"{API_BASE}/api/Fires/WriteWifiParameters"
-        )
-        mock_api.get(
-            overview_url, payload=get_fire_overview_payload
-        )
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mock_api.get(overview_url, payload=get_fire_overview_payload)
         mock_api.post(write_url, payload={})
 
         async with FlameConnectClient(token_auth) as client:
@@ -647,35 +540,22 @@ class TestTurnOn:
 
         key = ("POST", URL(write_url))
         body = mock_api.requests[key][0].kwargs["json"]
-        flame_wire = next(
-            p
-            for p in body["Parameters"]
-            if p["ParameterId"] == 322
-        )
+        flame_wire = next(p for p in body["Parameters"] if p["ParameterId"] == 322)
         raw = base64.b64decode(flame_wire["Value"])
         # Byte 3 is flame_effect: 1=ON
         assert raw[3] == FlameEffect.ON
 
-    async def test_turn_on_default_temp_no_mode_param(
-        self, mock_api, token_auth
-    ):
+    async def test_turn_on_default_temp_no_mode_param(self, mock_api, token_auth):
         """When no ModeParam exists, default temp is 22.0.
 
         Kills turn_on__mutmut_3 (current_mode="" instead of
         None), turn_on__mutmut_4, turn_on__mutmut_8.
         """
         fire_id = "no-mode-fire"
-        overview_url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
-        write_url = (
-            f"{API_BASE}/api/Fires/WriteWifiParameters"
-        )
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
         # Overview with NO parameters
-        payload = _make_overview_payload(
-            fire_id=fire_id, parameters=[]
-        )
+        payload = _make_overview_payload(fire_id=fire_id, parameters=[])
         mock_api.get(overview_url, payload=payload)
         mock_api.post(write_url, payload={})
 
@@ -684,20 +564,14 @@ class TestTurnOn:
 
         key = ("POST", URL(write_url))
         body = mock_api.requests[key][0].kwargs["json"]
-        mode_wire = next(
-            p
-            for p in body["Parameters"]
-            if p["ParameterId"] == 321
-        )
+        mode_wire = next(p for p in body["Parameters"] if p["ParameterId"] == 321)
         raw = base64.b64decode(mode_wire["Value"])
         temp = float(raw[4]) + float(raw[5]) / 10.0
         assert temp == pytest.approx(22.0)
         # No FlameEffectParam in overview -> only ModeParam
         assert len(body["Parameters"]) == 1
 
-    async def test_turn_on_sets_flame_on_when_initially_off(
-        self, mock_api, token_auth
-    ):
+    async def test_turn_on_sets_flame_on_when_initially_off(self, mock_api, token_auth):
         """When flame effect is OFF, turn_on sets it to ON.
 
         Kills turn_on__mutmut_20: replace(current_flame, )
@@ -705,13 +579,8 @@ class TestTurnOn:
         code sets it to ON.
         """
         fire_id = "flame-off-fire"
-        overview_url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
-        write_url = (
-            f"{API_BASE}/api/Fires/WriteWifiParameters"
-        )
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
         mode_val = encode_parameter(
             ModeParam(
                 mode=FireMode.STANDBY,
@@ -752,31 +621,20 @@ class TestTurnOn:
 
         key = ("POST", URL(write_url))
         body = mock_api.requests[key][0].kwargs["json"]
-        flame_wire = next(
-            p
-            for p in body["Parameters"]
-            if p["ParameterId"] == 322
-        )
+        flame_wire = next(p for p in body["Parameters"] if p["ParameterId"] == 322)
         raw = base64.b64decode(flame_wire["Value"])
         # Byte 3 is flame_effect: must be 1 (ON)
         assert raw[3] == FlameEffect.ON
 
-    async def test_turn_on_no_flame_param_writes_only_mode(
-        self, mock_api, token_auth
-    ):
+    async def test_turn_on_no_flame_param_writes_only_mode(self, mock_api, token_auth):
         """When no FlameEffectParam, only ModeParam is written.
 
         Kills turn_on__mutmut_4 (current_flame="" instead of
         None).
         """
         fire_id = "no-flame-fire"
-        overview_url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
-        write_url = (
-            f"{API_BASE}/api/Fires/WriteWifiParameters"
-        )
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
         mode_val = encode_parameter(
             ModeParam(
                 mode=FireMode.STANDBY,
@@ -817,16 +675,9 @@ class TestTurnOff:
         get_fire_overview_payload,
     ):
         fire_id = "test-fire-001"
-        overview_url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
-        write_url = (
-            f"{API_BASE}/api/Fires/WriteWifiParameters"
-        )
-        mock_api.get(
-            overview_url, payload=get_fire_overview_payload
-        )
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mock_api.get(overview_url, payload=get_fire_overview_payload)
         mock_api.post(write_url, payload={})
 
         async with FlameConnectClient(token_auth) as client:
@@ -853,16 +704,9 @@ class TestTurnOff:
         temperature is read from existing ModeParam.
         """
         fire_id = "test-fire-001"
-        overview_url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
-        write_url = (
-            f"{API_BASE}/api/Fires/WriteWifiParameters"
-        )
-        mock_api.get(
-            overview_url, payload=get_fire_overview_payload
-        )
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mock_api.get(overview_url, payload=get_fire_overview_payload)
         mock_api.post(write_url, payload={})
 
         async with FlameConnectClient(token_auth) as client:
@@ -878,24 +722,15 @@ class TestTurnOff:
         temp = float(raw[4]) + float(raw[5]) / 10.0
         assert temp == pytest.approx(22.5)
 
-    async def test_turn_off_default_temp_no_mode(
-        self, mock_api, token_auth
-    ):
+    async def test_turn_off_default_temp_no_mode(self, mock_api, token_auth):
         """When no ModeParam, default temp is 22.0.
 
         Kills turn_off__mutmut_3 and turn_off__mutmut_7.
         """
         fire_id = "no-mode-fire"
-        overview_url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
-        write_url = (
-            f"{API_BASE}/api/Fires/WriteWifiParameters"
-        )
-        payload = _make_overview_payload(
-            fire_id=fire_id, parameters=[]
-        )
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        payload = _make_overview_payload(fire_id=fire_id, parameters=[])
         mock_api.get(overview_url, payload=payload)
         mock_api.post(write_url, payload={})
 
@@ -918,9 +753,7 @@ class TestTurnOff:
 class TestApiErrorHandling:
     """Test non-2xx response handling."""
 
-    async def test_401_raises_api_error(
-        self, mock_api, token_auth
-    ):
+    async def test_401_raises_api_error(self, mock_api, token_auth):
         url = f"{API_BASE}/api/Fires/GetFires"
         mock_api.get(url, status=401, body="Unauthorized")
 
@@ -930,13 +763,9 @@ class TestApiErrorHandling:
 
         assert exc_info.value.status == 401
 
-    async def test_500_raises_api_error(
-        self, mock_api, token_auth
-    ):
+    async def test_500_raises_api_error(self, mock_api, token_auth):
         url = f"{API_BASE}/api/Fires/GetFires"
-        mock_api.get(
-            url, status=500, body="Internal Server Error"
-        )
+        mock_api.get(url, status=500, body="Internal Server Error")
 
         async with FlameConnectClient(token_auth) as client:
             with pytest.raises(ApiError) as exc_info:
@@ -944,14 +773,9 @@ class TestApiErrorHandling:
 
         assert exc_info.value.status == 500
 
-    async def test_404_raises_api_error(
-        self, mock_api, token_auth
-    ):
+    async def test_404_raises_api_error(self, mock_api, token_auth):
         fire_id = "nonexistent"
-        url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
         mock_api.get(url, status=404, body="Not Found")
 
         async with FlameConnectClient(token_auth) as client:
@@ -960,9 +784,7 @@ class TestApiErrorHandling:
 
         assert exc_info.value.status == 404
 
-    async def test_no_session_raises_runtime_error(
-        self, token_auth
-    ):
+    async def test_no_session_raises_runtime_error(self, token_auth):
         """Using client without context manager or session.
 
         Kills _request__mutmut_3/6/7/8 by matching both parts
@@ -978,35 +800,27 @@ class TestApiErrorHandling:
         ):
             await client.get_fires()
 
-    async def test_external_session(
-        self, mock_api, token_auth
-    ):
+    async def test_external_session(self, mock_api, token_auth):
         """Client should work with externally-provided session."""
         url = f"{API_BASE}/api/Fires/GetFires"
         mock_api.get(url, payload=[])
 
         async with (
             aiohttp.ClientSession() as session,
-            FlameConnectClient(
-                token_auth, session=session
-            ) as client,
+            FlameConnectClient(token_auth, session=session) as client,
         ):
             fires = await client.get_fires()
 
         assert fires == []
 
-    async def test_300_raises_api_error(
-        self, mock_api, token_auth
-    ):
+    async def test_300_raises_api_error(self, mock_api, token_auth):
         """Status 300 should raise ApiError.
 
         Kills mutant _request__mutmut_41 (>= 300 -> > 300)
         and _request__mutmut_42 (>= 300 -> >= 301).
         """
         url = f"{API_BASE}/api/Fires/GetFires"
-        mock_api.get(
-            url, status=300, body="Multiple Choices"
-        )
+        mock_api.get(url, status=300, body="Multiple Choices")
 
         async with FlameConnectClient(token_auth) as client:
             with pytest.raises(ApiError) as exc_info:
@@ -1014,18 +828,14 @@ class TestApiErrorHandling:
 
         assert exc_info.value.status == 300
 
-    async def test_api_error_includes_response_text(
-        self, mock_api, token_auth
-    ):
+    async def test_api_error_includes_response_text(self, mock_api, token_auth):
         """ApiError message should contain response body text.
 
         Kills _request__mutmut_43 (text=None) and
         _request__mutmut_45 (ApiError(status, None)).
         """
         url = f"{API_BASE}/api/Fires/GetFires"
-        mock_api.get(
-            url, status=503, body="Service Unavailable"
-        )
+        mock_api.get(url, status=503, body="Service Unavailable")
 
         async with FlameConnectClient(token_auth) as client:
             with pytest.raises(ApiError) as exc_info:
@@ -1050,18 +860,14 @@ class TestGetParameterId:
     def test_log_effect_param(self):
         param = LogEffectParam(
             log_effect=LogEffect.ON,
-            color=RGBWColor(
-                red=0, green=0, blue=0, white=0
-            ),
+            color=RGBWColor(red=0, green=0, blue=0, white=0),
             pattern=0,
         )
         assert _get_parameter_id(param) == 370
 
     def test_unknown_type_raises_value_error(self):
         """Unknown type raises ValueError with type name."""
-        with pytest.raises(
-            ValueError, match="Unknown parameter type: str"
-        ):
+        with pytest.raises(ValueError, match="Unknown parameter type: str"):
             _get_parameter_id("not-a-param")
 
     def test_mode_param(self):
@@ -1098,15 +904,11 @@ class TestGetParameterId:
         assert _get_parameter_id(param) == 323
 
     def test_heat_mode_param(self):
-        param = HeatModeParam(
-            heat_control=HeatControl.ENABLED
-        )
+        param = HeatModeParam(heat_control=HeatControl.ENABLED)
         assert _get_parameter_id(param) == 325
 
     def test_timer_param(self):
-        param = TimerParam(
-            timer_status=TimerStatus.DISABLED, duration=0
-        )
+        param = TimerParam(timer_status=TimerStatus.DISABLED, duration=0)
         assert _get_parameter_id(param) == 326
 
     def test_temp_unit_param(self):
@@ -1122,15 +924,10 @@ class TestGetParameterId:
 class TestGetFireOverviewDecodeFailure:
     """Test decode failures in get_fire_overview."""
 
-    async def test_bad_parameter_skipped(
-        self, mock_api, token_auth
-    ):
+    async def test_bad_parameter_skipped(self, mock_api, token_auth):
         """Parameter that fails to decode is skipped."""
         fire_id = "test-fire-001"
-        url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
 
         payload = {
             "WifiFireOverview": {
@@ -1159,14 +956,10 @@ class TestGetFireOverviewDecodeFailure:
         mock_api.get(url, payload=payload)
 
         async with FlameConnectClient(token_auth) as client:
-            overview = await client.get_fire_overview(
-                fire_id
-            )
+            overview = await client.get_fire_overview(fire_id)
 
         assert len(overview.parameters) == 1
-        assert isinstance(
-            overview.parameters[0], ModeParam
-        )
+        assert isinstance(overview.parameters[0], ModeParam)
 
 
 # -------------------------------------------------------------------
@@ -1181,9 +974,7 @@ class TestSessionHandling:
     __aexit____mutmut_1/2.
     """
 
-    async def test_external_session_flag_is_true(
-        self, token_auth
-    ):
+    async def test_external_session_flag_is_true(self, token_auth):
         """When session is provided, _external_session=True.
 
         Kills __init____mutmut_2 (_external_session=None)
@@ -1191,16 +982,12 @@ class TestSessionHandling:
         """
         session = aiohttp.ClientSession()
         try:
-            client = FlameConnectClient(
-                token_auth, session=session
-            )
+            client = FlameConnectClient(token_auth, session=session)
             assert client._external_session is True
         finally:
             await session.close()
 
-    async def test_no_session_flag_is_false(
-        self, token_auth
-    ):
+    async def test_no_session_flag_is_false(self, token_auth):
         """When no session provided, _external_session=False.
 
         Kills __init____mutmut_3 (is None instead of
@@ -1209,25 +996,19 @@ class TestSessionHandling:
         client = FlameConnectClient(token_auth)
         assert client._external_session is False
 
-    async def test_init_stores_provided_session(
-        self, token_auth
-    ):
+    async def test_init_stores_provided_session(self, token_auth):
         """Provided session is stored in _session.
 
         Kills __init____mutmut_4 (_session = None).
         """
         session = aiohttp.ClientSession()
         try:
-            client = FlameConnectClient(
-                token_auth, session=session
-            )
+            client = FlameConnectClient(token_auth, session=session)
             assert client._session is session
         finally:
             await session.close()
 
-    async def test_aexit_closes_own_session(
-        self, mock_api, token_auth
-    ):
+    async def test_aexit_closes_own_session(self, mock_api, token_auth):
         """When we created the session, __aexit__ closes it.
 
         Kills __aexit____mutmut_1 (and -> or) and
@@ -1245,9 +1026,7 @@ class TestSessionHandling:
         # Session should be closed after __aexit__
         assert session.closed
 
-    async def test_aexit_does_not_close_external_session(
-        self, mock_api, token_auth
-    ):
+    async def test_aexit_does_not_close_external_session(self, mock_api, token_auth):
         """External session should NOT be closed by client.
 
         Kills __aexit____mutmut_2 (removed 'not' for
@@ -1258,9 +1037,7 @@ class TestSessionHandling:
 
         session = aiohttp.ClientSession()
         try:
-            async with FlameConnectClient(
-                token_auth, session=session
-            ) as client:
+            async with FlameConnectClient(token_auth, session=session) as client:
                 await client.get_fires()
 
             # External session should still be open
@@ -1281,9 +1058,7 @@ class TestRequestInternals:
     headers dict, and DEFAULT_HEADERS integration.
     """
 
-    async def test_request_sends_authorization_header(
-        self, mock_api, token_auth
-    ):
+    async def test_request_sends_authorization_header(self, mock_api, token_auth):
         """Verify Authorization header with Bearer token.
 
         Kills _request__mutmut_10 (token=None),
@@ -1300,13 +1075,9 @@ class TestRequestInternals:
         call = mock_api.requests[key][0]
         headers = call.kwargs["headers"]
         assert "Authorization" in headers
-        assert headers["Authorization"] == (
-            "Bearer test-token-123"
-        )
+        assert headers["Authorization"] == ("Bearer test-token-123")
 
-    async def test_request_sends_content_type(
-        self, mock_api, token_auth
-    ):
+    async def test_request_sends_content_type(self, mock_api, token_auth):
         """Verify Content-Type header is application/json.
 
         Kills _request__mutmut_15-19.
@@ -1323,9 +1094,7 @@ class TestRequestInternals:
         assert "Content-Type" in headers
         assert headers["Content-Type"] == "application/json"
 
-    async def test_request_includes_default_headers(
-        self, mock_api, token_auth
-    ):
+    async def test_request_includes_default_headers(self, mock_api, token_auth):
         """Verify DEFAULT_HEADERS are included.
 
         Kills _request__mutmut_22 (headers=None) and
@@ -1343,16 +1112,12 @@ class TestRequestInternals:
         for hdr_key, hdr_val in DEFAULT_HEADERS.items():
             assert headers.get(hdr_key) == hdr_val
 
-    async def test_request_passes_json_body(
-        self, mock_api, token_auth
-    ):
+    async def test_request_passes_json_body(self, mock_api, token_auth):
         """Verify json body is passed through to request."""
         url = f"{API_BASE}/api/Fires/WriteWifiParameters"
         mock_api.post(url, payload={})
 
-        mode = ModeParam(
-            mode=FireMode.MANUAL, target_temperature=22.0
-        )
+        mode = ModeParam(mode=FireMode.MANUAL, target_temperature=22.0)
 
         async with FlameConnectClient(token_auth) as client:
             await client.write_parameters("f1", [mode])
@@ -1363,9 +1128,7 @@ class TestRequestInternals:
         assert body is not None
         assert body["FireId"] == "f1"
 
-    async def test_request_uses_token_from_auth(
-        self, mock_api
-    ):
+    async def test_request_uses_token_from_auth(self, mock_api):
         """Verify the token from auth provider is used.
 
         Kills _request__mutmut_10 (token=None).
@@ -1379,9 +1142,7 @@ class TestRequestInternals:
 
         key = ("GET", URL(url))
         call = mock_api.requests[key][0]
-        assert call.kwargs["headers"]["Authorization"] == (
-            "Bearer my-special-token"
-        )
+        assert call.kwargs["headers"]["Authorization"] == ("Bearer my-special-token")
 
 
 # -------------------------------------------------------------------
@@ -1396,27 +1157,20 @@ class TestRequestLogging:
     _LOGGER.debug() call arguments.
     """
 
-    async def test_request_logs_method_url_status(
-        self, mock_api, token_auth, caplog
-    ):
+    async def test_request_logs_method_url_status(self, mock_api, token_auth, caplog):
         """Verify debug log contains method, URL, status."""
         url = f"{API_BASE}/api/Fires/GetFires"
         mock_api.get(url, payload=[])
 
-        with caplog.at_level(
-            logging.DEBUG, logger="flameconnect.client"
-        ):
-            async with FlameConnectClient(
-                token_auth
-            ) as client:
+        with caplog.at_level(logging.DEBUG, logger="flameconnect.client"):
+            async with FlameConnectClient(token_auth) as client:
                 await client.get_fires()
 
         # Find the debug message from _request
         found = [
             r
             for r in caplog.records
-            if r.name == "flameconnect.client"
-            and "GET" in r.message
+            if r.name == "flameconnect.client" and "GET" in r.message
         ]
         assert len(found) >= 1
         msg = found[0].message
@@ -1432,15 +1186,10 @@ class TestOverviewDecodeWarningLogging:
     _LOGGER.warning() call format/args.
     """
 
-    async def test_decode_failure_logs_warning(
-        self, mock_api, token_auth, caplog
-    ):
+    async def test_decode_failure_logs_warning(self, mock_api, token_auth, caplog):
         """Verify warning log on decode failure."""
         fire_id = "test-fire-001"
-        url = (
-            f"{API_BASE}/api/Fires/"
-            f"GetFireOverview?FireId={fire_id}"
-        )
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
         mode_val = encode_parameter(
             ModeParam(
                 mode=FireMode.MANUAL,
@@ -1456,19 +1205,14 @@ class TestOverviewDecodeWarningLogging:
         )
         mock_api.get(url, payload=payload)
 
-        with caplog.at_level(
-            logging.WARNING, logger="flameconnect.client"
-        ):
-            async with FlameConnectClient(
-                token_auth
-            ) as client:
+        with caplog.at_level(logging.WARNING, logger="flameconnect.client"):
+            async with FlameConnectClient(token_auth) as client:
                 await client.get_fire_overview(fire_id)
 
         warnings = [
             r
             for r in caplog.records
-            if r.name == "flameconnect.client"
-            and r.levelno == logging.WARNING
+            if r.name == "flameconnect.client" and r.levelno == logging.WARNING
         ]
         assert len(warnings) >= 1
         msg = warnings[0].message

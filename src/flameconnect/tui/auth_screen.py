@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import logging
 import webbrowser
+from typing import TYPE_CHECKING
 
-from textual.app import ComposeResult
 from textual.containers import Vertical
+
+if TYPE_CHECKING:
+    from textual.app import ComposeResult
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Static
 

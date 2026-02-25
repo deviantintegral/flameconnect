@@ -117,19 +117,27 @@ class ColorScreen(ArrowNavMixin, ModalScreen[RGBWColor | None]):
             with Horizontal(id="rgbw-inputs"):
                 yield Static("R:")
                 yield Input(
-                    str(cur.red), id="input-r", type="integer",
+                    str(cur.red),
+                    id="input-r",
+                    type="integer",
                 )
                 yield Static("G:")
                 yield Input(
-                    str(cur.green), id="input-g", type="integer",
+                    str(cur.green),
+                    id="input-g",
+                    type="integer",
                 )
                 yield Static("B:")
                 yield Input(
-                    str(cur.blue), id="input-b", type="integer",
+                    str(cur.blue),
+                    id="input-b",
+                    type="integer",
                 )
                 yield Static("W:")
                 yield Input(
-                    str(cur.white), id="input-w", type="integer",
+                    str(cur.white),
+                    id="input-w",
+                    type="integer",
                 )
             with Horizontal(id="rgbw-actions"):
                 yield Button("Set", id="set-rgbw", variant="primary")

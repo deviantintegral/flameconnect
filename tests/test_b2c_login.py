@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 import pytest
+import yarl
 from multidict import CIMultiDict
 
 from flameconnect.b2c_login import (
@@ -59,10 +60,7 @@ SAMPLE_PAGE_URL = (
 )
 
 _CLIENT_ID = "1af761dc-085a-411f-9cb9-53e5e2115bd2"
-REDIRECT_URL = (
-    f"msal{_CLIENT_ID}://auth"
-    "?code=test-auth-code-123&state=test-state"
-)
+REDIRECT_URL = f"msal{_CLIENT_ID}://auth?code=test-auth-code-123&state=test-state"
 
 AUTH_URI = "https://example.com/authorize"
 
@@ -77,9 +75,7 @@ class TestExtractBasePath:
 
     def test_short_path_returns_root(self):
         """URL with fewer than 2 path segments returns '/'."""
-        assert _extract_base_path(
-            "https://example.com/single"
-        ) == "/"
+        assert _extract_base_path("https://example.com/single") == "/"
 
     def test_no_path_returns_root(self):
         """URL with no path returns '/'."""
@@ -93,9 +89,7 @@ class TestExtractBasePath:
             "oauth2/v2.0/authorize?params"
         )
         result = _extract_base_path(url)
-        expected = (
-            f"/tenant.onmicrosoft.com/{_POLICY}/"
-        )
+        expected = f"/tenant.onmicrosoft.com/{_POLICY}/"
         assert result == expected
 
     def test_exactly_two_segments(self):
@@ -128,56 +122,35 @@ class TestParseLoginPage:
     """Test HTML parsing of the B2C login page."""
 
     def test_extracts_csrf_token(self):
-        result = _parse_login_page(
-            SAMPLE_B2C_HTML, SAMPLE_PAGE_URL
-        )
+        result = _parse_login_page(SAMPLE_B2C_HTML, SAMPLE_PAGE_URL)
         assert result["csrf"] == "dGVzdC1jc3JmLXRva2Vu"
 
     def test_extracts_transaction_id(self):
-        result = _parse_login_page(
-            SAMPLE_B2C_HTML, SAMPLE_PAGE_URL
-        )
-        tx = (
-            "StateProperties="
-            "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9"
-        )
+        result = _parse_login_page(SAMPLE_B2C_HTML, SAMPLE_PAGE_URL)
+        tx = "StateProperties=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9"
         assert result["tx"] == tx
 
     def test_uses_hardcoded_policy(self):
-        result = _parse_login_page(
-            SAMPLE_B2C_HTML, SAMPLE_PAGE_URL
-        )
+        result = _parse_login_page(SAMPLE_B2C_HTML, SAMPLE_PAGE_URL)
         assert result["p"] == _POLICY
 
     def test_builds_post_url(self):
-        result = _parse_login_page(
-            SAMPLE_B2C_HTML, SAMPLE_PAGE_URL
-        )
-        expected_prefix = (
-            f"{_HOST}/{_TENANT}/{_POLICY}/SelfAsserted?"
-        )
+        result = _parse_login_page(SAMPLE_B2C_HTML, SAMPLE_PAGE_URL)
+        expected_prefix = f"{_HOST}/{_TENANT}/{_POLICY}/SelfAsserted?"
         assert result["post_url"].startswith(expected_prefix)
         assert "tx=StateProperties" in result["post_url"]
         assert f"p={_POLICY}" in result["post_url"]
 
     def test_builds_confirmed_url(self):
-        result = _parse_login_page(
-            SAMPLE_B2C_HTML, SAMPLE_PAGE_URL
-        )
-        expected = (
-            f"{_HOST}/{_TENANT}/{_POLICY}/"
-            "api/CombinedSigninAndSignup/confirmed"
-        )
+        result = _parse_login_page(SAMPLE_B2C_HTML, SAMPLE_PAGE_URL)
+        expected = f"{_HOST}/{_TENANT}/{_POLICY}/api/CombinedSigninAndSignup/confirmed"
         assert result["confirmed_url"] == expected
 
     def test_missing_csrf_raises_exact_msg(self):
         html = "<html><body>No settings here</body></html>"
         with pytest.raises(
             AuthenticationError,
-            match=(
-                "^Could not find CSRF token"
-                " in B2C login page$"
-            ),
+            match=("^Could not find CSRF token in B2C login page$"),
         ):
             _parse_login_page(html, SAMPLE_PAGE_URL)
 
@@ -185,10 +158,7 @@ class TestParseLoginPage:
         html = '<script>{"csrf":"abc"}</script>'
         with pytest.raises(
             AuthenticationError,
-            match=(
-                "^Could not find transId"
-                " in B2C login page$"
-            ),
+            match=("^Could not find transId in B2C login page$"),
         ):
             _parse_login_page(html, SAMPLE_PAGE_URL)
 
@@ -214,20 +184,14 @@ class TestBuildCookieHeader:
         jar = MagicMock(spec=aiohttp.CookieJar)
         jar.filter_cookies.return_value = {"a": m1, "b": m2}
 
-        result = _build_cookie_header(
-            jar, "https://example.com/path"
-        )
-        jar.filter_cookies.assert_called_once_with(
-            "https://example.com/path"
-        )
+        result = _build_cookie_header(jar, "https://example.com/path")
+        jar.filter_cookies.assert_called_once_with(yarl.URL("https://example.com/path"))
         assert result == "session=abc+123; token=xyz=456"
 
     def test_empty_jar(self):
         jar = MagicMock(spec=aiohttp.CookieJar)
         jar.filter_cookies.return_value = {}
-        result = _build_cookie_header(
-            jar, "https://example.com"
-        )
+        result = _build_cookie_header(jar, "https://example.com")
         assert result == ""
 
     def test_single_cookie(self):
@@ -236,9 +200,7 @@ class TestBuildCookieHeader:
         m1.value = "y"
         jar = MagicMock(spec=aiohttp.CookieJar)
         jar.filter_cookies.return_value = {"a": m1}
-        result = _build_cookie_header(
-            jar, "https://example.com"
-        )
+        result = _build_cookie_header(jar, "https://example.com")
         assert result == "x=y"
 
 
@@ -309,9 +271,7 @@ class TestLogRequest:
 class TestLogResponse:
     """Test _log_response with captured log records."""
 
-    def _make_resp(
-        self, status=200, url="https://example.com"
-    ):
+    def _make_resp(self, status=200, url="https://example.com"):
         resp = MagicMock()
         resp.status = status
         resp.url = url
@@ -452,9 +412,7 @@ def _patch_sessions(
 def _patch_session(session: MagicMock):
     """Patch aiohttp.ClientSession and CookieJar (compat)."""
     with (
-        patch(
-            f"{_MOD}.ClientSession", return_value=session
-        ),
+        patch(f"{_MOD}.ClientSession", return_value=session),
         patch(f"{_MOD}.CookieJar"),
     ):
         yield
@@ -470,18 +428,14 @@ class TestB2cLoginWithCredentials:
             text=SAMPLE_B2C_HTML,
             url=SAMPLE_PAGE_URL,
         )
-        post_resp = _make_mock_response(
-            status=200, text='{"status":"200"}'
-        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
         confirmed_resp = _make_mock_response(
             status=302,
             headers={"Location": REDIRECT_URL},
         )
 
         session = _make_mock_session(
-            get=MagicMock(
-                side_effect=[login_resp, confirmed_resp]
-            ),
+            get=MagicMock(side_effect=[login_resp, confirmed_resp]),
             post=MagicMock(return_value=post_resp),
         )
 
@@ -510,13 +464,14 @@ class TestB2cLoginWithCredentials:
             post=MagicMock(return_value=post_resp),
         )
 
-        with _patch_session(session), pytest.raises(
-            AuthenticationError,
-            match="Invalid email or password",
+        with (
+            _patch_session(session),
+            pytest.raises(
+                AuthenticationError,
+                match="Invalid email or password",
+            ),
         ):
-            await b2c_login_with_credentials(
-                AUTH_URI, "bad@test.com", "wrong"
-            )
+            await b2c_login_with_credentials(AUTH_URI, "bad@test.com", "wrong")
 
     async def test_bad_credentials_spaced_json(self):
         """Status 400 with spaces around colon also caught."""
@@ -535,30 +490,30 @@ class TestB2cLoginWithCredentials:
             post=MagicMock(return_value=post_resp),
         )
 
-        with _patch_session(session), pytest.raises(
-            AuthenticationError,
-            match="Invalid email or password",
+        with (
+            _patch_session(session),
+            pytest.raises(
+                AuthenticationError,
+                match="Invalid email or password",
+            ),
         ):
-            await b2c_login_with_credentials(
-                AUTH_URI, "bad@test.com", "wrong"
-            )
+            await b2c_login_with_credentials(AUTH_URI, "bad@test.com", "wrong")
 
     async def test_login_page_http_error_raises(self):
         """Non-200 login page raises AuthenticationError."""
-        login_resp = _make_mock_response(
-            status=500, text="Server Error"
-        )
+        login_resp = _make_mock_response(status=500, text="Server Error")
         session = _make_mock_session(
             get=MagicMock(return_value=login_resp),
         )
 
-        with _patch_session(session), pytest.raises(
-            AuthenticationError,
-            match="B2C login page returned HTTP 500",
+        with (
+            _patch_session(session),
+            pytest.raises(
+                AuthenticationError,
+                match="B2C login page returned HTTP 500",
+            ),
         ):
-            await b2c_login_with_credentials(
-                AUTH_URI, "user@test.com", "pass"
-            )
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
 
     async def test_parse_failure_raises(self):
         """Unparseable HTML raises AuthenticationError."""
@@ -571,12 +526,11 @@ class TestB2cLoginWithCredentials:
             get=MagicMock(return_value=login_resp),
         )
 
-        with _patch_session(session), pytest.raises(
-            AuthenticationError, match="CSRF token"
+        with (
+            _patch_session(session),
+            pytest.raises(AuthenticationError, match="CSRF token"),
         ):
-            await b2c_login_with_credentials(
-                AUTH_URI, "user@test.com", "pass"
-            )
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
 
     async def test_multi_hop_redirect(self):
         """Intermediate HTTP redirects before custom scheme."""
@@ -585,14 +539,10 @@ class TestB2cLoginWithCredentials:
             text=SAMPLE_B2C_HTML,
             url=SAMPLE_PAGE_URL,
         )
-        post_resp = _make_mock_response(
-            status=200, text='{"status":"200"}'
-        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
         intermediate_resp = _make_mock_response(
             status=302,
-            headers={
-                "Location": "https://example.com/hop"
-            },
+            headers={"Location": "https://example.com/hop"},
         )
         final_resp = _make_mock_response(
             status=302,
@@ -611,9 +561,7 @@ class TestB2cLoginWithCredentials:
         )
 
         with _patch_session(session):
-            result = await b2c_login_with_credentials(
-                AUTH_URI, "user@test.com", "pass"
-            )
+            result = await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
 
         assert result == REDIRECT_URL
 
@@ -624,22 +572,21 @@ class TestB2cLoginWithCredentials:
             text=SAMPLE_B2C_HTML,
             url=SAMPLE_PAGE_URL,
         )
-        post_resp = _make_mock_response(
-            status=500, text="Server Error"
-        )
+        post_resp = _make_mock_response(status=500, text="Server Error")
 
         session = _make_mock_session(
             get=MagicMock(return_value=login_resp),
             post=MagicMock(return_value=post_resp),
         )
 
-        with _patch_session(session), pytest.raises(
-            AuthenticationError,
-            match="Credential submission returned HTTP 500",
+        with (
+            _patch_session(session),
+            pytest.raises(
+                AuthenticationError,
+                match="Credential submission returned HTTP 500",
+            ),
         ):
-            await b2c_login_with_credentials(
-                AUTH_URI, "user@test.com", "pass"
-            )
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
 
     async def test_redirect_url_in_page_body(self):
         """Redirect URL in response body is captured."""
@@ -648,30 +595,18 @@ class TestB2cLoginWithCredentials:
             text=SAMPLE_B2C_HTML,
             url=SAMPLE_PAGE_URL,
         )
-        post_resp = _make_mock_response(
-            status=200, text='{"status":"200"}'
-        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
 
-        body = (
-            "<html><script>"
-            f'window.location="{REDIRECT_URL}"'
-            "</script></html>"
-        )
-        confirmed_resp = _make_mock_response(
-            status=200, text=body
-        )
+        body = f'<html><script>window.location="{REDIRECT_URL}"</script></html>'
+        confirmed_resp = _make_mock_response(status=200, text=body)
 
         session = _make_mock_session(
-            get=MagicMock(
-                side_effect=[login_resp, confirmed_resp]
-            ),
+            get=MagicMock(side_effect=[login_resp, confirmed_resp]),
             post=MagicMock(return_value=post_resp),
         )
 
         with _patch_session(session):
-            result = await b2c_login_with_credentials(
-                AUTH_URI, "user@test.com", "pass"
-            )
+            result = await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
 
         assert "code=test-auth-code-123" in result
 
@@ -682,29 +617,22 @@ class TestB2cLoginWithCredentials:
             text=SAMPLE_B2C_HTML,
             url=SAMPLE_PAGE_URL,
         )
-        post_resp = _make_mock_response(
-            status=200, text='{"status":"200"}'
-        )
-        no_loc = _make_mock_response(
-            status=302, headers={}
-        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        no_loc = _make_mock_response(status=302, headers={})
 
         session = _make_mock_session(
-            get=MagicMock(
-                side_effect=[login_resp, no_loc]
-            ),
+            get=MagicMock(side_effect=[login_resp, no_loc]),
             post=MagicMock(return_value=post_resp),
         )
 
-        with _patch_session(session), pytest.raises(
-            AuthenticationError,
-            match=(
-                "Redirect without Location header"
+        with (
+            _patch_session(session),
+            pytest.raises(
+                AuthenticationError,
+                match=("Redirect without Location header"),
             ),
         ):
-            await b2c_login_with_credentials(
-                AUTH_URI, "user@test.com", "pass"
-            )
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
 
     async def test_relative_redirect_resolved(self):
         """Relative Location is resolved against current URL."""
@@ -713,9 +641,7 @@ class TestB2cLoginWithCredentials:
             text=SAMPLE_B2C_HTML,
             url=SAMPLE_PAGE_URL,
         )
-        post_resp = _make_mock_response(
-            status=200, text='{"status":"200"}'
-        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
         relative_resp = _make_mock_response(
             status=302,
             headers={"Location": "/some/relative/path"},
@@ -737,9 +663,7 @@ class TestB2cLoginWithCredentials:
         )
 
         with _patch_session(session):
-            result = await b2c_login_with_credentials(
-                AUTH_URI, "user@test.com", "pass"
-            )
+            result = await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
 
         assert result == REDIRECT_URL
 
@@ -750,31 +674,25 @@ class TestB2cLoginWithCredentials:
             text=SAMPLE_B2C_HTML,
             url=SAMPLE_PAGE_URL,
         )
-        post_resp = _make_mock_response(
-            status=200, text='{"status":"200"}'
-        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
         no_redir = _make_mock_response(
             status=200,
             text="<html>No redirect here</html>",
         )
 
         session = _make_mock_session(
-            get=MagicMock(
-                side_effect=[login_resp, no_redir]
-            ),
+            get=MagicMock(side_effect=[login_resp, no_redir]),
             post=MagicMock(return_value=post_resp),
         )
 
-        with _patch_session(session), pytest.raises(
-            AuthenticationError,
-            match=(
-                "Reached 200 response without"
-                " finding redirect URL"
+        with (
+            _patch_session(session),
+            pytest.raises(
+                AuthenticationError,
+                match=("Reached 200 response without finding redirect URL"),
             ),
         ):
-            await b2c_login_with_credentials(
-                AUTH_URI, "user@test.com", "pass"
-            )
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
 
     async def test_unexpected_http_status_raises(self):
         """Unexpected HTTP status during redirect chain."""
@@ -783,30 +701,22 @@ class TestB2cLoginWithCredentials:
             text=SAMPLE_B2C_HTML,
             url=SAMPLE_PAGE_URL,
         )
-        post_resp = _make_mock_response(
-            status=200, text='{"status":"200"}'
-        )
-        forbidden = _make_mock_response(
-            status=403, text="Forbidden"
-        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        forbidden = _make_mock_response(status=403, text="Forbidden")
 
         session = _make_mock_session(
-            get=MagicMock(
-                side_effect=[login_resp, forbidden]
-            ),
+            get=MagicMock(side_effect=[login_resp, forbidden]),
             post=MagicMock(return_value=post_resp),
         )
 
-        with _patch_session(session), pytest.raises(
-            AuthenticationError,
-            match=(
-                "Unexpected HTTP 403"
-                " during redirect chain"
+        with (
+            _patch_session(session),
+            pytest.raises(
+                AuthenticationError,
+                match=("Unexpected HTTP 403 during redirect chain"),
             ),
         ):
-            await b2c_login_with_credentials(
-                AUTH_URI, "user@test.com", "pass"
-            )
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
 
     async def test_too_many_redirects_raises(self):
         """Exceeding max redirect hops raises."""
@@ -815,32 +725,25 @@ class TestB2cLoginWithCredentials:
             text=SAMPLE_B2C_HTML,
             url=SAMPLE_PAGE_URL,
         )
-        post_resp = _make_mock_response(
-            status=200, text='{"status":"200"}'
-        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
         redirect_resp = _make_mock_response(
             status=302,
-            headers={
-                "Location": "https://example.com/loop"
-            },
+            headers={"Location": "https://example.com/loop"},
         )
 
         session = _make_mock_session(
-            get=MagicMock(
-                side_effect=(
-                    [login_resp] + [redirect_resp] * 21
-                )
-            ),
+            get=MagicMock(side_effect=([login_resp] + [redirect_resp] * 21)),
             post=MagicMock(return_value=post_resp),
         )
 
-        with _patch_session(session), pytest.raises(
-            AuthenticationError,
-            match="Too many redirects during B2C login",
+        with (
+            _patch_session(session),
+            pytest.raises(
+                AuthenticationError,
+                match="Too many redirects during B2C login",
+            ),
         ):
-            await b2c_login_with_credentials(
-                AUTH_URI, "user@test.com", "pass"
-            )
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
 
     async def test_network_error_wrapped(self):
         """aiohttp.ClientError wrapped in AuthError."""
@@ -853,19 +756,16 @@ class TestB2cLoginWithCredentials:
         session = _make_mock_session(
             get=MagicMock(side_effect=[login_resp]),
         )
-        session.post = MagicMock(
-            side_effect=aiohttp.ClientError(
-                "Connection reset"
-            )
-        )
+        session.post = MagicMock(side_effect=aiohttp.ClientError("Connection reset"))
 
-        with _patch_session(session), pytest.raises(
-            AuthenticationError,
-            match="Network error during B2C login",
+        with (
+            _patch_session(session),
+            pytest.raises(
+                AuthenticationError,
+                match="Network error during B2C login",
+            ),
         ):
-            await b2c_login_with_credentials(
-                AUTH_URI, "user@test.com", "pass"
-            )
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
 
 
 # -------------------------------------------------------------------
@@ -883,9 +783,7 @@ class TestB2cLoginArgVerification:
             text=SAMPLE_B2C_HTML,
             url=SAMPLE_PAGE_URL,
         )
-        post_resp = _make_mock_response(
-            status=200, text='{"status":"200"}'
-        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
         confirmed_resp = _make_mock_response(
             status=302,
             headers={"Location": REDIRECT_URL},
@@ -899,12 +797,8 @@ class TestB2cLoginArgVerification:
             get=MagicMock(return_value=confirmed_resp),
         )
 
-        with _patch_sessions(
-            login_session, raw_session
-        ) as (jar_cls, _jar):
-            await b2c_login_with_credentials(
-                AUTH_URI, "user@test.com", "pass"
-            )
+        with _patch_sessions(login_session, raw_session) as (jar_cls, _jar):
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
 
         jar_cls.assert_called_once_with(unsafe=True)
 
@@ -915,9 +809,7 @@ class TestB2cLoginArgVerification:
             text=SAMPLE_B2C_HTML,
             url=SAMPLE_PAGE_URL,
         )
-        post_resp = _make_mock_response(
-            status=200, text='{"status":"200"}'
-        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
         confirmed_resp = _make_mock_response(
             status=302,
             headers={"Location": REDIRECT_URL},
@@ -932,17 +824,11 @@ class TestB2cLoginArgVerification:
             call_idx[0] += 1
             if idx == 0:
                 return _make_mock_session(
-                    get=MagicMock(
-                        return_value=login_resp
-                    ),
+                    get=MagicMock(return_value=login_resp),
                 )
             return _make_mock_session(
-                post=MagicMock(
-                    return_value=post_resp
-                ),
-                get=MagicMock(
-                    return_value=confirmed_resp
-                ),
+                post=MagicMock(return_value=post_resp),
+                get=MagicMock(return_value=confirmed_resp),
             )
 
         with (
@@ -956,16 +842,14 @@ class TestB2cLoginArgVerification:
             jar = MagicMock()
             jar.filter_cookies.return_value = {}
             jar_cls.return_value = jar
-            await b2c_login_with_credentials(
-                AUTH_URI, "user@test.com", "pass"
-            )
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
 
         assert len(cs_calls) == 2
         for i, call in enumerate(cs_calls):
             hdrs = call.get("headers", {})
-            assert hdrs.get("User-Agent") == (
-                _USER_AGENT
-            ), f"Session {i} missing User-Agent"
+            assert hdrs.get("User-Agent") == (_USER_AGENT), (
+                f"Session {i} missing User-Agent"
+            )
 
     async def test_get_auth_uri_with_redirects(self):
         """Initial GET uses auth_uri with allow_redirects."""
@@ -974,9 +858,7 @@ class TestB2cLoginArgVerification:
             text=SAMPLE_B2C_HTML,
             url=SAMPLE_PAGE_URL,
         )
-        post_resp = _make_mock_response(
-            status=200, text='{"status":"200"}'
-        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
         confirmed_resp = _make_mock_response(
             status=302,
             headers={"Location": REDIRECT_URL},
@@ -990,12 +872,8 @@ class TestB2cLoginArgVerification:
             get=MagicMock(return_value=confirmed_resp),
         )
 
-        with _patch_sessions(
-            login_session, raw_session
-        ):
-            await b2c_login_with_credentials(
-                AUTH_URI, "user@test.com", "pass"
-            )
+        with _patch_sessions(login_session, raw_session):
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
 
         # Verify initial GET
         call = login_session.get.call_args
@@ -1009,9 +887,7 @@ class TestB2cLoginArgVerification:
             text=SAMPLE_B2C_HTML,
             url=SAMPLE_PAGE_URL,
         )
-        post_resp = _make_mock_response(
-            status=200, text='{"status":"200"}'
-        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
         confirmed_resp = _make_mock_response(
             status=302,
             headers={"Location": REDIRECT_URL},
@@ -1025,12 +901,8 @@ class TestB2cLoginArgVerification:
             get=MagicMock(return_value=confirmed_resp),
         )
 
-        with _patch_sessions(
-            login_session, raw_session
-        ):
-            await b2c_login_with_credentials(
-                AUTH_URI, "me@test.com", "mypass"
-            )
+        with _patch_sessions(login_session, raw_session):
+            await b2c_login_with_credentials(AUTH_URI, "me@test.com", "mypass")
 
         call = raw_session.post.call_args
         data = call[1]["data"]
@@ -1045,9 +917,7 @@ class TestB2cLoginArgVerification:
             text=SAMPLE_B2C_HTML,
             url=SAMPLE_PAGE_URL,
         )
-        post_resp = _make_mock_response(
-            status=200, text='{"status":"200"}'
-        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
         confirmed_resp = _make_mock_response(
             status=302,
             headers={"Location": REDIRECT_URL},
@@ -1061,30 +931,18 @@ class TestB2cLoginArgVerification:
             get=MagicMock(return_value=confirmed_resp),
         )
 
-        with _patch_sessions(
-            login_session, raw_session
-        ):
-            await b2c_login_with_credentials(
-                AUTH_URI, "me@test.com", "pass"
-            )
+        with _patch_sessions(login_session, raw_session):
+            await b2c_login_with_credentials(AUTH_URI, "me@test.com", "pass")
 
         call = raw_session.post.call_args
         hdrs = call[1]["headers"]
-        assert hdrs["X-CSRF-TOKEN"] == (
-            "dGVzdC1jc3JmLXRva2Vu"
-        )
-        assert hdrs["X-Requested-With"] == (
-            "XMLHttpRequest"
-        )
+        assert hdrs["X-CSRF-TOKEN"] == ("dGVzdC1jc3JmLXRva2Vu")
+        assert hdrs["X-Requested-With"] == ("XMLHttpRequest")
         assert hdrs["Referer"] == AUTH_URI
         assert "Origin" in hdrs
-        assert hdrs["Accept"] == (
-            "application/json, text/javascript,"
-            " */*; q=0.01"
-        )
+        assert hdrs["Accept"] == ("application/json, text/javascript, */*; q=0.01")
         assert hdrs["Content-Type"] == (
-            "application/x-www-form-urlencoded;"
-            " charset=UTF-8"
+            "application/x-www-form-urlencoded; charset=UTF-8"
         )
         assert "Cookie" in hdrs
 
@@ -1095,9 +953,7 @@ class TestB2cLoginArgVerification:
             text=SAMPLE_B2C_HTML,
             url=SAMPLE_PAGE_URL,
         )
-        post_resp = _make_mock_response(
-            status=200, text='{"status":"200"}'
-        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
         confirmed_resp = _make_mock_response(
             status=302,
             headers={"Location": REDIRECT_URL},
@@ -1111,12 +967,8 @@ class TestB2cLoginArgVerification:
             get=MagicMock(return_value=confirmed_resp),
         )
 
-        with _patch_sessions(
-            login_session, raw_session
-        ):
-            await b2c_login_with_credentials(
-                AUTH_URI, "me@test.com", "pass"
-            )
+        with _patch_sessions(login_session, raw_session):
+            await b2c_login_with_credentials(AUTH_URI, "me@test.com", "pass")
 
         call = raw_session.post.call_args
         assert call[1]["allow_redirects"] is False
@@ -1128,9 +980,7 @@ class TestB2cLoginArgVerification:
             text=SAMPLE_B2C_HTML,
             url=SAMPLE_PAGE_URL,
         )
-        post_resp = _make_mock_response(
-            status=200, text='{"status":"200"}'
-        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
         confirmed_resp = _make_mock_response(
             status=302,
             headers={"Location": REDIRECT_URL},
@@ -1144,28 +994,19 @@ class TestB2cLoginArgVerification:
             get=MagicMock(return_value=confirmed_resp),
         )
 
-        with _patch_sessions(
-            login_session, raw_session
-        ):
-            await b2c_login_with_credentials(
-                AUTH_URI, "me@test.com", "pass"
-            )
+        with _patch_sessions(login_session, raw_session):
+            await b2c_login_with_credentials(AUTH_URI, "me@test.com", "pass")
 
         # First GET on raw_session is the confirmed URL
         get_call = raw_session.get.call_args
-        url_arg = get_call[1].get(
-            "url", get_call[0][0]
-        )
+        url_arg = get_call[1].get("url", get_call[0][0])
         url_str = str(url_arg)
         assert "?" in url_str
         assert "rememberMe=false" in url_str
         assert "csrf_token=" in url_str
         assert f"p={_POLICY}" in url_str
         assert "tx=" in url_str
-        assert (
-            "api/CombinedSigninAndSignup/confirmed"
-            in url_str
-        )
+        assert "api/CombinedSigninAndSignup/confirmed" in url_str
 
     async def test_confirmed_get_no_redirects(self):
         """Confirmed GET uses allow_redirects=False."""
@@ -1174,9 +1015,7 @@ class TestB2cLoginArgVerification:
             text=SAMPLE_B2C_HTML,
             url=SAMPLE_PAGE_URL,
         )
-        post_resp = _make_mock_response(
-            status=200, text='{"status":"200"}'
-        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
         confirmed_resp = _make_mock_response(
             status=302,
             headers={"Location": REDIRECT_URL},
@@ -1190,12 +1029,8 @@ class TestB2cLoginArgVerification:
             get=MagicMock(return_value=confirmed_resp),
         )
 
-        with _patch_sessions(
-            login_session, raw_session
-        ):
-            await b2c_login_with_credentials(
-                AUTH_URI, "me@test.com", "pass"
-            )
+        with _patch_sessions(login_session, raw_session):
+            await b2c_login_with_credentials(AUTH_URI, "me@test.com", "pass")
 
         get_call = raw_session.get.call_args
         assert get_call[1]["allow_redirects"] is False
@@ -1207,9 +1042,7 @@ class TestB2cLoginArgVerification:
             text=SAMPLE_B2C_HTML,
             url=SAMPLE_PAGE_URL,
         )
-        post_resp = _make_mock_response(
-            status=200, text='{"status":"200"}'
-        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
         confirmed_resp = _make_mock_response(
             status=302,
             headers={"Location": REDIRECT_URL},
@@ -1223,12 +1056,8 @@ class TestB2cLoginArgVerification:
             get=MagicMock(return_value=confirmed_resp),
         )
 
-        with _patch_sessions(
-            login_session, raw_session
-        ):
-            await b2c_login_with_credentials(
-                AUTH_URI, "me@test.com", "pass"
-            )
+        with _patch_sessions(login_session, raw_session):
+            await b2c_login_with_credentials(AUTH_URI, "me@test.com", "pass")
 
         get_call = raw_session.get.call_args
         hdrs = get_call[1]["headers"]
@@ -1269,12 +1098,8 @@ class TestB2cLoginArgVerification:
             get=MagicMock(return_value=confirmed_resp),
         )
 
-        with _patch_sessions(
-            login_session, raw_session
-        ):
-            result = await b2c_login_with_credentials(
-                AUTH_URI, "me@test.com", "pass"
-            )
+        with _patch_sessions(login_session, raw_session):
+            result = await b2c_login_with_credentials(AUTH_URI, "me@test.com", "pass")
 
         assert result == REDIRECT_URL
         # Verify cookies were merged
@@ -1291,16 +1116,10 @@ class TestB2cLoginArgVerification:
                 text=SAMPLE_B2C_HTML,
                 url=SAMPLE_PAGE_URL,
             )
-            post_resp = _make_mock_response(
-                status=200, text='{"status":"200"}'
-            )
+            post_resp = _make_mock_response(status=200, text='{"status":"200"}')
             redir = _make_mock_response(
                 status=code,
-                headers={
-                    "Location": (
-                        "https://example.com/hop"
-                    )
-                },
+                headers={"Location": ("https://example.com/hop")},
             )
             final = _make_mock_response(
                 status=302,
@@ -1319,16 +1138,12 @@ class TestB2cLoginArgVerification:
             )
 
             with _patch_session(session):
-                result = (
-                    await b2c_login_with_credentials(
-                        AUTH_URI,
-                        "user@test.com",
-                        "pass",
-                    )
+                result = await b2c_login_with_credentials(
+                    AUTH_URI,
+                    "user@test.com",
+                    "pass",
                 )
-            assert result == REDIRECT_URL, (
-                f"Failed for status {code}"
-            )
+            assert result == REDIRECT_URL, f"Failed for status {code}"
 
 
 # -------------------------------------------------------------------
@@ -1340,10 +1155,7 @@ class TestConstants:
     """Kill mutants on module-level constant strings."""
 
     def test_b2c_policy_value(self):
-        assert _B2C_POLICY == (
-            "B2C_1A_FirePhoneSignUpOrSignIn"
-            "WithPhoneOrEmail"
-        )
+        assert _B2C_POLICY == ("B2C_1A_FirePhoneSignUpOrSignInWithPhoneOrEmail")
 
     def test_user_agent_contains_mozilla(self):
         assert "Mozilla/5.0" in _USER_AGENT

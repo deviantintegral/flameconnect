@@ -556,9 +556,15 @@ class TestDisplayParameter:
 
     def test_dispatches_software_version(self, capsys):
         param = SoftwareVersionParam(
-            ui_major=1, ui_minor=0, ui_test=0,
-            control_major=1, control_minor=0, control_test=0,
-            relay_major=1, relay_minor=0, relay_test=0,
+            ui_major=1,
+            ui_minor=0,
+            ui_test=0,
+            control_major=1,
+            control_minor=0,
+            control_test=0,
+            relay_major=1,
+            relay_minor=0,
+            relay_test=0,
         )
         _display_parameter(param)
         assert "[327] Software Version" in capsys.readouterr().out
@@ -696,9 +702,7 @@ class TestCmdSet:
 
     async def test_dispatch_mode(self, capsys):
         client = AsyncMock()
-        overview = FireOverview(
-            fire=_make_fire(), parameters=[_make_mode_param()]
-        )
+        overview = FireOverview(fire=_make_fire(), parameters=[_make_mode_param()])
         client.get_fire_overview.return_value = overview
         await cmd_set(client, FIRE_ID, "mode", "standby")
         out = capsys.readouterr().out
@@ -756,9 +760,7 @@ class TestCmdSet:
 
     async def test_dispatch_heat_mode(self, capsys):
         client = AsyncMock()
-        overview = FireOverview(
-            fire=_make_fire(), parameters=[_make_heat_param()]
-        )
+        overview = FireOverview(fire=_make_fire(), parameters=[_make_heat_param()])
         client.get_fire_overview.return_value = overview
         await cmd_set(client, FIRE_ID, "heat-mode", "eco")
         out = capsys.readouterr().out
@@ -766,9 +768,7 @@ class TestCmdSet:
 
     async def test_dispatch_heat_temp(self, capsys):
         client = AsyncMock()
-        overview = FireOverview(
-            fire=_make_fire(), parameters=[_make_heat_param()]
-        )
+        overview = FireOverview(fire=_make_fire(), parameters=[_make_heat_param()])
         client.get_fire_overview.return_value = overview
         await cmd_set(client, FIRE_ID, "heat-temp", "25.0")
         out = capsys.readouterr().out
@@ -1102,9 +1102,7 @@ class TestSetHeatModeEdgeCases:
 
     async def test_boost_with_duration(self, capsys):
         client = AsyncMock()
-        overview = FireOverview(
-            fire=_make_fire(), parameters=[_make_heat_param()]
-        )
+        overview = FireOverview(fire=_make_fire(), parameters=[_make_heat_param()])
         client.get_fire_overview.return_value = overview
         await cmd_set(client, FIRE_ID, "heat-mode", "boost:15")
         out = capsys.readouterr().out
@@ -1275,8 +1273,10 @@ class TestAsyncMain:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("flameconnect.cli.MsalAuth"), \
-             patch("flameconnect.cli.FlameConnectClient", return_value=mock_client):
+        with (
+            patch("flameconnect.cli.MsalAuth"),
+            patch("flameconnect.cli.FlameConnectClient", return_value=mock_client),
+        ):
             await async_main(args)
         mock_client.get_fires.assert_awaited_once()
 
@@ -1288,8 +1288,10 @@ class TestAsyncMain:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("flameconnect.cli.MsalAuth"), \
-             patch("flameconnect.cli.FlameConnectClient", return_value=mock_client):
+        with (
+            patch("flameconnect.cli.MsalAuth"),
+            patch("flameconnect.cli.FlameConnectClient", return_value=mock_client),
+        ):
             await async_main(args)
         mock_client.get_fire_overview.assert_awaited_once_with(FIRE_ID)
 
@@ -1299,8 +1301,10 @@ class TestAsyncMain:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("flameconnect.cli.MsalAuth"), \
-             patch("flameconnect.cli.FlameConnectClient", return_value=mock_client):
+        with (
+            patch("flameconnect.cli.MsalAuth"),
+            patch("flameconnect.cli.FlameConnectClient", return_value=mock_client),
+        ):
             await async_main(args)
         mock_client.turn_on.assert_awaited_once_with(FIRE_ID)
 
@@ -1310,8 +1314,10 @@ class TestAsyncMain:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("flameconnect.cli.MsalAuth"), \
-             patch("flameconnect.cli.FlameConnectClient", return_value=mock_client):
+        with (
+            patch("flameconnect.cli.MsalAuth"),
+            patch("flameconnect.cli.FlameConnectClient", return_value=mock_client),
+        ):
             await async_main(args)
         mock_client.turn_off.assert_awaited_once_with(FIRE_ID)
 
@@ -1327,8 +1333,10 @@ class TestAsyncMain:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("flameconnect.cli.MsalAuth"), \
-             patch("flameconnect.cli.FlameConnectClient", return_value=mock_client):
+        with (
+            patch("flameconnect.cli.MsalAuth"),
+            patch("flameconnect.cli.FlameConnectClient", return_value=mock_client),
+        ):
             await async_main(args)
         mock_client.write_parameters.assert_awaited_once()
 
@@ -1348,8 +1356,10 @@ class TestMain:
     """Tests for the synchronous main() entry point."""
 
     def test_main_calls_async_main(self):
-        with patch("flameconnect.cli.build_parser") as mock_parser_fn, \
-             patch("flameconnect.cli.asyncio") as mock_asyncio:
+        with (
+            patch("flameconnect.cli.build_parser") as mock_parser_fn,
+            patch("flameconnect.cli.asyncio") as mock_asyncio,
+        ):
             mock_parser = MagicMock()
             mock_args = argparse.Namespace(command="list", verbose=False)
             mock_parser.parse_args.return_value = mock_args
@@ -1360,9 +1370,11 @@ class TestMain:
             mock_asyncio.run.assert_called_once()
 
     def test_main_verbose_logging(self):
-        with patch("flameconnect.cli.build_parser") as mock_parser_fn, \
-             patch("flameconnect.cli.asyncio"), \
-             patch("flameconnect.cli.logging") as mock_logging:
+        with (
+            patch("flameconnect.cli.build_parser") as mock_parser_fn,
+            patch("flameconnect.cli.asyncio"),
+            patch("flameconnect.cli.logging") as mock_logging,
+        ):
             import logging as real_logging
 
             mock_parser = MagicMock()
@@ -1374,14 +1386,14 @@ class TestMain:
 
             main()
 
-            mock_logging.basicConfig.assert_called_once_with(
-                level=real_logging.DEBUG
-            )
+            mock_logging.basicConfig.assert_called_once_with(level=real_logging.DEBUG)
 
     def test_main_no_verbose_logging(self):
-        with patch("flameconnect.cli.build_parser") as mock_parser_fn, \
-             patch("flameconnect.cli.asyncio"), \
-             patch("flameconnect.cli.logging") as mock_logging:
+        with (
+            patch("flameconnect.cli.build_parser") as mock_parser_fn,
+            patch("flameconnect.cli.asyncio"),
+            patch("flameconnect.cli.logging") as mock_logging,
+        ):
             import logging as real_logging
 
             mock_parser = MagicMock()
@@ -1393,9 +1405,7 @@ class TestMain:
 
             main()
 
-            mock_logging.basicConfig.assert_called_once_with(
-                level=real_logging.WARNING
-            )
+            mock_logging.basicConfig.assert_called_once_with(level=real_logging.WARNING)
 
 
 # ===================================================================
@@ -1455,9 +1465,11 @@ class TestMaskedInput:
         mock_termios.TCSADRAIN = 1
         mock_tty = MagicMock()
 
-        with patch("sys.stdin", mock_stdin), \
-             patch("sys.stdout", mock_stdout), \
-             patch.dict("sys.modules", {"termios": mock_termios, "tty": mock_tty}):
+        with (
+            patch("sys.stdin", mock_stdin),
+            patch("sys.stdout", mock_stdout),
+            patch.dict("sys.modules", {"termios": mock_termios, "tty": mock_tty}),
+        ):
             return _masked_input(prompt)
 
     def test_basic_input(self):
@@ -1623,9 +1635,15 @@ class TestCmdStatusAllParams:
             HeatModeParam(heat_control=HeatControl.ENABLED),
             TimerParam(timer_status=TimerStatus.ENABLED, duration=60),
             SoftwareVersionParam(
-                ui_major=1, ui_minor=0, ui_test=0,
-                control_major=2, control_minor=0, control_test=0,
-                relay_major=3, relay_minor=0, relay_test=0,
+                ui_major=1,
+                ui_minor=0,
+                ui_test=0,
+                control_major=2,
+                control_minor=0,
+                control_test=0,
+                relay_major=3,
+                relay_minor=0,
+                relay_test=0,
             ),
             ErrorParam(error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=0),
             TempUnitParam(unit=TempUnit.CELSIUS),

@@ -68,9 +68,7 @@ class _ClickableValue(Static):
     _ClickableValue.clickable:hover { background: $surface-lighten-2; }
     """
 
-    def __init__(
-        self, content: str, action: str | None = None, **kwargs: Any
-    ) -> None:
+    def __init__(self, content: str, action: str | None = None, **kwargs: Any) -> None:
         super().__init__(content, **kwargs)
         self._action = action
         if action:
@@ -105,9 +103,7 @@ class ClickableParam(Horizontal):
     def compose(self) -> ComposeResult:
         """Compose the label and value children."""
         yield Static(self._label, classes="param-label")
-        yield _ClickableValue(
-            self._value, action=self._action
-        )
+        yield _ClickableValue(self._value, action=self._action)
 
 
 def _display_name(value: IntEnum) -> str:
@@ -117,10 +113,7 @@ def _display_name(value: IntEnum) -> str:
 
 def _format_rgbw(color: RGBWColor) -> str:
     """Format an RGBW color value for display."""
-    return (
-        f"R:{color.red} G:{color.green} "
-        f"B:{color.blue} W:{color.white}"
-    )
+    return f"R:{color.red} G:{color.green} B:{color.blue} W:{color.white}"
 
 
 _MODE_DISPLAY: dict[FireMode, str] = {
@@ -136,9 +129,7 @@ def _temp_suffix(temp_unit: TempUnitParam | None) -> str:
     return "C" if temp_unit.unit == TempUnit.CELSIUS else "F"
 
 
-def _convert_temp(
-    celsius: float, unit: TempUnit
-) -> float:
+def _convert_temp(celsius: float, unit: TempUnit) -> float:
     """Convert a Celsius temperature for display.
 
     Returns the value unchanged when *unit* is CELSIUS, or
@@ -157,16 +148,10 @@ def _format_mode(
 
     Returns a list of (label, value, action) tuples.
     """
-    mode_label = _MODE_DISPLAY.get(
-        param.mode, _display_name(param.mode)
-    )
+    mode_label = _MODE_DISPLAY.get(param.mode, _display_name(param.mode))
     suffix = _temp_suffix(temp_unit)
-    unit = (
-        temp_unit.unit if temp_unit else TempUnit.CELSIUS
-    )
-    display_temp = _convert_temp(
-        param.target_temperature, unit
-    )
+    unit = temp_unit.unit if temp_unit else TempUnit.CELSIUS
+    display_temp = _convert_temp(param.target_temperature, unit)
     return [
         (
             "[bold]Mode:[/bold] ",
@@ -258,17 +243,11 @@ def _format_heat(
     from flameconnect.models import HeatMode
 
     boost_value = (
-        f"{param.boost_duration}min"
-        if param.heat_mode == HeatMode.BOOST
-        else "Off"
+        f"{param.boost_duration}min" if param.heat_mode == HeatMode.BOOST else "Off"
     )
     suffix = _temp_suffix(temp_unit)
-    unit = (
-        temp_unit.unit if temp_unit else TempUnit.CELSIUS
-    )
-    display_temp = _convert_temp(
-        param.setpoint_temperature, unit
-    )
+    unit = temp_unit.unit if temp_unit else TempUnit.CELSIUS
+    display_temp = _convert_temp(param.setpoint_temperature, unit)
     return [
         (
             "[bold]Heat:[/bold] ",
@@ -316,20 +295,10 @@ def _format_timer(
 
     from flameconnect.models import TimerStatus
 
-    value = (
-        f"{_display_name(param.timer_status)}"
-        f"  Duration: {param.duration}min"
-    )
-    if (
-        param.timer_status == TimerStatus.ENABLED
-        and param.duration > 0
-    ):
-        off_time = datetime.now() + timedelta(
-            minutes=param.duration
-        )
-        value += (
-            f"  Off at {off_time.strftime('%H:%M')}"
-        )
+    value = f"{_display_name(param.timer_status)}  Duration: {param.duration}min"
+    if param.timer_status == TimerStatus.ENABLED and param.duration > 0:
+        off_time = datetime.now() + timedelta(minutes=param.duration)
+        value += f"  Off at {off_time.strftime('%H:%M')}"
     return [("[bold]Timer:[/bold] ", value, "toggle_timer")]
 
 
@@ -417,8 +386,7 @@ def _format_sound(
     return [
         (
             "[bold]Sound:[/bold] ",
-            f"Volume {param.volume}"
-            f"  File: {param.sound_file}",
+            f"Volume {param.volume}  File: {param.sound_file}",
             None,
         ),
     ]
@@ -474,50 +442,28 @@ def format_parameters(
             break
 
     # Collect formatted tuples keyed by type.
-    formatted: dict[
-        type, list[tuple[str, str, str | None]]
-    ] = {}
+    formatted: dict[type, list[tuple[str, str, str | None]]] = {}
     for param in params:
         if isinstance(param, ModeParam):
-            formatted[ModeParam] = _format_mode(
-                param, temp_unit
-            )
+            formatted[ModeParam] = _format_mode(param, temp_unit)
         elif isinstance(param, HeatParam):
-            formatted[HeatParam] = _format_heat(
-                param, temp_unit
-            )
+            formatted[HeatParam] = _format_heat(param, temp_unit)
         elif isinstance(param, HeatModeParam):
-            formatted[HeatModeParam] = (
-                _format_heat_mode(param)
-            )
+            formatted[HeatModeParam] = _format_heat_mode(param)
         elif isinstance(param, FlameEffectParam):
-            formatted[FlameEffectParam] = (
-                _format_flame_effect(param)
-            )
+            formatted[FlameEffectParam] = _format_flame_effect(param)
         elif isinstance(param, TimerParam):
-            formatted[TimerParam] = (
-                _format_timer(param)
-            )
+            formatted[TimerParam] = _format_timer(param)
         elif isinstance(param, SoftwareVersionParam):
-            formatted[SoftwareVersionParam] = (
-                _format_software_version(param)
-            )
+            formatted[SoftwareVersionParam] = _format_software_version(param)
         elif isinstance(param, ErrorParam):
-            formatted[ErrorParam] = (
-                _format_error(param)
-            )
+            formatted[ErrorParam] = _format_error(param)
         elif isinstance(param, TempUnitParam):
-            formatted[TempUnitParam] = (
-                _format_temp_unit(param)
-            )
+            formatted[TempUnitParam] = _format_temp_unit(param)
         elif isinstance(param, SoundParam):
-            formatted[SoundParam] = (
-                _format_sound(param)
-            )
+            formatted[SoundParam] = _format_sound(param)
         elif isinstance(param, LogEffectParam):
-            formatted[LogEffectParam] = (
-                _format_log_effect(param)
-            )
+            formatted[LogEffectParam] = _format_log_effect(param)
 
     # Desired display order (ErrorParam last).
     display_order: list[type] = [
@@ -538,9 +484,7 @@ def format_parameters(
             result.extend(formatted[t])
 
     if not result:
-        result.append(
-            ("[dim]No parameters available[/dim]", "", None)
-        )
+        result.append(("[dim]No parameters available[/dim]", "", None))
 
     return result
 
@@ -618,50 +562,115 @@ _HEAT_ROWS = 2
 # atoms: (text, trailing_gap_weight)
 _FLAME_DEFS: list[tuple[float, int, list[tuple[str, int]]]] = [
     # Row 0: Sparse tips
-    (0.95, 0, [
-        ("( )", 3), (",", 5), (")", 5),
-        (",", 5), ("( )", 3), (",", 5), ("( )", 0),
-    ]),
+    (
+        0.95,
+        0,
+        [
+            ("( )", 3),
+            (",", 5),
+            (")", 5),
+            (",", 5),
+            ("( )", 3),
+            (",", 5),
+            ("( )", 0),
+        ],
+    ),
     # Row 1: Forming columns
-    (0.95, 0, [
-        ("( \\ )", 2), ("( | )", 2), ("(  )", 1),
-        ("( \\)", 2), ("( | )", 2),
-        ("( | )", 1), ("( )", 0),
-    ]),
+    (
+        0.95,
+        0,
+        [
+            ("( \\ )", 2),
+            ("( | )", 2),
+            ("(  )", 1),
+            ("( \\)", 2),
+            ("( | )", 2),
+            ("( | )", 1),
+            ("( )", 0),
+        ],
+    ),
     # Row 2: Growing
-    (0.95, 1, [
-        ("( \\ \\ )", 2), ("( | | )", 2), ("( \\ )", 1),
-        ("( \\ \\)", 2), ("( / | )", 2),
-        ("( / | )", 1), ("( )", 0),
-    ]),
+    (
+        0.95,
+        1,
+        [
+            ("( \\ \\ )", 2),
+            ("( | | )", 2),
+            ("( \\ )", 1),
+            ("( \\ \\)", 2),
+            ("( / | )", 2),
+            ("( / | )", 1),
+            ("( )", 0),
+        ],
+    ),
     # Row 3: Full width
-    (0.95, 1, [
-        ("( \\\\ \\)", 2), ("( || |)", 2), ("( \\\\ )", 1),
-        ("( \\\\ )", 2), ("( /| |)", 2),
-        ("( /| | )", 1), ("( )", 0),
-    ]),
+    (
+        0.95,
+        1,
+        [
+            ("( \\\\ \\)", 2),
+            ("( || |)", 2),
+            ("( \\\\ )", 1),
+            ("( \\\\ )", 2),
+            ("( /| |)", 2),
+            ("( /| | )", 1),
+            ("( )", 0),
+        ],
+    ),
     # Row 4: Dense mid
-    (0.95, 1, [
-        ("( \\\\ )", 2), ("( || )", 2), ("( \\\\ )", 1),
-        ("( || )", 2), ("( /| )", 2),
-        ("( /| |)", 1), ("( )", 0),
-    ]),
+    (
+        0.95,
+        1,
+        [
+            ("( \\\\ )", 2),
+            ("( || )", 2),
+            ("( \\\\ )", 1),
+            ("( || )", 2),
+            ("( /| )", 2),
+            ("( /| |)", 1),
+            ("( )", 0),
+        ],
+    ),
     # Row 5: Narrowing
-    (0.95, 2, [
-        ("( \\\\)", 2), ("( //)", 2), ("( \\\\ )", 1),
-        ("( || )", 2), ("( // )", 2),
-        ("( // )", 1), ("( )", 0),
-    ]),
+    (
+        0.95,
+        2,
+        [
+            ("( \\\\)", 2),
+            ("( //)", 2),
+            ("( \\\\ )", 1),
+            ("( || )", 2),
+            ("( // )", 2),
+            ("( // )", 1),
+            ("( )", 0),
+        ],
+    ),
     # Row 6: Base
-    (0.95, 2, [
-        ("(\\)", 2), ("(/)", 2), ("(\\)(|)", 3),
-        ("(/)", 2), ("(/)", 2), ("()", 0),
-    ]),
+    (
+        0.95,
+        2,
+        [
+            ("(\\)", 2),
+            ("(/)", 2),
+            ("(\\)(|)", 3),
+            ("(/)", 2),
+            ("(/)", 2),
+            ("()", 0),
+        ],
+    ),
     # Row 7: Base
-    (0.95, 2, [
-        ("(\\)", 2), ("(/)", 2), ("(\\|/)", 4),
-        ("(/)", 2), ("(/)", 2), ("()", 0),
-    ]),
+    (
+        0.95,
+        2,
+        [
+            ("(\\)", 2),
+            ("(/)", 2),
+            ("(\\|/)", 4),
+            ("(/)", 2),
+            ("(/)", 2),
+            ("()", 0),
+        ],
+    ),
 ]
 
 
@@ -729,8 +738,8 @@ def _build_fire_art(
         zone (reducing the flame row budget to keep total height
         constant).
     """
-    ow = w - 2   # fill width between outer frame borders
-    iw = w - 4   # content width between inner frame borders
+    ow = w - 2  # fill width between outer frame borders
+    iw = w - 4  # content width between inner frame borders
 
     # Rotate palette for animation
     palette = _rotate_palette(flame_palette, anim_frame)
@@ -745,9 +754,7 @@ def _build_fire_art(
 
     # Reserve rows for heat indicators (reduce flame budget)
     heat_row_count = _HEAT_ROWS if heat_on else 0
-    flame_rows_effective = max(
-        flame_rows - heat_row_count, _MIN_FLAME_ROWS
-    )
+    flame_rows_effective = max(flame_rows - heat_row_count, _MIN_FLAME_ROWS)
 
     num_defs = len(_FLAME_DEFS)
     if flame_rows_effective >= num_defs:
@@ -755,16 +762,14 @@ def _build_fire_art(
         defs_to_render = _FLAME_DEFS
     else:
         blank_above = 0
-        defs_to_render = _FLAME_DEFS[
-            num_defs - flame_rows_effective:
-        ]
+        defs_to_render = _FLAME_DEFS[num_defs - flame_rows_effective :]
 
     # -- heat indicator rows (above frame) --
     if heat_on:
         # Alternate two wave patterns for visual variety
         wave_chars = [
-            "\u2248" * ow,   # (approx-equal signs)
-            "~" * ow,        # (tildes)
+            "\u2248" * ow,  # (approx-equal signs)
+            "~" * ow,  # (tildes)
         ]
         actual_heat_rows = flame_rows - flame_rows_effective
         for i in range(actual_heat_rows):
@@ -872,9 +877,7 @@ class FireplaceVisual(Static):
         if heat_param is not None:
             from flameconnect.models import HeatStatus
 
-            self._heat_on = (
-                heat_param.heat_status == HeatStatus.ON
-            )
+            self._heat_on = heat_param.heat_status == HeatStatus.ON
         else:
             self._heat_on = False
 
@@ -898,20 +901,13 @@ class FireplaceVisual(Static):
         if fire_on:
             speed_changed = new_speed != self._flame_speed
             self._flame_speed = new_speed
-            if (
-                self._anim_timer is None
-                or speed_changed
-            ):
+            if self._anim_timer is None or speed_changed:
                 # Cancel existing timer if any
                 if self._anim_timer is not None:
                     self._anim_timer.stop()
                     self._anim_timer = None
-                interval = _FLAME_SPEED_INTERVALS.get(
-                    self._flame_speed, 0.3
-                )
-                self._anim_timer = self.set_interval(
-                    interval, self._advance_frame
-                )
+                interval = _FLAME_SPEED_INTERVALS.get(self._flame_speed, 0.3)
+                self._anim_timer = self.set_interval(interval, self._advance_frame)
         else:
             # Fire is off -- stop animation
             if self._anim_timer is not None:
@@ -944,16 +940,10 @@ class FireplaceVisual(Static):
         # LED and media styling applies when power is on,
         # regardless of flame effect state.
         if power_on and flame_effect is not None:
-            palette = _FLAME_PALETTES.get(
-                flame_effect.flame_color, _DEFAULT_PALETTE
-            )
+            palette = _FLAME_PALETTES.get(flame_effect.flame_color, _DEFAULT_PALETTE)
             if flame_effect.light_status == LightStatus.ON:
-                led_style = _rgbw_to_style(
-                    flame_effect.overhead_color
-                )
-            media_style = _rgbw_to_style(
-                flame_effect.media_color
-            )
+                led_style = _rgbw_to_style(flame_effect.overhead_color)
+            media_style = _rgbw_to_style(flame_effect.media_color)
 
         # Flames are only visible when power is on AND
         # flame effect is ON (or not yet received).
@@ -966,7 +956,8 @@ class FireplaceVisual(Static):
             fire_on = False
 
         return _build_fire_art(
-            w, h,
+            w,
+            h,
             fire_on=fire_on,
             flame_palette=palette,
             led_style=led_style,
@@ -983,9 +974,7 @@ class ParameterPanel(Vertical):
         """Initial composition -- a loading placeholder."""
         yield Static("[dim]Loading...[/dim]")
 
-    def update_parameters(
-        self, params: list[Parameter]
-    ) -> None:
+    def update_parameters(self, params: list[Parameter]) -> None:
         """Update the panel with new parameter data.
 
         Clears existing children and mounts new
@@ -997,9 +986,7 @@ class ParameterPanel(Vertical):
         fields = format_parameters(params)
         widgets: list[ClickableParam] = []
         for label, value, action in fields:
-            widgets.append(
-                ClickableParam(label, value, action=action)
-            )
+            widgets.append(ClickableParam(label, value, action=action))
         self.query("*").remove()
         self.mount(*widgets)
 

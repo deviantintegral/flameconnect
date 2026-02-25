@@ -579,37 +579,27 @@ class TestCheckLengthErrorMessages:
 
     def test_mode_error_says_mode(self):
         raw = _make_header(321, 3) + bytes([1])
-        with pytest.raises(
-            ProtocolError, match=r"for Mode:"
-        ):
+        with pytest.raises(ProtocolError, match=r"for Mode:"):
             decode_parameter(ParameterId.MODE, raw)
 
     def test_flame_effect_error_says_flame_effect(self):
         raw = _make_header(322, 20) + bytes([0] * 5)
-        with pytest.raises(
-            ProtocolError, match=r"for FlameEffect:"
-        ):
+        with pytest.raises(ProtocolError, match=r"for FlameEffect:"):
             decode_parameter(ParameterId.FLAME_EFFECT, raw)
 
     def test_heat_settings_error_says_heat_settings(self):
         raw = _make_header(323, 7) + bytes([0])
-        with pytest.raises(
-            ProtocolError, match=r"for HeatSettings:"
-        ):
+        with pytest.raises(ProtocolError, match=r"for HeatSettings:"):
             decode_parameter(ParameterId.HEAT_SETTINGS, raw)
 
     def test_heat_mode_error_says_heat_mode(self):
         raw = _make_header(325, 1)
-        with pytest.raises(
-            ProtocolError, match=r"for HeatMode:"
-        ):
+        with pytest.raises(ProtocolError, match=r"for HeatMode:"):
             decode_parameter(ParameterId.HEAT_MODE, raw)
 
     def test_timer_error_says_timer(self):
         raw = _make_header(326, 3) + bytes([0])
-        with pytest.raises(
-            ProtocolError, match=r"for Timer:"
-        ):
+        with pytest.raises(ProtocolError, match=r"for Timer:"):
             decode_parameter(ParameterId.TIMER, raw)
 
     def test_software_version_error(self):
@@ -618,38 +608,26 @@ class TestCheckLengthErrorMessages:
             ProtocolError,
             match=r"for SoftwareVersion:",
         ):
-            decode_parameter(
-                ParameterId.SOFTWARE_VERSION, raw
-            )
+            decode_parameter(ParameterId.SOFTWARE_VERSION, raw)
 
     def test_error_param_error_says_error(self):
         raw = _make_header(329, 4) + bytes([0])
-        with pytest.raises(
-            ProtocolError, match=r"for Error:"
-        ):
+        with pytest.raises(ProtocolError, match=r"for Error:"):
             decode_parameter(ParameterId.ERROR, raw)
 
     def test_temp_unit_error_says_temp_unit(self):
         raw = _make_header(236, 1)
-        with pytest.raises(
-            ProtocolError, match=r"for TempUnit:"
-        ):
-            decode_parameter(
-                ParameterId.TEMPERATURE_UNIT, raw
-            )
+        with pytest.raises(ProtocolError, match=r"for TempUnit:"):
+            decode_parameter(ParameterId.TEMPERATURE_UNIT, raw)
 
     def test_sound_error_says_sound(self):
         raw = _make_header(369, 2) + bytes([0])
-        with pytest.raises(
-            ProtocolError, match=r"for Sound:"
-        ):
+        with pytest.raises(ProtocolError, match=r"for Sound:"):
             decode_parameter(ParameterId.SOUND, raw)
 
     def test_log_effect_error_says_log_effect(self):
         raw = _make_header(370, 8) + bytes([0] * 3)
-        with pytest.raises(
-            ProtocolError, match=r"for LogEffect:"
-        ):
+        with pytest.raises(ProtocolError, match=r"for LogEffect:"):
             decode_parameter(ParameterId.LOG_EFFECT, raw)
 
     def test_error_includes_expected_and_got(self):
@@ -672,9 +650,15 @@ class TestEncodeErrorMessages:
 
     def test_software_version_error_text(self):
         param = SoftwareVersionParam(
-            ui_major=1, ui_minor=0, ui_test=0,
-            control_major=1, control_minor=0, control_test=0,
-            relay_major=1, relay_minor=0, relay_test=0,
+            ui_major=1,
+            ui_minor=0,
+            ui_test=0,
+            control_major=1,
+            control_minor=0,
+            control_test=0,
+            relay_major=1,
+            relay_minor=0,
+            relay_test=0,
         )
         with pytest.raises(ProtocolError) as exc_info:
             encode_parameter(param)
@@ -684,8 +668,10 @@ class TestEncodeErrorMessages:
 
     def test_error_param_error_text(self):
         param = ErrorParam(
-            error_byte1=0, error_byte2=0,
-            error_byte3=0, error_byte4=0,
+            error_byte1=0,
+            error_byte2=0,
+            error_byte3=0,
+            error_byte4=0,
         )
         with pytest.raises(ProtocolError) as exc_info:
             encode_parameter(param)
@@ -720,9 +706,7 @@ class TestExactEncodedBytes:
         assert raw[3] == 1  # CELSIUS = 1
 
     def test_mode_encoded_bytes(self):
-        param = ModeParam(
-            mode=FireMode.MANUAL, target_temperature=22.5
-        )
+        param = ModeParam(mode=FireMode.MANUAL, target_temperature=22.5)
         b64 = encode_parameter(param)
         raw = base64.b64decode(b64)
         assert len(raw) == 6
@@ -742,9 +726,7 @@ class TestExactEncodedBytes:
         assert raw[3] == 2  # ENABLED = 2
 
     def test_timer_encoded_bytes(self):
-        param = TimerParam(
-            timer_status=TimerStatus.ENABLED, duration=300
-        )
+        param = TimerParam(timer_status=TimerStatus.ENABLED, duration=300)
         b64 = encode_parameter(param)
         raw = base64.b64decode(b64)
         assert len(raw) == 6
@@ -814,13 +796,9 @@ class TestExactEncodedBytes:
             pulsating_effect=PulsatingEffect.ON,
             media_theme=MediaTheme.BLUE,
             media_light=LightStatus.ON,
-            media_color=RGBWColor(
-                red=10, green=20, blue=30, white=40
-            ),
+            media_color=RGBWColor(red=10, green=20, blue=30, white=40),
             overhead_light=LightStatus.ON,
-            overhead_color=RGBWColor(
-                red=50, green=60, blue=70, white=80
-            ),
+            overhead_color=RGBWColor(red=50, green=60, blue=70, white=80),
             light_status=LightStatus.ON,
             flame_color=FlameColor.YELLOW_RED,
             ambient_sensor=LightStatus.ON,
@@ -883,18 +861,14 @@ class TestTemperatureEncodingExact:
     """Verify exact byte values for temperature encoding."""
 
     def test_temp_22_5_encodes_to_22_and_5(self):
-        param = ModeParam(
-            mode=FireMode.MANUAL, target_temperature=22.5
-        )
+        param = ModeParam(mode=FireMode.MANUAL, target_temperature=22.5)
         b64 = encode_parameter(param)
         raw = base64.b64decode(b64)
         assert raw[4] == 22  # integer
         assert raw[5] == 5  # 0.5 * 10 = 5
 
     def test_temp_18_5_encodes_to_18_and_5(self):
-        param = ModeParam(
-            mode=FireMode.MANUAL, target_temperature=18.5
-        )
+        param = ModeParam(mode=FireMode.MANUAL, target_temperature=18.5)
         b64 = encode_parameter(param)
         raw = base64.b64decode(b64)
         assert raw[4] == 18
@@ -919,9 +893,26 @@ class TestBrightnessPulsatingBitfield:
         """brightness_byte=0b10 -> brightness=LOW(0), pulsating=ON."""
         raw = _make_header(322, 20) + bytes(
             [
-                1, 0, 0b10, 0, 0,
-                0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                1,
+                0,
+                0b10,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
             ]
         )
         result = decode_parameter(ParameterId.FLAME_EFFECT, raw)
@@ -932,9 +923,26 @@ class TestBrightnessPulsatingBitfield:
         """brightness_byte=0b11 -> brightness=LOW(1), pulsating=ON."""
         raw = _make_header(322, 20) + bytes(
             [
-                1, 0, 0b11, 0, 0,
-                0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                1,
+                0,
+                0b11,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
             ]
         )
         result = decode_parameter(ParameterId.FLAME_EFFECT, raw)
@@ -973,9 +981,22 @@ class TestFlameColorIndex:
     def test_flame_color_from_index_19(self):
         raw = _make_header(322, 20) + bytes(
             [
-                0, 0, 0, 0, 0,
-                0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
                 3,  # raw[19] = BLUE(3)
                 99,  # raw[20] = padding (different)
                 99,  # raw[21] = padding
@@ -996,45 +1017,29 @@ class TestHeatSettingsBoostBoundary:
 
     def test_exactly_7_bytes_boost_defaults_zero(self):
         """With exactly 7 bytes, boost_lo defaults to 0."""
-        raw = _make_header(323, 4) + bytes(
-            [1, 0, 22, 0]
-        )  # 7 bytes total
-        result = decode_parameter(
-            ParameterId.HEAT_SETTINGS, raw
-        )
+        raw = _make_header(323, 4) + bytes([1, 0, 22, 0])  # 7 bytes total
+        result = decode_parameter(ParameterId.HEAT_SETTINGS, raw)
         # boost_lo=0, boost_hi=0 => duration=(0|0)+1=1
         assert result.boost_duration == 1
 
     def test_exactly_8_bytes_boost_lo_read(self):
         """With 8 bytes, boost_lo is read from raw[7]."""
-        raw = _make_header(323, 5) + bytes(
-            [1, 0, 22, 0, 5]
-        )  # 8 bytes
-        result = decode_parameter(
-            ParameterId.HEAT_SETTINGS, raw
-        )
+        raw = _make_header(323, 5) + bytes([1, 0, 22, 0, 5])  # 8 bytes
+        result = decode_parameter(ParameterId.HEAT_SETTINGS, raw)
         # boost_lo=5, boost_hi=0 => (5|0)+1=6
         assert result.boost_duration == 6
 
     def test_exactly_9_bytes_boost_hi_read(self):
         """With 9 bytes, boost_hi is read from raw[8]."""
-        raw = _make_header(323, 6) + bytes(
-            [1, 0, 22, 0, 5, 2]
-        )  # 9 bytes
-        result = decode_parameter(
-            ParameterId.HEAT_SETTINGS, raw
-        )
+        raw = _make_header(323, 6) + bytes([1, 0, 22, 0, 5, 2])  # 9 bytes
+        result = decode_parameter(ParameterId.HEAT_SETTINGS, raw)
         # boost_lo=5, boost_hi=2 => (5|(2<<8))+1 = (5|512)+1=518
         assert result.boost_duration == 518
 
     def test_boost_hi_shift_amount(self):
         """Verify boost_hi is shifted left by 8 (not 9)."""
-        raw = _make_header(323, 6) + bytes(
-            [1, 0, 22, 0, 0, 1]
-        )  # 9 bytes
-        result = decode_parameter(
-            ParameterId.HEAT_SETTINGS, raw
-        )
+        raw = _make_header(323, 6) + bytes([1, 0, 22, 0, 0, 1])  # 9 bytes
+        result = decode_parameter(ParameterId.HEAT_SETTINGS, raw)
         # boost_lo=0, boost_hi=1 => (0|(1<<8))+1 = 257
         assert result.boost_duration == 257
 
@@ -1043,18 +1048,14 @@ class TestHeatSettingsBoostBoundary:
         raw = bytes(7)
         raw = _make_header(323, 4) + bytes([0, 0, 20, 0])
         assert len(raw) == 7
-        result = decode_parameter(
-            ParameterId.HEAT_SETTINGS, raw
-        )
+        result = decode_parameter(ParameterId.HEAT_SETTINGS, raw)
         assert result.boost_duration == 1
 
     def test_check_length_mutant_7_vs_8(self):
         """_check_length is called with 7 (not 8)."""
         # Exactly 7 bytes should NOT raise
         raw = _make_header(323, 4) + bytes([0, 0, 20, 0])
-        result = decode_parameter(
-            ParameterId.HEAT_SETTINGS, raw
-        )
+        result = decode_parameter(ParameterId.HEAT_SETTINGS, raw)
         assert isinstance(result, HeatParam)
 
 
@@ -1096,8 +1097,7 @@ class TestDecoderLogging:
 
     def test_decode_flame_effect_logs(self, caplog):
         raw = _make_header(322, 20) + bytes(
-            [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-             0, 0, 0, 0, 0, 0]
+            [1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         )
         with caplog.at_level(logging.DEBUG, "flameconnect"):
             decode_parameter(ParameterId.FLAME_EFFECT, raw)
@@ -1106,9 +1106,7 @@ class TestDecoderLogging:
         assert "Decoded FlameEffect" in caplog.text
 
     def test_decode_heat_settings_logs(self, caplog):
-        raw = _make_header(323, 7) + bytes(
-            [1, 0, 22, 0, 0, 0, 0]
-        )
+        raw = _make_header(323, 7) + bytes([1, 0, 22, 0, 0, 0, 0])
         with caplog.at_level(logging.DEBUG, "flameconnect"):
             decode_parameter(ParameterId.HEAT_SETTINGS, raw)
         _assert_no_xx(caplog.text)
@@ -1133,21 +1131,15 @@ class TestDecoderLogging:
         assert "Decoded Timer" in caplog.text
 
     def test_decode_software_version_logs(self, caplog):
-        raw = _make_header(327, 9) + bytes(
-            [1, 2, 3, 4, 5, 6, 7, 8, 9]
-        )
+        raw = _make_header(327, 9) + bytes([1, 2, 3, 4, 5, 6, 7, 8, 9])
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            decode_parameter(
-                ParameterId.SOFTWARE_VERSION, raw
-            )
+            decode_parameter(ParameterId.SOFTWARE_VERSION, raw)
         _assert_no_xx(caplog.text)
         _assert_no_none(caplog.text)
         assert "Decoded SoftwareVersion" in caplog.text
 
     def test_decode_error_logs(self, caplog):
-        raw = _make_header(329, 4) + bytes(
-            [0xFF, 1, 0x80, 0x42]
-        )
+        raw = _make_header(329, 4) + bytes([0xFF, 1, 0x80, 0x42])
         with caplog.at_level(logging.DEBUG, "flameconnect"):
             decode_parameter(ParameterId.ERROR, raw)
         _assert_no_xx(caplog.text)
@@ -1163,9 +1155,7 @@ class TestDecoderLogging:
         assert "Decoded Sound" in caplog.text
 
     def test_decode_log_effect_logs(self, caplog):
-        raw = _make_header(370, 8) + bytes(
-            [1, 0, 100, 200, 150, 50, 1, 0]
-        )
+        raw = _make_header(370, 8) + bytes([1, 0, 100, 200, 150, 50, 1, 0])
         with caplog.at_level(logging.DEBUG, "flameconnect"):
             decode_parameter(ParameterId.LOG_EFFECT, raw)
         _assert_no_xx(caplog.text)
@@ -1193,9 +1183,7 @@ class TestEncoderLogging:
         assert "Encoding TempUnit" in caplog.text
 
     def test_encode_mode_logs(self, caplog):
-        param = ModeParam(
-            mode=FireMode.MANUAL, target_temperature=22.5
-        )
+        param = ModeParam(mode=FireMode.MANUAL, target_temperature=22.5)
         with caplog.at_level(logging.DEBUG, "flameconnect"):
             encode_parameter(param)
         _assert_no_xx(caplog.text)
@@ -1237,9 +1225,7 @@ class TestEncoderLogging:
         assert "Encoding HeatSettings" in caplog.text
 
     def test_encode_heat_mode_logs(self, caplog):
-        param = HeatModeParam(
-            heat_control=HeatControl.ENABLED
-        )
+        param = HeatModeParam(heat_control=HeatControl.ENABLED)
         with caplog.at_level(logging.DEBUG, "flameconnect"):
             encode_parameter(param)
         _assert_no_xx(caplog.text)
@@ -1248,9 +1234,7 @@ class TestEncoderLogging:
         assert "%s" not in caplog.text
 
     def test_encode_timer_logs(self, caplog):
-        param = TimerParam(
-            timer_status=TimerStatus.ENABLED, duration=120
-        )
+        param = TimerParam(timer_status=TimerStatus.ENABLED, duration=120)
         with caplog.at_level(logging.DEBUG, "flameconnect"):
             encode_parameter(param)
         _assert_no_xx(caplog.text)
@@ -1307,13 +1291,10 @@ class TestDecoderLoggingArgs:
     def test_flame_effect_log_values(self, caplog):
         """Verify log has speed, brightness, pulsating."""
         raw = _make_header(322, 20) + bytes(
-            [1, 4, 0b11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-             0, 0, 0, 0, 0, 0, 0]
+            [1, 4, 0b11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         )
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            decode_parameter(
-                ParameterId.FLAME_EFFECT, raw
-            )
+            decode_parameter(ParameterId.FLAME_EFFECT, raw)
         _assert_no_xx(caplog.text)
         _assert_no_none(caplog.text)
         assert "5" in caplog.text
@@ -1321,13 +1302,9 @@ class TestDecoderLoggingArgs:
         assert "ON" in caplog.text
 
     def test_heat_settings_log_values(self, caplog):
-        raw = _make_header(323, 7) + bytes(
-            [1, 1, 25, 5, 14, 0, 0]
-        )
+        raw = _make_header(323, 7) + bytes([1, 1, 25, 5, 14, 0, 0])
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            decode_parameter(
-                ParameterId.HEAT_SETTINGS, raw
-            )
+            decode_parameter(ParameterId.HEAT_SETTINGS, raw)
         _assert_no_xx(caplog.text)
         _assert_no_none(caplog.text)
         assert "25.5" in caplog.text
@@ -1352,22 +1329,16 @@ class TestDecoderLoggingArgs:
         assert "1" in caplog.text
 
     def test_software_version_log_values(self, caplog):
-        raw = _make_header(327, 9) + bytes(
-            [2, 3, 4, 5, 6, 7, 8, 9, 10]
-        )
+        raw = _make_header(327, 9) + bytes([2, 3, 4, 5, 6, 7, 8, 9, 10])
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            decode_parameter(
-                ParameterId.SOFTWARE_VERSION, raw
-            )
+            decode_parameter(ParameterId.SOFTWARE_VERSION, raw)
         _assert_no_xx(caplog.text)
         _assert_no_none(caplog.text)
         for n in [2, 3, 4, 5, 6, 7, 8, 9, 10]:
             assert str(n) in caplog.text
 
     def test_error_log_values(self, caplog):
-        raw = _make_header(329, 4) + bytes(
-            [0xAA, 0xBB, 0xCC, 0xDD]
-        )
+        raw = _make_header(329, 4) + bytes([0xAA, 0xBB, 0xCC, 0xDD])
         with caplog.at_level(logging.DEBUG, "flameconnect"):
             decode_parameter(ParameterId.ERROR, raw)
         _assert_no_xx(caplog.text)
@@ -1388,9 +1359,7 @@ class TestDecoderLoggingArgs:
         assert "7" in caplog.text
 
     def test_log_effect_log_values(self, caplog):
-        raw = _make_header(370, 8) + bytes(
-            [1, 0, 10, 20, 30, 40, 3, 0]
-        )
+        raw = _make_header(370, 8) + bytes([1, 0, 10, 20, 30, 40, 3, 0])
         with caplog.at_level(logging.DEBUG, "flameconnect"):
             decode_parameter(ParameterId.LOG_EFFECT, raw)
         _assert_no_xx(caplog.text)
@@ -1420,9 +1389,7 @@ class TestEncoderLoggingArgs:
         assert "0" in caplog.text
 
     def test_encode_mode_log_values(self, caplog):
-        param = ModeParam(
-            mode=FireMode.MANUAL, target_temperature=22.5
-        )
+        param = ModeParam(mode=FireMode.MANUAL, target_temperature=22.5)
         with caplog.at_level(logging.DEBUG, "flameconnect"):
             encode_parameter(param)
         _assert_no_xx(caplog.text)
@@ -1466,9 +1433,7 @@ class TestEncoderLoggingArgs:
         assert "15" in caplog.text
 
     def test_encode_heat_mode_log_value(self, caplog):
-        param = HeatModeParam(
-            heat_control=HeatControl.SOFTWARE_DISABLED
-        )
+        param = HeatModeParam(heat_control=HeatControl.SOFTWARE_DISABLED)
         with caplog.at_level(logging.DEBUG, "flameconnect"):
             encode_parameter(param)
         _assert_no_xx(caplog.text)
@@ -1477,9 +1442,7 @@ class TestEncoderLoggingArgs:
         assert "0" in caplog.text
 
     def test_encode_timer_log_values(self, caplog):
-        param = TimerParam(
-            timer_status=TimerStatus.ENABLED, duration=300
-        )
+        param = TimerParam(timer_status=TimerStatus.ENABLED, duration=300)
         with caplog.at_level(logging.DEBUG, "flameconnect"):
             encode_parameter(param)
         _assert_no_xx(caplog.text)
@@ -1524,12 +1487,8 @@ class TestDecodeFieldValues:
         assert result.target_temperature == 30.7
 
     def test_heat_settings_fields(self):
-        raw = _make_header(323, 7) + bytes(
-            [1, 2, 20, 5, 10, 1, 0]
-        )
-        result = decode_parameter(
-            ParameterId.HEAT_SETTINGS, raw
-        )
+        raw = _make_header(323, 7) + bytes([1, 2, 20, 5, 10, 1, 0])
+        result = decode_parameter(ParameterId.HEAT_SETTINGS, raw)
         assert result.heat_status == HeatStatus.ON
         assert result.heat_mode == HeatMode.ECO
         assert result.setpoint_temperature == 20.5
@@ -1554,9 +1513,7 @@ class TestDecodeFieldValues:
         assert result.sound_file == 7
 
     def test_log_effect_fields(self):
-        raw = _make_header(370, 8) + bytes(
-            [1, 0, 10, 20, 30, 40, 5, 0]
-        )
+        raw = _make_header(370, 8) + bytes([1, 0, 10, 20, 30, 40, 5, 0])
         result = decode_parameter(ParameterId.LOG_EFFECT, raw)
         assert result.log_effect == LogEffect.ON
         assert result.color.red == 10
@@ -1569,19 +1526,26 @@ class TestDecodeFieldValues:
         """Verify every field in a flame effect decode."""
         raw = _make_header(322, 20) + bytes(
             [
-                1,   # flame_effect ON
-                4,   # wire speed -> model 5
+                1,  # flame_effect ON
+                4,  # wire speed -> model 5
                 0b11,  # brightness LOW, pulsating ON
-                7,   # media_theme KALEIDOSCOPE
-                1,   # media_light ON
-                10, 20, 30, 40,  # media RBGW
-                0,   # padding
-                1,   # overhead_light ON
-                50, 60, 70, 80,  # overhead RBGW
-                1,   # light_status ON
-                5,   # flame_color YELLOW
-                0, 0,  # padding
-                1,   # ambient_sensor ON
+                7,  # media_theme KALEIDOSCOPE
+                1,  # media_light ON
+                10,
+                20,
+                30,
+                40,  # media RBGW
+                0,  # padding
+                1,  # overhead_light ON
+                50,
+                60,
+                70,
+                80,  # overhead RBGW
+                1,  # light_status ON
+                5,  # flame_color YELLOW
+                0,
+                0,  # padding
+                1,  # ambient_sensor ON
             ]
         )
         r = decode_parameter(ParameterId.FLAME_EFFECT, raw)
@@ -1591,13 +1555,9 @@ class TestDecodeFieldValues:
         assert r.pulsating_effect == PulsatingEffect.ON
         assert r.media_theme == MediaTheme.KALEIDOSCOPE
         assert r.media_light == LightStatus.ON
-        assert r.media_color == RGBWColor(
-            red=10, blue=20, green=30, white=40
-        )
+        assert r.media_color == RGBWColor(red=10, blue=20, green=30, white=40)
         assert r.overhead_light == LightStatus.ON
-        assert r.overhead_color == RGBWColor(
-            red=50, blue=60, green=70, white=80
-        )
+        assert r.overhead_color == RGBWColor(red=50, blue=60, green=70, white=80)
         assert r.light_status == LightStatus.ON
         assert r.flame_color == FlameColor.YELLOW
         assert r.ambient_sensor == LightStatus.ON

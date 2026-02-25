@@ -211,12 +211,8 @@ def _display_mode(
 ) -> None:
     """Display Mode parameter."""
     unit = temp_unit.unit if temp_unit else TempUnit.CELSIUS
-    unit_suffix = (
-        "C" if unit == TempUnit.CELSIUS else "F"
-    ) if temp_unit else ""
-    display_temp = _convert_temp(
-        param.target_temperature, unit
-    )
+    unit_suffix = ("C" if unit == TempUnit.CELSIUS else "F") if temp_unit else ""
+    display_temp = _convert_temp(param.target_temperature, unit)
     print("\n  [321] Mode")
     print(f"  {'─' * 40}")
     mode = _enum_name(_FIRE_MODE_NAMES, param.mode)
@@ -253,12 +249,8 @@ def _display_heat(
 ) -> None:
     """Display HeatSettings parameter."""
     unit = temp_unit.unit if temp_unit else TempUnit.CELSIUS
-    unit_suffix = (
-        "C" if unit == TempUnit.CELSIUS else "F"
-    ) if temp_unit else ""
-    display_temp = _convert_temp(
-        param.setpoint_temperature, unit
-    )
+    unit_suffix = ("C" if unit == TempUnit.CELSIUS else "F") if temp_unit else ""
+    display_temp = _convert_temp(param.setpoint_temperature, unit)
     print("\n  [323] Heat Settings")
     print(f"  {'─' * 40}")
     status = _enum_name(_HEAT_STATUS_NAMES, param.heat_status)
@@ -566,9 +558,7 @@ async def _set_brightness(client: FlameConnectClient, fire_id: str, value: str) 
     print(f"Brightness set to {value}.")
 
 
-async def _set_pulsating(
-    client: FlameConnectClient, fire_id: str, value: str
-) -> None:
+async def _set_pulsating(client: FlameConnectClient, fire_id: str, value: str) -> None:
     """Set pulsating effect on or off."""
     if value not in _PULSATING_LOOKUP:
         valid = ", ".join(_PULSATING_LOOKUP)
@@ -690,9 +680,7 @@ async def _set_timer(client: FlameConnectClient, fire_id: str, value: str) -> No
         print("Timer disabled.")
 
 
-async def _set_temp_unit(
-    client: FlameConnectClient, fire_id: str, value: str
-) -> None:
+async def _set_temp_unit(client: FlameConnectClient, fire_id: str, value: str) -> None:
     """Set the temperature display unit."""
     if value not in _TEMP_UNIT_LOOKUP:
         valid = ", ".join(_TEMP_UNIT_LOOKUP)
@@ -702,7 +690,6 @@ async def _set_temp_unit(
     temp_unit_param = TempUnitParam(unit=unit)
     await client.write_parameters(fire_id, [temp_unit_param])
     print(f"Temperature unit set to {value}.")
-
 
 
 async def _set_flame_effect(
@@ -821,6 +808,7 @@ async def _set_ambient_sensor(
     new_param = replace(current, ambient_sensor=ambient_sensor)
     await client.write_parameters(fire_id, [new_param])
     print(f"Ambient sensor set to {value}.")
+
 
 async def cmd_tui(*, verbose: bool = False) -> None:
     """Launch the TUI, showing install message if missing."""

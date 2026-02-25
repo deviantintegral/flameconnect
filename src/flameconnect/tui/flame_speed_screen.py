@@ -12,6 +12,7 @@ from flameconnect.tui.widgets import ArrowNavMixin
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
+    from textual.widgets._button import ButtonVariant
 
 _CSS = """
 FlameSpeedScreen {
@@ -70,7 +71,9 @@ class FlameSpeedScreen(ArrowNavMixin, ModalScreen[int | None]):
             )
             with Horizontal(id="flame-speed-buttons"):
                 for i in range(1, 6):
-                    variant = "primary" if i == self._current_speed else "default"
+                    variant: ButtonVariant = (
+                        "primary" if i == self._current_speed else "default"
+                    )
                     yield Button(str(i), id=f"speed-{i}", variant=variant)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:

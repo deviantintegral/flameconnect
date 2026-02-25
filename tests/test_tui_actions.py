@@ -837,9 +837,7 @@ class TestApplyOverheadColor:
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
-            app._apply_overhead_color(
-                RGBWColor(red=0, green=0, blue=255, white=80)
-            )
+            app._apply_overhead_color(RGBWColor(red=0, green=0, blue=255, white=80))
             await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
@@ -889,7 +887,8 @@ class TestActionErrorHandling:
         self, mock_client, mock_dashboard
     ):
         mock_dashboard.current_parameters[TimerParam] = TimerParam(
-            timer_status=TimerStatus.ENABLED, duration=60,
+            timer_status=TimerStatus.ENABLED,
+            duration=60,
         )
         mock_client.write_parameters.side_effect = Exception("timeout")
         app = _make_app(mock_client, mock_dashboard)
@@ -1131,12 +1130,8 @@ class TestDeliverScreenshot:
 
         target = tmp_path / "nonexistent" / "downloads"
         with (
-            patch(
-                "platformdirs.user_downloads_path", return_value=target
-            ),
-            patch.object(
-                App, "deliver_screenshot", return_value=None
-            ) as super_deliver,
+            patch("platformdirs.user_downloads_path", return_value=target),
+            patch.object(App, "deliver_screenshot", return_value=None) as super_deliver,
         ):
             app.deliver_screenshot()
 
@@ -2338,9 +2333,7 @@ class TestLoadFires:
 
     async def test_multiple_fires_shows_selector(self, mock_client, mock_dashboard):
         """When multiple fires, show selection list."""
-        mock_client.get_fires = AsyncMock(
-            return_value=[_TEST_FIRE, _TEST_FIRE_2]
-        )
+        mock_client.get_fires = AsyncMock(return_value=[_TEST_FIRE, _TEST_FIRE_2])
         app = _make_app(mock_client, mock_dashboard)
         app.mount = AsyncMock()
 
@@ -2349,16 +2342,12 @@ class TestLoadFires:
 
         await app._load_fires()
 
-        mock_loading.update.assert_called_once_with(
-            "[bold]Select a fireplace:[/bold]"
-        )
+        mock_loading.update.assert_called_once_with("[bold]Select a fireplace:[/bold]")
         app.mount.assert_awaited_once()
 
     async def test_get_fires_exception_notifies(self, mock_client, mock_dashboard):
         """When get_fires raises, notify the user."""
-        mock_client.get_fires = AsyncMock(
-            side_effect=Exception("connection refused")
-        )
+        mock_client.get_fires = AsyncMock(side_effect=Exception("connection refused"))
         app = _make_app(mock_client, mock_dashboard)
         app.notify = MagicMock()
 
@@ -2630,9 +2619,7 @@ class TestApplyMediaThemeWorker:
 
     async def test_worker_error_logs_and_clears_flag(self, mock_client, mock_dashboard):
         """_apply_media_theme worker logs error and clears write flag on failure."""
-        mock_client.write_parameters = AsyncMock(
-            side_effect=Exception("API failure")
-        )
+        mock_client.write_parameters = AsyncMock(side_effect=Exception("API failure"))
         app = _make_app(mock_client, mock_dashboard)
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:

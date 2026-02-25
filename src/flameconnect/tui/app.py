@@ -8,7 +8,7 @@ import sys
 from dataclasses import replace
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Awaitable
+from typing import TYPE_CHECKING
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -23,6 +23,7 @@ from flameconnect.tui.widgets import _display_name
 
 if TYPE_CHECKING:
     import asyncio
+    from collections.abc import Awaitable
 
     from flameconnect.client import FlameConnectClient
     from flameconnect.models import (
@@ -250,9 +251,7 @@ class FlameConnectApp(App[None]):
             if future.done():
                 return
             if result is None:
-                future.set_exception(
-                    AuthenticationError("Authentication cancelled")
-                )
+                future.set_exception(AuthenticationError("Authentication cancelled"))
             else:
                 future.set_result(result)
 
@@ -379,9 +378,7 @@ class FlameConnectApp(App[None]):
             if speed is not None and speed != current_speed:
                 self.call_later(self._apply_flame_speed, speed)
 
-        self.push_screen(
-            FlameSpeedScreen(current_speed), callback=_on_speed_selected
-        )
+        self.push_screen(FlameSpeedScreen(current_speed), callback=_on_speed_selected)
 
     def _apply_flame_speed(self, speed: int) -> None:
         """Write the selected flame speed to the fireplace."""
@@ -419,9 +416,7 @@ class FlameConnectApp(App[None]):
         if not isinstance(current, FlameEffectParam):
             return
         new_brightness = (
-            Brightness.LOW
-            if current.brightness == Brightness.HIGH
-            else Brightness.HIGH
+            Brightness.LOW if current.brightness == Brightness.HIGH else Brightness.HIGH
         )
         new_param = replace(current, brightness=new_brightness)
         label = "Low" if new_brightness == Brightness.LOW else "High"
@@ -500,9 +495,7 @@ class FlameConnectApp(App[None]):
         if not isinstance(current, FlameEffectParam):
             return
         new_val = (
-            LightStatus.OFF
-            if current.media_light == LightStatus.ON
-            else LightStatus.ON
+            LightStatus.OFF if current.media_light == LightStatus.ON else LightStatus.ON
         )
         new_param = replace(current, media_light=new_val)
         label = "On" if new_val == LightStatus.ON else "Off"
@@ -588,9 +581,7 @@ class FlameConnectApp(App[None]):
             if color is not None and color != current_color:
                 self.call_later(self._apply_flame_color, color)
 
-        self.push_screen(
-            FlameColorScreen(current_color), callback=_on_color_selected
-        )
+        self.push_screen(FlameColorScreen(current_color), callback=_on_color_selected)
 
     def _apply_flame_color(self, color: FlameColor) -> None:
         """Write the selected flame color to the fireplace."""
@@ -636,9 +627,7 @@ class FlameConnectApp(App[None]):
             if theme is not None and theme != current_theme:
                 self.call_later(self._apply_media_theme, theme)
 
-        self.push_screen(
-            MediaThemeScreen(current_theme), callback=_on_theme_selected
-        )
+        self.push_screen(MediaThemeScreen(current_theme), callback=_on_theme_selected)
 
     def _apply_media_theme(self, theme: MediaTheme) -> None:
         """Write the selected media theme to the fireplace."""
@@ -674,9 +663,7 @@ class FlameConnectApp(App[None]):
                     await s.refresh_state()
                     refreshed_params = s.current_parameters
                     refreshed = refreshed_params.get(FlameEffectParam)
-                    _LOGGER.debug(
-                        "Media theme change: after_refresh=%s", refreshed
-                    )
+                    _LOGGER.debug("Media theme change: after_refresh=%s", refreshed)
             except Exception as exc:
                 _LOGGER.exception("Media theme change failed")
                 s = self.screen
@@ -799,16 +786,12 @@ class FlameConnectApp(App[None]):
         if not isinstance(current, HeatParam):
             return
         new_val = (
-            HeatStatus.OFF
-            if current.heat_status == HeatStatus.ON
-            else HeatStatus.ON
+            HeatStatus.OFF if current.heat_status == HeatStatus.ON else HeatStatus.ON
         )
         new_param = replace(current, heat_status=new_val)
         label = "On" if new_val == HeatStatus.ON else "Off"
         self._run_command(
-            self.client.write_parameters(
-                self.fire_id, [new_param]
-            ),
+            self.client.write_parameters(self.fire_id, [new_param]),
             f"Setting heat to {label}...",
             "Heat toggle failed",
         )
@@ -841,9 +824,7 @@ class FlameConnectApp(App[None]):
             callback=_on_selected,
         )
 
-    def _apply_heat_mode(
-        self, mode: HeatMode, boost_minutes: int | None
-    ) -> None:
+    def _apply_heat_mode(self, mode: HeatMode, boost_minutes: int | None) -> None:
         """Write the selected heat mode to the fireplace."""
         from flameconnect.models import HeatMode, HeatParam
 
@@ -858,9 +839,7 @@ class FlameConnectApp(App[None]):
         if not isinstance(current, HeatParam):
             return
         if mode == HeatMode.BOOST and boost_minutes is not None:
-            new_param = replace(
-                current, heat_mode=mode, boost_duration=boost_minutes
-            )
+            new_param = replace(current, heat_mode=mode, boost_duration=boost_minutes)
         else:
             new_param = replace(current, heat_mode=mode)
         mode_label = _display_name(mode)
@@ -978,6 +957,7 @@ class FlameConnectApp(App[None]):
                 "Timer toggle failed",
             )
         else:
+
             def _on_timer_dismiss(duration: int | None) -> None:
                 if duration is not None:
                     self.call_later(self._apply_timer, duration)
@@ -1090,12 +1070,13 @@ async def run_tui(*, verbose: bool = False) -> None:
         import curses as _curses
 
         try:
-            _curses.setupterm(fd=sys.__stderr__.fileno())
-            rmcup = _curses.tigetstr("rmcup") or b""
-            cnorm = _curses.tigetstr("cnorm") or b""
-            clear = _curses.tigetstr("clear") or b""
-            sys.__stderr__.buffer.write(rmcup + cnorm + clear)
-            sys.__stderr__.flush()
+            if sys.__stderr__ is not None:
+                _curses.setupterm(fd=sys.__stderr__.fileno())
+                rmcup = _curses.tigetstr("rmcup") or b""
+                cnorm = _curses.tigetstr("cnorm") or b""
+                clear = _curses.tigetstr("clear") or b""
+                sys.__stderr__.buffer.write(rmcup + cnorm + clear)
+                sys.__stderr__.flush()
         except Exception:  # noqa: BLE001
             pass
 

@@ -92,7 +92,11 @@ def _decode_mode(raw: bytes) -> ModeParam:
     _check_length(raw, 6, "Mode")
     mode = FireMode(raw[3])
     target_temperature = _decode_temperature(raw, 4)
-    _LOGGER.debug("Decoded Mode: mode=%s target_temperature=%.1f", mode, target_temperature)
+    _LOGGER.debug(
+        "Decoded Mode: mode=%s target_temperature=%.1f",
+        mode,
+        target_temperature,
+    )
     return ModeParam(mode=mode, target_temperature=target_temperature)
 
 
@@ -318,7 +322,8 @@ def _encode_heat_settings(param: HeatParam) -> bytes:
         param.setpoint_temperature,
         param.boost_duration,
     )
-    wire_boost = max(0, param.boost_duration - 1)  # model is 1-indexed, wire is 0-indexed
+    # model is 1-indexed, wire is 0-indexed
+    wire_boost = max(0, param.boost_duration - 1)
     payload = (
         bytes([param.heat_status, param.heat_mode])
         + _encode_temperature(param.setpoint_temperature)

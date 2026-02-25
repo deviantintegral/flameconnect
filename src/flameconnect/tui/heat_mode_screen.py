@@ -13,6 +13,7 @@ from flameconnect.tui.widgets import ArrowNavMixin
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
+    from textual.widgets._button import ButtonVariant
 
 _CSS = """
 HeatModeScreen {
@@ -92,16 +93,12 @@ class HeatModeScreen(ArrowNavMixin, ModalScreen[tuple[HeatMode, int | None] | No
             with Horizontal(id="heat-mode-buttons"):
                 for mode in (HeatMode.NORMAL, HeatMode.ECO, HeatMode.BOOST):
                     label = mode.name.replace("_", " ").title()
-                    variant = (
+                    variant: ButtonVariant = (
                         "primary" if mode == self._current_mode else "default"
                     )
-                    yield Button(
-                        label, id=f"mode-{mode.name.lower()}", variant=variant
-                    )
+                    yield Button(label, id=f"mode-{mode.name.lower()}", variant=variant)
             with Vertical(id="boost-input-container"):
-                yield Static(
-                    "Boost duration (1-20 min):", id="boost-label"
-                )
+                yield Static("Boost duration (1-20 min):", id="boost-label")
                 yield Input(
                     placeholder="minutes",
                     id="boost-duration",
