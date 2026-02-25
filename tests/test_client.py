@@ -11,7 +11,7 @@ from aioresponses import aioresponses as aioresponses_mock
 from yarl import URL
 
 from flameconnect.auth import TokenAuth
-from flameconnect.client import FlameConnectClient
+from flameconnect.client import FlameConnectClient, _get_parameter_id
 from flameconnect.const import API_BASE
 from flameconnect.exceptions import ApiError
 from flameconnect.models import (
@@ -27,9 +27,11 @@ from flameconnect.models import (
     HeatModeParam,
     HeatParam,
     HeatStatus,
+    LogEffect,
     LogEffectParam,
     MediaTheme,
     ModeParam,
+    RGBWColor,
     SoftwareVersionParam,
     SoundParam,
     TempUnitParam,
@@ -374,3 +376,80 @@ class TestApiErrorHandling:
             fires = await client.get_fires()
 
         assert fires == []
+
+
+# ---------------------------------------------------------------------------
+# _get_parameter_id edge cases
+# ---------------------------------------------------------------------------
+
+
+class TestGetParameterId:
+    """Test the _get_parameter_id helper for all parameter types."""
+
+    def test_sound_param(self):
+        param = SoundParam(volume=50, sound_file=1)
+        assert _get_parameter_id(param) == 369
+
+    def test_log_effect_param(self):
+        param = LogEffectParam(
+            log_effect=LogEffect.ON,
+            color=RGBWColor(red=0, green=0, blue=0, white=0),
+            pattern=0,
+        )
+        assert _get_parameter_id(param) == 370
+
+    def test_unknown_type_raises_value_error(self):
+        """An object that does not match any known param type raises ValueError."""
+        with pytest.raises(ValueError, match="Unknown parameter type"):
+            _get_parameter_id("not-a-param")
+
+
+# ---------------------------------------------------------------------------
+# get_fire_overview decode failure path
+# ---------------------------------------------------------------------------
+
+
+class TestGetFireOverviewDecodeFailure:
+    """Test that decode failures in get_fire_overview are logged and skipped."""
+
+    async def test_bad_parameter_skipped(self, mock_api, token_auth):
+        """A parameter that fails to decode should be skipped silently."""
+        fire_id = "test-fire-001"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+
+        # Build a payload with one valid parameter and one broken one
+        payload = {
+            "WifiFireOverview": {
+                "FireId": fire_id,
+                "FriendlyName": "Living Room",
+                "Brand": "Dimplex",
+                "ProductType": "Bold Ignite XL",
+                "ProductModel": "BIX-50",
+                "ItemCode": "ABC123",
+                "IoTConnectionState": 2,
+                "WithHeat": True,
+                "IsIotFire": True,
+                "Parameters": [
+                    {
+                        # Valid ModeParam (321)
+                        "ParameterId": 321,
+                        "Value": "QQEDARYF",
+                    },
+                    {
+                        # Bogus data for a valid param ID that will
+                        # fail decode (truncated FlameEffect)
+                        "ParameterId": 322,
+                        "Value": "AA==",
+                    },
+                ],
+            }
+        }
+
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            overview = await client.get_fire_overview(fire_id)
+
+        # Only the valid parameter should be present
+        assert len(overview.parameters) == 1
+        assert isinstance(overview.parameters[0], ModeParam)

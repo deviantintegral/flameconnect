@@ -157,3 +157,132 @@ class TestParseRedirectUrl:
             MsalAuth._parse_redirect_url(
                 "https://redirect?error=access_denied&error_description=User+cancelled"
             )
+
+    def test_fragment_url_parsing(self):
+        """URLs with # fragment (instead of ?) should also be parsed."""
+        result = MsalAuth._parse_redirect_url(
+            "https://redirect#code=frag-code-999&state=frag-state"
+        )
+        assert result["code"] == "frag-code-999"
+        assert result["state"] == "frag-state"
+
+    def test_error_without_description_raises(self):
+        """URL with error but no error_description should still raise."""
+        from flameconnect.exceptions import AuthenticationError
+
+        with pytest.raises(AuthenticationError, match="Auth error.*server_error"):
+            MsalAuth._parse_redirect_url(
+                "https://redirect?error=server_error"
+            )
+
+
+# ---------------------------------------------------------------------------
+# MsalAuth — additional edge cases
+# ---------------------------------------------------------------------------
+
+
+class TestMsalAuthEdgeCases:
+    """Test error paths in MsalAuth.get_token / _interactive_flow."""
+
+    @patch("flameconnect.auth.msal")
+    async def test_existing_cache_is_loaded(self, mock_msal, tmp_path):
+        """When the cache file exists on disk, deserialize is called."""
+        cache_path = tmp_path / "token_cache.json"
+        cache_path.write_text('{"cached": "data"}')
+
+        mock_cache = MagicMock()
+        mock_cache.has_state_changed = False
+        mock_msal.SerializableTokenCache.return_value = mock_cache
+
+        mock_app = MagicMock()
+        mock_app.get_accounts.return_value = [{"username": "u@ex.com"}]
+        mock_app.acquire_token_silent.return_value = {
+            "access_token": "loaded-token"
+        }
+        mock_msal.PublicClientApplication.return_value = mock_app
+
+        auth = MsalAuth(cache_path=cache_path)
+        token = await auth.get_token()
+
+        assert token == "loaded-token"
+        mock_cache.deserialize.assert_called_once_with('{"cached": "data"}')
+
+    @patch("flameconnect.auth.msal")
+    async def test_no_auth_uri_in_flow_raises(self, mock_msal, tmp_path):
+        """When initiate_auth_code_flow returns no auth_uri, raises."""
+        from flameconnect.exceptions import AuthenticationError
+
+        cache_path = tmp_path / "token_cache.json"
+
+        mock_cache = MagicMock()
+        mock_cache.has_state_changed = False
+        mock_msal.SerializableTokenCache.return_value = mock_cache
+
+        mock_app = MagicMock()
+        mock_app.get_accounts.return_value = []
+        mock_app.initiate_auth_code_flow.return_value = {
+            "error": "something_went_wrong",
+        }
+        mock_msal.PublicClientApplication.return_value = mock_app
+
+        async def fake_prompt(auth_uri: str, redirect_uri: str) -> str:
+            return "https://redirect?code=abc123"
+
+        auth = MsalAuth(cache_path=cache_path, prompt_callback=fake_prompt)
+
+        with pytest.raises(AuthenticationError, match="Failed to initiate"):
+            await auth.get_token()
+
+    @patch("flameconnect.auth.msal")
+    async def test_no_prompt_callback_raises(self, mock_msal, tmp_path):
+        """When no prompt_callback is provided, interactive login raises."""
+        from flameconnect.exceptions import AuthenticationError
+
+        cache_path = tmp_path / "token_cache.json"
+
+        mock_cache = MagicMock()
+        mock_cache.has_state_changed = False
+        mock_msal.SerializableTokenCache.return_value = mock_cache
+
+        mock_app = MagicMock()
+        mock_app.get_accounts.return_value = []
+        mock_app.initiate_auth_code_flow.return_value = {
+            "auth_uri": "https://example.com/auth",
+        }
+        mock_msal.PublicClientApplication.return_value = mock_app
+
+        # No prompt_callback provided
+        auth = MsalAuth(cache_path=cache_path)
+
+        with pytest.raises(AuthenticationError, match="no prompt_callback"):
+            await auth.get_token()
+
+    @patch("flameconnect.auth.msal")
+    async def test_token_exchange_failure_raises(self, mock_msal, tmp_path):
+        """When acquire_token_by_auth_code_flow has no access_token, raises."""
+        from flameconnect.exceptions import AuthenticationError
+
+        cache_path = tmp_path / "token_cache.json"
+
+        mock_cache = MagicMock()
+        mock_cache.has_state_changed = False
+        mock_msal.SerializableTokenCache.return_value = mock_cache
+
+        mock_app = MagicMock()
+        mock_app.get_accounts.return_value = []
+        mock_app.initiate_auth_code_flow.return_value = {
+            "auth_uri": "https://example.com/auth",
+        }
+        mock_app.acquire_token_by_auth_code_flow.return_value = {
+            "error": "invalid_grant",
+            "error_description": "Code expired",
+        }
+        mock_msal.PublicClientApplication.return_value = mock_app
+
+        async def fake_prompt(auth_uri: str, redirect_uri: str) -> str:
+            return "https://redirect?code=expired-code"
+
+        auth = MsalAuth(cache_path=cache_path, prompt_callback=fake_prompt)
+
+        with pytest.raises(AuthenticationError, match="Token exchange failed"):
+            await auth.get_token()

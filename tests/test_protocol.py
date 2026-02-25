@@ -559,3 +559,10 @@ class TestProtocolErrors:
         )
         with pytest.raises(ProtocolError, match="read-only"):
             encode_parameter(param)
+
+    def test_encode_unknown_param_type_raises_protocol_error(self):
+        """An object that is not a known parameter type should raise."""
+        # Pass an arbitrary object that doesn't match any isinstance check
+        not_a_param = "this is not a parameter"
+        with pytest.raises(ProtocolError, match="Unknown parameter type"):
+            encode_parameter(not_a_param)
