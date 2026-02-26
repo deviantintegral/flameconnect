@@ -130,9 +130,9 @@ _TEMP_UNIT_LOOKUP: dict[str, TempUnit] = {
 
 _SET_PARAM_NAMES = (
     "mode, flame-speed, brightness, pulsating, flame-color,"
-    " media-theme, heat-mode, heat-temp, timer, temp-unit,"
-    " flame-effect, media-light, media-color, overhead-light,"
-    " overhead-color, ambient-sensor"
+    " media-theme, heat-status, heat-mode, heat-temp, timer,"
+    " temp-unit, flame-effect, media-light, media-color,"
+    " overhead-light, overhead-color, ambient-sensor"
 )
 
 
@@ -481,6 +481,9 @@ async def cmd_set(
     if param == "ambient-sensor":
         await _set_ambient_sensor(client, fire_id, value)
         return
+    if param == "heat-status":
+        await _set_heat_status(client, fire_id, value)
+        return
 
     print(f"Error: unknown parameter '{param}'. Valid: {_SET_PARAM_NAMES}.")
     sys.exit(1)
@@ -810,6 +813,28 @@ async def _set_ambient_sensor(
     print(f"Ambient sensor set to {value}.")
 
 
+async def _set_heat_status(
+    client: FlameConnectClient, fire_id: str, value: str
+) -> None:
+    """Set the heater on or off."""
+    from flameconnect.models import HeatStatus
+
+    lookup: dict[str, HeatStatus] = {"on": HeatStatus.ON, "off": HeatStatus.OFF}
+    if value not in lookup:
+        valid = ", ".join(lookup)
+        print(f"Error: heat-status must be one of: {valid}.")
+        sys.exit(1)
+    heat_status = lookup[value]
+    overview = await client.get_fire_overview(fire_id)
+    current = _find_param(overview.parameters, HeatParam)
+    if current is None:
+        print("Error: no HeatSettings parameter found.")
+        sys.exit(1)
+    new_param = replace(current, heat_status=heat_status)
+    await client.write_parameters(fire_id, [new_param])
+    print(f"Heat status set to {value}.")
+
+
 async def cmd_tui(*, verbose: bool = False) -> None:
     """Launch the TUI, showing install message if missing."""
     try:
@@ -866,9 +891,10 @@ def build_parser() -> argparse.ArgumentParser:
         "param",
         help=(
             "Parameter name: mode, flame-speed, brightness, pulsating,"
-            " flame-color, media-theme, heat-mode, heat-temp, timer,"
-            " temp-unit, flame-effect, media-light, media-color,"
-            " overhead-light, overhead-color, ambient-sensor"
+            " flame-color, media-theme, heat-status, heat-mode,"
+            " heat-temp, timer, temp-unit, flame-effect, media-light,"
+            " media-color, overhead-light, overhead-color,"
+            " ambient-sensor"
         ),
     )
     sp_set.add_argument("value", help="Value to set")
