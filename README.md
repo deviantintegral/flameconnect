@@ -1,4 +1,4 @@
-# FlameConnect
+# 🔥 FlameConnect
 
 [![CI](https://github.com/deviantintegral/flameconnect/actions/workflows/ci.yml/badge.svg)](https://github.com/deviantintegral/flameconnect/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/flameconnect)](https://pypi.org/project/flameconnect/)
