@@ -1260,11 +1260,12 @@ class TestAsyncMain:
             await async_main(args)
             mock_tui.assert_awaited_once_with(verbose=False)
 
-    async def test_none_command_runs_tui(self):
+    async def test_none_command_prints_help(self, capsys):
         args = argparse.Namespace(command=None, verbose=False)
-        with patch("flameconnect.cli.cmd_tui", new_callable=AsyncMock) as mock_tui:
-            await async_main(args)
-            mock_tui.assert_awaited_once_with(verbose=False)
+        await async_main(args)
+        captured = capsys.readouterr()
+        assert "flameconnect" in captured.out
+        assert "usage" in captured.out.lower()
 
     async def test_list_command(self):
         args = argparse.Namespace(command="list", verbose=False)

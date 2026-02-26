@@ -841,7 +841,7 @@ async def cmd_tui(*, verbose: bool = False) -> None:
         from flameconnect.tui import run_tui
     except ImportError:
         print("The TUI requires the 'tui' extra. Install with:")
-        print("  uv add flameconnect[tui]")
+        print("  uv tool run flameconnect[tui]")
         sys.exit(1)
     await run_tui(verbose=verbose)
 
@@ -986,7 +986,11 @@ async def _cli_auth_prompt(auth_uri: str, redirect_uri: str) -> str:
 
 async def async_main(args: argparse.Namespace) -> None:
     """Run the appropriate subcommand."""
-    if args.command in (None, "tui"):
+    if args.command is None:
+        build_parser().print_help()
+        return
+
+    if args.command == "tui":
         await cmd_tui(verbose=args.verbose)
         return
 
