@@ -36,7 +36,7 @@ from flameconnect.models import (
     TimerParam,
     TimerStatus,
 )
-from flameconnect.protocol import _make_header as _wire_make_header
+from flameconnect.protocol import _make_header as _protocol_make_header
 from flameconnect.protocol import decode_parameter, encode_parameter
 
 # ---------------------------------------------------------------------------
@@ -859,7 +859,7 @@ class TestMakeHeaderFormat:
         range for a signed byte.  Kills _make_header__mutmut_8 which changes
         the format string from '<HB' to '<hb'.
         """
-        header = _wire_make_header(100, 128)
+        header = _protocol_make_header(100, 128)
         assert len(header) == 3
         assert header[2] == 128
 
