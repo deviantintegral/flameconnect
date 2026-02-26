@@ -3,13 +3,33 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from flameconnect.auth import _REDIRECT_URI, MsalAuth, TokenAuth
+from flameconnect.auth import _REDIRECT_URI, MsalAuth, TokenAuth, _default_cache_path
 from flameconnect.const import AUTHORITY, CLIENT_ID, SCOPES
 from flameconnect.exceptions import AuthenticationError
+
+# ---------------------------------------------------------------------------
+# _default_cache_path
+# ---------------------------------------------------------------------------
+
+
+class TestDefaultCachePath:
+    """Test XDG-compliant default cache path resolution."""
+
+    def test_uses_xdg_cache_home_when_set(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("XDG_CACHE_HOME", "/custom/cache")
+        result = _default_cache_path()
+        assert result == Path("/custom/cache/flameconnect/token.json")
+
+    def test_falls_back_to_dot_cache(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.delenv("XDG_CACHE_HOME", raising=False)
+        result = _default_cache_path()
+        assert result == Path.home() / ".cache" / "flameconnect" / "token.json"
+
 
 # ---------------------------------------------------------------------------
 # TokenAuth
@@ -110,6 +130,27 @@ class TestMsalAuth:
     async def test_cache_saved_on_state_change(self, mock_msal, tmp_path):
         """Cache is written to disk when has_state_changed is True."""
         cache_path = tmp_path / "token_cache.json"
+
+        mock_cache = MagicMock()
+        mock_cache.has_state_changed = True
+        mock_cache.serialize.return_value = '{"cached": true}'
+        mock_msal.SerializableTokenCache.return_value = mock_cache
+
+        mock_app = MagicMock()
+        mock_app.get_accounts.return_value = [{"username": "user@example.com"}]
+        mock_app.acquire_token_silent.return_value = {"access_token": "refreshed-token"}
+        mock_msal.PublicClientApplication.return_value = mock_app
+
+        auth = MsalAuth(cache_path=cache_path)
+        await auth.get_token()
+
+        assert cache_path.exists()
+        assert cache_path.read_text() == '{"cached": true}'
+
+    @patch("flameconnect.auth.msal")
+    async def test_cache_creates_parent_directories(self, mock_msal, tmp_path):
+        """Cache save creates parent directories when they don't exist."""
+        cache_path = tmp_path / "nested" / "dir" / "token.json"
 
         mock_cache = MagicMock()
         mock_cache.has_state_changed = True

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 from urllib.parse import unquote
@@ -19,7 +20,18 @@ from flameconnect.exceptions import AuthenticationError
 _LOGGER = logging.getLogger(__name__)
 
 _REDIRECT_URI = f"msal{CLIENT_ID}://auth"
-_DEFAULT_CACHE_PATH = Path("~/.flameconnect_token.json")
+
+
+def _default_cache_path() -> Path:
+    """Return the default token cache path per XDG Base Directory Specification.
+
+    Uses ``$XDG_CACHE_HOME/flameconnect/token.json`` when the environment
+    variable is set, otherwise falls back to ``~/.cache/flameconnect/token.json``.
+    """
+    xdg_cache = os.environ.get("XDG_CACHE_HOME")
+    if xdg_cache:
+        return Path(xdg_cache) / "flameconnect" / "token.json"
+    return Path.home() / ".cache" / "flameconnect" / "token.json"
 
 
 class AbstractAuth(Protocol):
@@ -57,7 +69,9 @@ class MsalAuth:
     - All blocking MSAL calls wrapped in ``asyncio.to_thread()``
 
     Args:
-        cache_path: Path to the persistent token cache file.
+        cache_path: Path to the persistent token cache file.  Defaults to
+            ``$XDG_CACHE_HOME/flameconnect/token.json`` (or
+            ``~/.cache/flameconnect/token.json`` when the variable is unset).
         prompt_callback: An async callable that receives the auth URI
             and the redirect URI, and must return the full redirect URL
             pasted by the user. If not provided, raises
@@ -66,10 +80,10 @@ class MsalAuth:
 
     def __init__(
         self,
-        cache_path: Path = _DEFAULT_CACHE_PATH,
+        cache_path: Path | None = None,
         prompt_callback: Callable[[str, str], Awaitable[str]] | None = None,
     ) -> None:
-        self._cache_path = cache_path.expanduser()
+        self._cache_path = (cache_path or _default_cache_path()).expanduser()
         self._prompt_callback = prompt_callback
         self._app: msal.PublicClientApplication | None = None
         self._cache: msal.SerializableTokenCache | None = None
@@ -93,6 +107,7 @@ class MsalAuth:
     def _save_cache(self, cache: msal.SerializableTokenCache) -> None:
         """Persist the MSAL token cache to disk if it has changed."""
         if cache.has_state_changed:
+            self._cache_path.parent.mkdir(parents=True, exist_ok=True)
             self._cache_path.write_text(cache.serialize())
             _LOGGER.debug("Token cache saved to %s", self._cache_path)
 
