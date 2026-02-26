@@ -1,6 +1,6 @@
 # FlameConnect
 
-[![CI](https://github.com/USERNAME/flameconnect/actions/workflows/ci.yml/badge.svg)](https://github.com/USERNAME/flameconnect/actions/workflows/ci.yml)
+[![CI](https://github.com/deviantintegral/flameconnect/actions/workflows/ci.yml/badge.svg)](https://github.com/deviantintegral/flameconnect/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/flameconnect)](https://pypi.org/project/flameconnect/)
 [![Python](https://img.shields.io/pypi/pyversions/flameconnect)](https://pypi.org/project/flameconnect/)
 
@@ -247,7 +247,7 @@ implementation status in this library.
 
 ```bash
 # Clone and install with dev dependencies
-git clone https://github.com/USERNAME/flameconnect.git
+git clone https://github.com/deviantintegral/flameconnect.git
 cd flameconnect
 uv sync --dev
 
