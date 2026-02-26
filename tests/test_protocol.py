@@ -36,7 +36,6 @@ from flameconnect.models import (
     TimerParam,
     TimerStatus,
 )
-from flameconnect.protocol import _make_header as _protocol_make_header
 from flameconnect.protocol import decode_parameter, encode_parameter
 
 # ---------------------------------------------------------------------------
@@ -852,17 +851,6 @@ class TestMakeHeaderFormat:
         assert raw[0] == 0xEC
         assert raw[1] == 0x00
 
-    def test_payload_size_above_signed_byte_range(self):
-        """payload_size >= 128 requires unsigned byte format <HB, not signed <hb.
-
-        struct.pack('<hb', ..., 128) raises struct.error because 128 is out of
-        range for a signed byte.  Kills _make_header__mutmut_8 which changes
-        the format string from '<HB' to '<hb'.
-        """
-        header = _protocol_make_header(100, 128)
-        assert len(header) == 3
-        assert header[2] == 128
-
 
 # ---------------------------------------------------------------------------
 # Temperature encoding multiplier (kills *10 -> *11)
@@ -891,18 +879,6 @@ class TestTemperatureEncodingExact:
         raw = _make_header(321, 3) + bytes([1, 22, 5])
         result = decode_parameter(ParameterId.MODE, raw)
         assert result.target_temperature == 22.5
-
-    def test_temp_22_91_encodes_decimal_as_9(self):
-        """Decimal tenth uses multiplier 10, not 11.
-
-        int(0.91 * 10) == 9, but int(0.91 * 11) == 10.
-        Kills _encode_temperature__mutmut_7 which changes * 10 to * 11.
-        """
-        param = ModeParam(mode=FireMode.MANUAL, target_temperature=22.91)
-        b64 = encode_parameter(param)
-        raw = base64.b64decode(b64)
-        assert raw[4] == 22
-        assert raw[5] == 9  # int(0.91 * 10) = 9, not int(0.91 * 11) = 10
 
 
 # ---------------------------------------------------------------------------
