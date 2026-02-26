@@ -1443,7 +1443,6 @@ class TestCmdTui:
 
         with (
             patch.dict("sys.modules", {"flameconnect.tui": None}),
-            patch("builtins.__import__", side_effect=ImportError("no tui")),
             pytest.raises(SystemExit),
         ):
             await cmd_tui()
