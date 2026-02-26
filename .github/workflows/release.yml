@@ -21,7 +21,7 @@ jobs:
         id: release
         with:
           release-type: python
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
   publish:
     needs: [ci, release-please]
