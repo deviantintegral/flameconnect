@@ -26,4 +26,4 @@ jobs:
       - name: Test
         run: uv run pytest --cov=flameconnect --cov-report=term-missing --tb=short
       - name: Mutation test
-        run: uv run mutmut run --max-children 2
+        run: uv run mutmut run --max-children 4
