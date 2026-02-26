@@ -1,4 +1,4 @@
-"""Async Python library for controlling Dimplex/Faber fireplaces."""
+"""Async Python library for controlling Dimplex, Faber, and Real Flame fireplaces."""
 
 from __future__ import annotations
 
@@ -13,6 +13,8 @@ from flameconnect.exceptions import (
     ProtocolError,
 )
 from flameconnect.models import (
+    NAMED_COLORS,
+    Brightness,
     ConnectionState,
     ErrorParam,
     Fire,
@@ -32,6 +34,7 @@ from flameconnect.models import (
     MediaTheme,
     ModeParam,
     Parameter,
+    PulsatingEffect,
     RGBWColor,
     SoftwareVersionParam,
     SoundParam,
@@ -55,6 +58,7 @@ __all__ = [
     "FlameConnectError",
     "ProtocolError",
     # Enums
+    "Brightness",
     "ConnectionState",
     "FireMode",
     "FlameColor",
@@ -65,6 +69,7 @@ __all__ = [
     "LightStatus",
     "LogEffect",
     "MediaTheme",
+    "PulsatingEffect",
     "TempUnit",
     "TimerStatus",
     # Dataclasses
@@ -81,6 +86,8 @@ __all__ = [
     "SoundParam",
     "TempUnitParam",
     "TimerParam",
+    # Constants
+    "NAMED_COLORS",
     # Type aliases
     "Parameter",
 ]

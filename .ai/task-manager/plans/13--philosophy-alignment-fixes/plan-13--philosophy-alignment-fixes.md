@@ -124,9 +124,46 @@ Six targeted text fixes across four files:
 - Existing CI pipeline (ruff, mypy, pytest) for validation
 - No new dependencies or tools required
 
+## Execution Blueprint
+
+```mermaid
+graph TD
+    01["Task 01: Public API exports"] --> Done["Done"]
+    02["Task 02: Documentation fixes"] --> Done
+```
+
+### ✅ Phase 1: All Fixes
+**Parallel Tasks:**
+- ✔️ Task 01: Export missing model types from __init__.py
+- ✔️ Task 02: Fix documentation and brand name inconsistencies
+
+### Execution Summary
+- Total Phases: 1
+- Total Tasks: 2
+- All tasks completed in parallel
+
+## Execution Summary
+
+**Status**: ✅ Completed Successfully
+**Completed Date**: 2026-02-26
+
+### Results
+- **Public API**: Added `Brightness`, `PulsatingEffect`, and `NAMED_COLORS` to `__init__.py` imports and `__all__`.
+- **Brand names**: Updated from "Dimplex/Faber" or "Dimplex" to "Dimplex, Faber, and Real Flame" in `__init__.py`, `pyproject.toml`, and `cli.py`.
+- **README**: Removed `fan-only` from heat-mode example, changed brightness from "0-255" to "low, high".
+- **CLI**: Removed `light-status` from argparse settable parameter list.
+- All 1044 tests pass, mypy clean, ruff clean.
+
+### Noteworthy Events
+No significant issues encountered. All changes were small, targeted text edits.
+
+### Recommendations
+None — all philosophy gaps identified in the audit have been addressed.
+
 ## Notes
 
 ### Change Log
 
 - 2026-02-25: Initial plan creation
 - 2026-02-25: Refinement — all 8 gaps verified against codebase; added `__all__` placement guidance for new exports; no clarifications needed from user
+- 2026-02-26: Execution completed — all 8 fixes applied

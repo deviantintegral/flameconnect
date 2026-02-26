@@ -123,10 +123,10 @@ flameconnect set <fire_id> mode manual
 # Set flame speed (1-5)
 flameconnect set <fire_id> flame-speed 3
 
-# Set brightness (0-255)
-flameconnect set <fire_id> brightness 200
+# Set brightness (low, high)
+flameconnect set <fire_id> brightness low
 
-# Set heat mode (normal, boost, eco, fan-only)
+# Set heat mode (normal, boost, eco)
 flameconnect set <fire_id> heat-mode eco
 
 # Set heater target temperature
