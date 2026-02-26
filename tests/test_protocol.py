@@ -880,6 +880,18 @@ class TestTemperatureEncodingExact:
         result = decode_parameter(ParameterId.MODE, raw)
         assert result.target_temperature == 22.5
 
+    def test_temp_22_91_encodes_decimal_as_9(self):
+        """Decimal tenth uses multiplier 10, not 11.
+
+        int(0.91 * 10) == 9, but int(0.91 * 11) == 10.
+        Kills _encode_temperature__mutmut_7 which changes * 10 to * 11.
+        """
+        param = ModeParam(mode=FireMode.MANUAL, target_temperature=22.91)
+        b64 = encode_parameter(param)
+        raw = base64.b64decode(b64)
+        assert raw[4] == 22
+        assert raw[5] == 9  # int(0.91 * 10) = 9, not int(0.91 * 11) = 10
+
 
 # ---------------------------------------------------------------------------
 # Pulsating/brightness bitfield mutations (shift direction/amount)

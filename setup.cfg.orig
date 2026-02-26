@@ -1,7 +1,0 @@
-[mutmut]
-paths_to_mutate =
-    src/flameconnect/protocol.py
-    src/flameconnect/client.py
-    src/flameconnect/auth.py
-    src/flameconnect/b2c_login.py
-also_copy = src
