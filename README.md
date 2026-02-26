@@ -32,7 +32,7 @@ uv tool run flameconnect
 To run the TUI without installing:
 
 ```bash
-uv tool run flameconnect[tui] tui
+uv tool run flameconnect[tui]
 ```
 
 ## Quick Start
@@ -190,7 +190,7 @@ uv add flameconnect[tui]
 Or run it directly without installing:
 
 ```bash
-uv tool run flameconnect[tui] tui
+uv tool run flameconnect[tui]
 ```
 
 The dashboard displays real-time fireplace status and auto-refreshes every 10
