@@ -840,8 +840,8 @@ async def cmd_tui(*, verbose: bool = False) -> None:
     try:
         from flameconnect.tui import run_tui
     except ImportError:
-        print("The TUI requires the 'tui' extra. Install with:")
-        print("  uv tool run flameconnect[tui]")
+        print("The TUI requires the 'tui' extra. Run with:")
+        print("  uv tool run flameconnect[tui] tui")
         sys.exit(1)
     await run_tui(verbose=verbose)
 
