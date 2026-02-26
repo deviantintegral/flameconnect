@@ -117,23 +117,39 @@ flameconnect off <fire_id>
 ### Set parameters
 
 ```bash
-# Set operating mode (standby or manual)
-flameconnect set <fire_id> mode manual
+# Fire control
+flameconnect set <fire_id> mode manual          # standby, manual
 
-# Set flame speed (1-5)
-flameconnect set <fire_id> flame-speed 3
+# Flame
+flameconnect set <fire_id> flame-effect on       # on, off
+flameconnect set <fire_id> flame-speed 3         # 1-5
+flameconnect set <fire_id> flame-color blue       # all, yellow-red, yellow-blue,
+                                                  #   blue, red, yellow, blue-red
+flameconnect set <fire_id> brightness low         # low, high
+flameconnect set <fire_id> pulsating on           # on, off
 
-# Set brightness (low, high)
-flameconnect set <fire_id> brightness low
+# Media lighting
+flameconnect set <fire_id> media-theme prism      # user-defined, white, blue,
+                                                  #   purple, red, green, prism,
+                                                  #   kaleidoscope, midnight
+flameconnect set <fire_id> media-light on         # on, off
+flameconnect set <fire_id> media-color 255,0,0,80 # R,G,B,W (0-255) or preset name
 
-# Set heat mode (normal, boost, eco)
-flameconnect set <fire_id> heat-mode eco
+# Overhead lighting
+flameconnect set <fire_id> overhead-light on      # on, off
+flameconnect set <fire_id> overhead-color dark-blue # R,G,B,W or preset name
 
-# Set heater target temperature
-flameconnect set <fire_id> heat-temp 22.5
+# Ambient
+flameconnect set <fire_id> ambient-sensor on      # on, off
 
-# Set countdown timer in minutes (0 to disable)
-flameconnect set <fire_id> timer 120
+# Heat
+flameconnect set <fire_id> heat-status on         # on, off
+flameconnect set <fire_id> heat-mode eco          # normal, boost, eco, boost:<min>
+flameconnect set <fire_id> heat-temp 22.5         # target temperature
+
+# Timer & units
+flameconnect set <fire_id> timer 120              # minutes (0 to disable)
+flameconnect set <fire_id> temp-unit celsius      # celsius, fahrenheit
 ```
 
 ### Launch the TUI
@@ -157,6 +173,24 @@ seconds. Key bindings:
 | Key | Action |
 |-----|--------|
 | `p` | Toggle power on/off |
+| `f` | Set flame speed (1-5) |
+| `e` | Toggle flame effect |
+| `c` | Set flame color |
+| `b` | Toggle brightness (high/low) |
+| `g` | Toggle pulsating effect |
+| `m` | Set media theme |
+| `l` | Toggle media light |
+| `d` | Set media color (RGBW) |
+| `o` | Toggle overhead light |
+| `v` | Set overhead color (RGBW) |
+| `a` | Toggle ambient sensor |
+| `s` | Toggle heat on/off |
+| `h` | Set heat mode |
+| `n` | Set temperature |
+| `u` | Toggle temp unit (°C/°F) |
+| `t` | Set timer |
+| `w` | Switch fireplace |
+| `?` | Toggle help overlay |
 | `r` | Manual refresh |
 | `q` | Quit |
 
