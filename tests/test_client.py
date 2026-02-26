@@ -788,14 +788,15 @@ class TestApiErrorHandling:
         """Using client without context manager or session.
 
         Kills _request__mutmut_3/6/7/8 by matching both parts
-        of the error message.
+        of the error message.  The leading ^ anchor kills mutmut_3
+        which prepends 'XX' to the first string literal.
         """
         client = FlameConnectClient(token_auth)
         with pytest.raises(
             RuntimeError,
             match=(
-                "No aiohttp session available.*"
-                "Use the client as an async context manager"
+                r"^No aiohttp session available.*"
+                r"Use the client as an async context manager"
             ),
         ):
             await client.get_fires()
