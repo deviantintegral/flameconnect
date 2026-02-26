@@ -9,6 +9,9 @@ permissions:
   id-token: write
 
 jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
   release-please:
     runs-on: ubuntu-latest
     outputs:
@@ -20,7 +23,7 @@ jobs:
           release-type: python
 
   publish:
-    needs: release-please
+    needs: [ci, release-please]
     if: ${{ needs.release-please.outputs.release_created }}
     runs-on: ubuntu-latest
     environment: pypi
