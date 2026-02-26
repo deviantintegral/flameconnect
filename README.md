@@ -6,6 +6,8 @@
 
 Async Python library for controlling Dimplex, Faber, and Real Flame fireplaces via the Flame Connect cloud API.
 
+![FlameConnect TUI](images/flameconnect-0.1.0.png)
+
 ## Installation
 
 ```bash
