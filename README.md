@@ -259,6 +259,12 @@ uv run mutmut run --paths-to-mutate=src/flameconnect/protocol.py
 Please follow [Conventional Commits](https://www.conventionalcommits.org/) for
 commit messages.
 
+## Do you work at Dimplex, Faber, or Real Flame, or support the underlying web services?
+
+This library and app aims to follow the same patterns as the official apps to minimize load on back-end infrastructure. We avoid making API calls whenever possible, and mirror the app by making data refreshes a specific user action. This library implementation is a last resort. We're glad to implement improvements if this library is causing any challenges on the back-end servers.
+
+But really... making these remote calls is laggy and complex! As a comparison, take a look at the Lennox iComfort S30 and similar line of themostats. They have a cloud API, but also have a fully local API that works even when the internet is down. And, it's way, way faster to respond. If a local API is made available, I'd be glad to drop this library in favour of it. Let's talk!
+
 ## License
 
 Apache-2.0
