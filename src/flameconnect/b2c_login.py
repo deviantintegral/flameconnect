@@ -19,11 +19,6 @@ _LOGGER = logging.getLogger(__name__)
 
 
 _B2C_POLICY = "B2C_1A_FirePhoneSignUpOrSignInWithPhoneOrEmail"
-_USER_AGENT = (
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:147.0) "
-    "Gecko/20100101 Firefox/147.0"
-)
-
 
 def _extract_base_path(page_url: str) -> str:
     """Extract the /{tenant}/{policy}/ base path from a B2C page URL.
@@ -169,7 +164,6 @@ async def b2c_login_with_credentials(auth_uri: str, email: str, password: str) -
     try:
         async with aiohttp.ClientSession(
             cookie_jar=jar,
-            headers={"User-Agent": _USER_AGENT},
         ) as session:
             # Step 1: GET the auth URI, follow redirects to B2C login page
             _log_request("GET", auth_uri)
@@ -227,7 +221,6 @@ async def b2c_login_with_credentials(auth_uri: str, email: str, password: str) -
             # our manual unquoted Cookie header.
             async with aiohttp.ClientSession(
                 cookie_jar=aiohttp.DummyCookieJar(),
-                headers={"User-Agent": _USER_AGENT},
             ) as raw_session:
                 async with raw_session.post(
                     yarl.URL(fields["post_url"], encoded=True),

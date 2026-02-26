@@ -14,7 +14,6 @@ from multidict import CIMultiDict
 
 from flameconnect.b2c_login import (
     _B2C_POLICY,
-    _USER_AGENT,
     _build_cookie_header,
     _extract_base_path,
     _log_request,
@@ -802,8 +801,8 @@ class TestB2cLoginArgVerification:
 
         jar_cls.assert_called_once_with(unsafe=True)
 
-    async def test_session_headers_user_agent(self):
-        """Both sessions receive User-Agent header."""
+    async def test_session_headers_no_custom_user_agent(self):
+        """Sessions do not set a custom User-Agent header."""
         login_resp = _make_mock_response(
             status=200,
             text=SAMPLE_B2C_HTML,
@@ -846,10 +845,9 @@ class TestB2cLoginArgVerification:
 
         assert len(cs_calls) == 2
         for i, call in enumerate(cs_calls):
-            hdrs = call.get("headers", {})
-            assert hdrs.get("User-Agent") == (_USER_AGENT), (
-                f"Session {i} missing User-Agent"
-            )
+            assert "headers" not in call or "User-Agent" not in call.get(
+                "headers", {}
+            ), f"Session {i} should not set a custom User-Agent"
 
     async def test_get_auth_uri_with_redirects(self):
         """Initial GET uses auth_uri with allow_redirects."""
@@ -1156,12 +1154,6 @@ class TestConstants:
 
     def test_b2c_policy_value(self):
         assert _B2C_POLICY == ("B2C_1A_FirePhoneSignUpOrSignInWithPhoneOrEmail")
-
-    def test_user_agent_contains_mozilla(self):
-        assert "Mozilla/5.0" in _USER_AGENT
-
-    def test_user_agent_contains_firefox(self):
-        assert "Firefox" in _USER_AGENT
 
 
 # -------------------------------------------------------------------
