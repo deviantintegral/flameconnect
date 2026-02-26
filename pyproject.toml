@@ -50,3 +50,8 @@ testpaths = ["tests"]
 
 [tool.coverage.run]
 source = ["src/flameconnect"]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
+]
