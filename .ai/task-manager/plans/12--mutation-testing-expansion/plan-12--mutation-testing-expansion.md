@@ -140,6 +140,32 @@ The ≥90% target means killing at least ~88 of the 125 survivors (allowing up t
 - Existing dev environment with mutmut 3.5.0 already installed
 - GitHub Actions ubuntu-24.04 runner (4 CPUs, 7GB RAM)
 
+## Execution Blueprint
+
+**Validation Gates:**
+- Reference: `/config/hooks/POST_PHASE.md`
+
+```mermaid
+graph TD
+    01["Task 01: Fix CI OOM"] --> 02["Task 02: Kill b2c_login mutants"]
+    01 --> 03["Task 03: Kill protocol+client mutants"]
+```
+
+### Phase 1: CI OOM Fix
+**Parallel Tasks:**
+- Task 01: Fix CI OOM by limiting mutmut parallelism
+
+### Phase 2: Kill Surviving Mutants
+**Parallel Tasks:**
+- Task 02: Kill surviving mutants in b2c_login.py (depends on: 01)
+- Task 03: Kill surviving mutants in protocol.py and client.py (depends on: 01)
+
+### Execution Summary
+- Total Phases: 2
+- Total Tasks: 3
+- Maximum Parallelism: 2 tasks (in Phase 2)
+- Critical Path Length: 2 phases
+
 ## Notes
 
 ### Change Log
