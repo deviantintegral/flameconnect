@@ -199,6 +199,8 @@ seconds. Key bindings:
 The table below lists all known Flame Connect cloud API endpoints and their
 implementation status in this library.
 
+From a semantic versioning standpoint, the upstream API is not versioned and can change at any time. In general, we will not consider fixes around the API itself to be breaking changes, even of those change the data or methods exposed. Where possible, we will provide wrappers to translate API changes to preserve compatibility.
+
 ### Fireplace Control (Core)
 
 | Endpoint | Method | Status |
