@@ -1599,8 +1599,8 @@ class TestMakeHeaderSignedUnsigned:
     so passing payload_size >= 128 would raise struct.error with 'hb'
     but succeed with 'HB'.
 
-    We call through the module attribute so that mutmut's monkey-patching
-    is picked up (a bare import caches the original function reference).
+    These tests exercise payload_size boundary conditions to
+    distinguish the original implementation from the mutant.
     """
 
     def test_large_payload_size_succeeds(self):
