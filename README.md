@@ -305,7 +305,7 @@ From a semantic versioning standpoint, the upstream API is not versioned and can
 # Clone and install with dev dependencies
 git clone https://github.com/deviantintegral/flameconnect.git
 cd flameconnect
-uv sync --dev
+uv sync --dev --all-extras
 
 # Lint and type-check
 uv run ruff check .
