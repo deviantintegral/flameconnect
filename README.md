@@ -20,6 +20,21 @@ To include the interactive terminal dashboard (TUI):
 uv add flameconnect[tui]
 ```
 
+### Quick Run (no install)
+
+You can also run flameconnect directly without installing it as a project
+dependency:
+
+```bash
+uv tool run flameconnect
+```
+
+To run the TUI without installing:
+
+```bash
+uv tool run flameconnect[tui]
+```
+
 ## Quick Start
 
 ```python
@@ -96,6 +111,10 @@ async with FlameConnectClient(auth=auth, session=my_session) as client:
 The `flameconnect` command provides a straightforward interface for controlling your
 fireplace from the terminal. Add `-v` to any command for debug logging.
 
+All examples below use `flameconnect` directly, but you can substitute
+`uv tool run flameconnect` if you haven't installed the package (e.g.
+`uv tool run flameconnect list`).
+
 ### List registered fireplaces
 
 ```bash
@@ -166,6 +185,12 @@ flameconnect tui
 
 ```bash
 uv add flameconnect[tui]
+```
+
+Or run it directly without installing:
+
+```bash
+uv tool run flameconnect[tui]
 ```
 
 The dashboard displays real-time fireplace status and auto-refreshes every 10
@@ -280,7 +305,7 @@ From a semantic versioning standpoint, the upstream API is not versioned and can
 # Clone and install with dev dependencies
 git clone https://github.com/deviantintegral/flameconnect.git
 cd flameconnect
-uv sync --dev
+uv sync --dev --all-extras
 
 # Lint and type-check
 uv run ruff check .
