@@ -1818,6 +1818,8 @@ class TestB2cLoginCookieMerging:
         # And the results should be identical for any casing of the key.
         assert headers.getall("set-cookie") == values_mixed
         assert headers.getall("SET-COOKIE") == values_mixed
+
+
 class TestB2cLoginLogCallMutants:
     """Tests that kill logging-related mutants inside b2c_login_with_credentials.
 
