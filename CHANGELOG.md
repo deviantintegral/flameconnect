@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.2.0](https://github.com/deviantintegral/flameconnect/compare/v0.1.0...v0.2.0) (2026-02-26)
+
+
+### Features
+
+* add heat-status CLI set command for TUI parity ([d442140](https://github.com/deviantintegral/flameconnect/commit/d44214033f5ad0c9be9f8765559c8d142178a988))
+
+
+### Bug Fixes
+
+* align public API and docs with project philosophy ([df4a6e6](https://github.com/deviantintegral/flameconnect/commit/df4a6e6846509fc19ab17f79e5c5fe6ba34d510b))
+* **ci:** limit mutmut parallelism to prevent OOM in CI ([2bdb46b](https://github.com/deviantintegral/flameconnect/commit/2bdb46b91a3acb430c5dc0c7661834190d7054a7))
+
+
+### Documentation
+
+* add initial AGENTS.md ([#29](https://github.com/deviantintegral/flameconnect/issues/29)) ([f008f5b](https://github.com/deviantintegral/flameconnect/commit/f008f5b7cb9cab9d86edf30c8943992b7824cad6))
+* clarify how mutmut copies files ([0daf94b](https://github.com/deviantintegral/flameconnect/commit/0daf94b25030bfefb1fc947309227725417a38ee))
+* more 🔥 ([9de07d6](https://github.com/deviantintegral/flameconnect/commit/9de07d600ef9673952dca4d3d6ae0944594b9f04))
+* update README with API versioning information ([0299759](https://github.com/deviantintegral/flameconnect/commit/029975913dfa9e170b23eaa4d42582f6a3d1dc4b))
+* update README with complete CLI set parameters and TUI keybindings ([81ed9c7](https://github.com/deviantintegral/flameconnect/commit/81ed9c7f3ab27664a1d1b929cf9f77d8e6e18bdf))
+
 ## 0.1.0 (2026-02-26)
 
 
