@@ -1801,9 +1801,23 @@ class TestB2cLoginCookieMerging:
         # "SET-COOKIE". Since resp.headers is a CIMultiDict (case-
         # insensitive), all three forms return the same results.
         # These are equivalent mutants.
-        pass
+        headers = CIMultiDict(
+            [
+                ("set-cookie", "a=1; Path=/"),
+                ("SET-COOKIE", "b=2; Path=/"),
+            ]
+        )
 
+        # getall should return all values independent of the case used
+        # for the lookup key.
+        values_mixed = headers.getall("Set-Cookie")
+        assert "a=1; Path=/" in values_mixed
+        assert "b=2; Path=/" in values_mixed
+        assert len(values_mixed) == 2
 
+        # And the results should be identical for any casing of the key.
+        assert headers.getall("set-cookie") == values_mixed
+        assert headers.getall("SET-COOKIE") == values_mixed
 class TestB2cLoginLogCallMutants:
     """Tests that kill logging-related mutants inside b2c_login_with_credentials.
 
