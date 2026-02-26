@@ -14,6 +14,7 @@ jobs:
 
   release-please:
     runs-on: ubuntu-24.04
+    environment: main
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
     steps:
