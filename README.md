@@ -11,20 +11,12 @@ Async Python library for controlling Dimplex, Faber, and Real Flame fireplaces v
 ## Installation
 
 ```bash
-pip install flameconnect
-```
-
-Or with [uv](https://docs.astral.sh/uv/):
-
-```bash
 uv add flameconnect
 ```
 
 To include the interactive terminal dashboard (TUI):
 
 ```bash
-pip install flameconnect[tui]
-# or
 uv add flameconnect[tui]
 ```
 
@@ -156,7 +148,7 @@ flameconnect tui
 [Textual](https://textual.textualize.io/). It requires the TUI extra:
 
 ```bash
-pip install flameconnect[tui]
+uv add flameconnect[tui]
 ```
 
 The dashboard displays real-time fireplace status and auto-refreshes every 10
