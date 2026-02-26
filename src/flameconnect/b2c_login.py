@@ -20,6 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 
 _B2C_POLICY = "B2C_1A_FirePhoneSignUpOrSignInWithPhoneOrEmail"
 
+
 def _extract_base_path(page_url: str) -> str:
     """Extract the /{tenant}/{policy}/ base path from a B2C page URL.
 
