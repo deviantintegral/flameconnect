@@ -160,8 +160,48 @@ Complete keybinding list for the README:
 ### Technical Infrastructure
 - Python 3.13+, uv, ruff, mypy, pytest (all already configured in the project)
 
+## Execution Blueprint
+
+**Validation Gates:**
+- Reference: `/config/hooks/POST_PHASE.md`
+
+### Phase 1: CLI Implementation and Tests
+**Parallel Tasks:**
+- ✔️ Task 001: Add heat-status CLI command and tests (status: completed)
+
+### Phase 2: Documentation Update
+**Parallel Tasks:**
+- ✔️ Task 002: Update README CLI and TUI documentation (depends on: 001) (status: completed)
+
+### Post-phase Actions
+
+### Execution Summary
+- Total Phases: 2
+- Total Tasks: 2
+- Maximum Parallelism: 1 task (in Phase 1)
+- Critical Path Length: 2 phases
+
 ## Notes
 
 ### Change Log
 - 2026-02-25: Initial plan created
 - 2026-02-25: Refinement — added stale `light-status` argparse cleanup, corrected TUI keybinding count from "18" to 22 (21 user-facing), documented `overhead_light` vs `light_status` field distinction, specified test pattern (aioresponses-based), specified README format (code blocks with comments)
+
+## Execution Summary
+
+**Status**: Completed Successfully
+**Completed Date**: 2026-02-26
+
+### Results
+- Added `_set_heat_status()` CLI command with on/off support (ParameterId 323), following existing `_set_*` pattern
+- Updated `_SET_PARAM_NAMES` and argparse help text to include `heat-status` (stale `light-status` was already removed in Plan 13)
+- Added 4 tests: on, off, invalid value, and cmd_set dispatch integration (65 total CLI set tests)
+- Expanded README CLI "Set parameters" from 6 to all 17 parameters, grouped by category
+- Expanded README TUI keybindings table from 3 to all 21 user-facing keys
+- All 1048 tests pass, ruff and mypy clean
+
+### Noteworthy Events
+No significant issues encountered.
+
+### Recommendations
+None.
