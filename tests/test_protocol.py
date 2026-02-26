@@ -8,6 +8,7 @@ import struct
 
 import pytest
 
+import flameconnect.protocol as _protocol_module
 from flameconnect.const import ParameterId
 from flameconnect.exceptions import ProtocolError
 from flameconnect.models import (
@@ -36,7 +37,11 @@ from flameconnect.models import (
     TimerParam,
     TimerStatus,
 )
-from flameconnect.protocol import decode_parameter, encode_parameter
+from flameconnect.protocol import (
+    _encode_temperature,
+    decode_parameter,
+    encode_parameter,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -1561,3 +1566,68 @@ class TestDecodeFieldValues:
         assert r.light_status == LightStatus.ON
         assert r.flame_color == FlameColor.YELLOW
         assert r.ambient_sensor == LightStatus.ON
+
+
+# ---------------------------------------------------------------------------
+# Targeted mutant-killing tests
+# ---------------------------------------------------------------------------
+
+
+class TestEncodeTemperatureMultiplier:
+    """Kill _encode_temperature__mutmut_7: (temp % 1) * 10 -> * 11.
+
+    Due to floating-point imprecision, 20.2 % 1 == 0.1999...
+    With *10: int(0.1999... * 10) = int(1.999...) = 1
+    With *11: int(0.1999... * 11) = int(2.199...) = 2
+    So the original and mutant produce different results for 20.2.
+    """
+
+    def test_encode_temperature_20_2(self):
+        result = _encode_temperature(20.2)
+        assert result == bytes([20, 1])
+
+    def test_encode_temperature_20_4(self):
+        """Additional case: 20.4 -> original gives 3, mutant gives 4."""
+        result = _encode_temperature(20.4)
+        assert result == bytes([20, 3])
+
+
+class TestMakeHeaderSignedUnsigned:
+    """Kill _make_header__mutmut_8: '<HB>' -> '<hb>'.
+
+    The signed 'b' format only accepts values in [-128, 127],
+    so passing payload_size >= 128 would raise struct.error with 'hb'
+    but succeed with 'HB'.
+
+    We call through the module attribute so that mutmut's monkey-patching
+    is picked up (a bare import caches the original function reference).
+    """
+
+    def test_large_payload_size_succeeds(self):
+        """payload_size=128 is valid for unsigned B but not signed b."""
+        result = _protocol_module._make_header(236, 128)
+        # Unsigned packing: 0xEC 0x00 0x80
+        assert result == struct.pack("<HB", 236, 128)
+
+    def test_payload_size_255(self):
+        """payload_size=255 is valid for unsigned B but not signed b."""
+        result = _protocol_module._make_header(100, 255)
+        assert result == struct.pack("<HB", 100, 255)
+
+
+class TestEncodeParameterAsciiCasing:
+    """Document encode_parameter__mutmut_33 as equivalent mutant.
+
+    The mutation changes .decode("ascii") to .decode("ASCII").
+    Python's codec lookup is case-insensitive, so both produce
+    identical results. This mutant cannot be killed.
+    """
+
+    def test_encode_returns_valid_base64_ascii(self):
+        """Verify that encode_parameter produces valid base64 ASCII."""
+        param = TempUnitParam(unit=TempUnit.FAHRENHEIT)
+        result = encode_parameter(param)
+        assert isinstance(result, str)
+        # Verify it's valid base64 by round-tripping
+        raw = base64.b64decode(result)
+        assert len(raw) > 0

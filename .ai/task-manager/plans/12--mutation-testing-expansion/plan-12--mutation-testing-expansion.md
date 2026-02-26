@@ -151,14 +151,14 @@ graph TD
     01 --> 03["Task 03: Kill protocol+client mutants"]
 ```
 
-### Phase 1: CI OOM Fix
+### ✅ Phase 1: CI OOM Fix
 **Parallel Tasks:**
-- Task 01: Fix CI OOM by limiting mutmut parallelism
+- ✔️ Task 01: Fix CI OOM by limiting mutmut parallelism
 
-### Phase 2: Kill Surviving Mutants
+### ✅ Phase 2: Kill Surviving Mutants
 **Parallel Tasks:**
-- Task 02: Kill surviving mutants in b2c_login.py (depends on: 01)
-- Task 03: Kill surviving mutants in protocol.py and client.py (depends on: 01)
+- ✔️ Task 02: Kill surviving mutants in b2c_login.py (depends on: 01)
+- ✔️ Task 03: Kill surviving mutants in protocol.py and client.py (depends on: 01)
 
 ### Execution Summary
 - Total Phases: 2

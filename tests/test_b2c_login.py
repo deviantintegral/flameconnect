@@ -629,7 +629,7 @@ class TestB2cLoginWithCredentials:
             _patch_session(session),
             pytest.raises(
                 AuthenticationError,
-                match=("Redirect without Location header"),
+                match=r"^Redirect without Location header$",
             ),
         ):
             await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
@@ -689,7 +689,7 @@ class TestB2cLoginWithCredentials:
             _patch_session(session),
             pytest.raises(
                 AuthenticationError,
-                match=("Reached 200 response without finding redirect URL"),
+                match=r"^Reached 200 response without finding redirect URL$",
             ),
         ):
             await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
@@ -1162,3 +1162,1174 @@ class TestConstants:
 
     def test_user_agent_contains_firefox(self):
         assert "Firefox" in _USER_AGENT
+
+
+# -------------------------------------------------------------------
+# Additional tests to kill surviving mutants
+# -------------------------------------------------------------------
+
+
+class TestExtractBasePathMutants:
+    """Additional extract_base_path tests to kill mutant 6 (strip mutation)."""
+
+    def test_path_with_leading_x_characters(self):
+        """URL with 'X' in the path differentiates strip('/') from strip('XX/XX').
+
+        Mutant 6 changes strip('/') to strip('XX/XX'), which would also
+        strip 'X' characters from path segments. By including 'X' in the
+        tenant name we can detect this.
+        """
+        url = "https://host.com/Xtenant/policy/extra"
+        result = _extract_base_path(url)
+        # With correct strip('/'), first segment is 'Xtenant'
+        assert result == f"/Xtenant/{_POLICY}/"
+
+    def test_path_starting_with_x(self):
+        """Tenant name starting with X should be preserved."""
+        url = "https://host.com/XX/policy"
+        result = _extract_base_path(url)
+        assert result == f"/XX/{_POLICY}/"
+
+
+class TestLogRequestMutants:
+    """Kill surviving log_request mutants by asserting exact log format.
+
+    Note: Some log_request mutants are essentially equivalent (they only
+    change debug format strings that tests may not care about). However,
+    we can kill them by asserting exact prefix formatting.
+    """
+
+    def test_exact_prefix_format(self, caplog):
+        """Kill mutant 7: '>>> %s %s' -> 'XX>>> %s %sXX'."""
+        with caplog.at_level(logging.DEBUG, "flameconnect"):
+            _log_request("GET", "https://example.com/api")
+        assert ">>> GET https://example.com/api" in caplog.text
+        # Ensure no XX corruption
+        assert "XX" not in caplog.text
+
+    def test_params_exact_prefix(self, caplog):
+        """Mutant 13: params line prefix mutated."""
+        with caplog.at_level(logging.DEBUG, "flameconnect"):
+            _log_request("GET", "https://example.com", params={"k": "v"})
+        assert ">>>   params:" in caplog.text
+        assert "XX" not in caplog.text
+
+    def test_headers_exact_prefix(self, caplog):
+        """Mutant 19: headers line prefix mutated."""
+        with caplog.at_level(logging.DEBUG, "flameconnect"):
+            _log_request("GET", "https://example.com", headers={"H": "v"})
+        assert ">>>   headers:" in caplog.text
+        assert "XX" not in caplog.text
+
+    def test_password_mask_exact(self, caplog):
+        """Mutant 22: '***' -> 'XX***XX'."""
+        with caplog.at_level(logging.DEBUG, "flameconnect"):
+            _log_request("POST", "https://example.com", data={"password": "secret"})
+        # The masked value should be exactly '***', not 'XX***XX'
+        assert "'***'" in caplog.text or '"***"' in caplog.text
+        assert "XX***XX" not in caplog.text
+
+    def test_body_exact_prefix(self, caplog):
+        """Mutant 30: body line prefix mutated."""
+        with caplog.at_level(logging.DEBUG, "flameconnect"):
+            _log_request("POST", "https://example.com", data={"k": "v"})
+        assert ">>>   body:" in caplog.text
+        assert "XX" not in caplog.text
+
+
+class TestLogResponseMutants:
+    """Kill surviving log_response mutants by asserting exact log format.
+
+    Mutants 3, 7, 10, 12, 13, 18, 21, 25, 27.
+    """
+
+    def _make_resp(self, status=200, url="https://example.com"):
+        resp = MagicMock()
+        resp.status = status
+        resp.url = url
+        resp.headers = CIMultiDict({"X-Test": "yes"})
+        return resp
+
+    def test_url_logged_not_none(self, caplog):
+        """Mutant 3: resp.url -> None."""
+        resp = self._make_resp(url="https://specific.example.com/path")
+        with caplog.at_level(logging.DEBUG, "flameconnect"):
+            _log_response(resp)
+        assert "https://specific.example.com/path" in caplog.text
+
+    def test_exact_status_line_prefix(self, caplog):
+        """Mutant 7: '<<< %s %s' -> 'XX<<< %s %sXX'."""
+        resp = self._make_resp(status=201)
+        with caplog.at_level(logging.DEBUG, "flameconnect"):
+            _log_response(resp)
+        assert "<<< 201" in caplog.text
+        assert "XX" not in caplog.text
+
+    def test_headers_logged_as_dict(self, caplog):
+        """Mutant 10: dict(resp.headers) -> None."""
+        resp = self._make_resp()
+        with caplog.at_level(logging.DEBUG, "flameconnect"):
+            _log_response(resp)
+        assert "X-Test" in caplog.text
+
+    def test_headers_not_removed(self, caplog):
+        """Mutant 12: removes dict(resp.headers) arg entirely."""
+        resp = self._make_resp()
+        with caplog.at_level(logging.DEBUG, "flameconnect"):
+            _log_response(resp)
+        # The dict argument should be present and contain headers
+        assert "yes" in caplog.text
+
+    def test_headers_line_exact_prefix(self, caplog):
+        """Mutant 13: '<<<   headers: %s' -> 'XX<<<   headers: %sXX'."""
+        resp = self._make_resp()
+        with caplog.at_level(logging.DEBUG, "flameconnect"):
+            _log_response(resp)
+        assert "<<<   headers:" in caplog.text
+        assert "XX" not in caplog.text
+
+    def test_body_preview_exact_length(self, caplog):
+        """Mutant 18: body[:2000] -> body[:2001].
+
+        With a body of length 2001, the preview should be exactly 2000
+        chars plus the truncation suffix. If the mutant changes to 2001,
+        the preview would include the full body (no truncation because
+        2001 == 2001 but len check is > 2000 so truncation message still
+        appears but preview is 1 char longer).
+        """
+        resp = self._make_resp()
+        # Use a unique marker at position 2001 that won't appear elsewhere
+        body = "a" * 2000 + "\x07"  # 2001 chars, \x07 (BEL) is the extra char
+        with caplog.at_level(logging.DEBUG, "flameconnect"):
+            _log_response(resp, body)
+        # With correct code: body[:2000] means preview is 'a' * 2000
+        # and '\x07' should NOT be in the preview
+        # With mutant code: body[:2001] means '\x07' IS in the preview
+        # Look at the body log line specifically
+        body_lines = [x for x in caplog.text.splitlines() if "body:" in x]
+        assert len(body_lines) == 1
+        assert "\x07" not in body_lines[0]
+
+    def test_body_logged_with_body_prefix(self, caplog):
+        """Mutants 21, 25, 27 -- various format string mutations."""
+        resp = self._make_resp()
+        with caplog.at_level(logging.DEBUG, "flameconnect"):
+            _log_response(resp, "test body content")
+        assert "<<<   body:" in caplog.text
+        assert "test body content" in caplog.text
+
+
+class TestB2cLoginCookieJarArgs:
+    """Tests that verify CookieJar and DummyCookieJar arguments,
+    killing mutants 4, 6, 130, 132."""
+
+    async def test_first_session_receives_cookie_jar(self):
+        """Mutants 4 (cookie_jar=None) and 6 (cookie_jar removed).
+
+        Verify that the first ClientSession gets cookie_jar=jar
+        (the CookieJar instance).
+        """
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        cs_calls = []
+        call_idx = [0]
+
+        def capture_cs(**kwargs):
+            cs_calls.append(kwargs)
+            idx = call_idx[0]
+            call_idx[0] += 1
+            if idx == 0:
+                return _make_mock_session(
+                    get=MagicMock(return_value=login_resp),
+                )
+            return _make_mock_session(
+                post=MagicMock(return_value=post_resp),
+                get=MagicMock(return_value=confirmed_resp),
+            )
+
+        with (
+            patch(f"{_MOD}.ClientSession", side_effect=capture_cs),
+            patch(f"{_MOD}.CookieJar") as jar_cls,
+            patch(f"{_MOD}.DummyCookieJar"),
+        ):
+            jar = MagicMock()
+            jar.filter_cookies.return_value = {}
+            jar_cls.return_value = jar
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        # First session must have cookie_jar set to the jar instance
+        assert "cookie_jar" in cs_calls[0], (
+            "First session must receive cookie_jar kwarg"
+        )
+        assert cs_calls[0]["cookie_jar"] is jar, (
+            "cookie_jar must be the CookieJar instance"
+        )
+
+    async def test_second_session_uses_dummy_cookie_jar(self):
+        """Mutants 130 (cookie_jar=None) and 132 (cookie_jar removed).
+
+        Verify the second ClientSession gets cookie_jar=DummyCookieJar().
+        """
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        cs_calls = []
+        call_idx = [0]
+
+        def capture_cs(**kwargs):
+            cs_calls.append(kwargs)
+            idx = call_idx[0]
+            call_idx[0] += 1
+            if idx == 0:
+                return _make_mock_session(
+                    get=MagicMock(return_value=login_resp),
+                )
+            return _make_mock_session(
+                post=MagicMock(return_value=post_resp),
+                get=MagicMock(return_value=confirmed_resp),
+            )
+
+        with (
+            patch(f"{_MOD}.ClientSession", side_effect=capture_cs),
+            patch(f"{_MOD}.CookieJar") as jar_cls,
+            patch(f"{_MOD}.DummyCookieJar") as dummy_cls,
+        ):
+            jar = MagicMock()
+            jar.filter_cookies.return_value = {}
+            jar_cls.return_value = jar
+            dummy_jar = MagicMock()
+            dummy_cls.return_value = dummy_jar
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        # Second session must have cookie_jar set to DummyCookieJar instance
+        assert len(cs_calls) == 2
+        assert "cookie_jar" in cs_calls[1], (
+            "Second session must receive cookie_jar kwarg"
+        )
+        assert cs_calls[1]["cookie_jar"] is dummy_jar, (
+            "cookie_jar must be a DummyCookieJar instance"
+        )
+
+
+class TestB2cLoginPostUrlAndOrigin:
+    """Tests that verify exact POST URL construction and Origin header,
+    killing mutants 24, 70, 102, 107, 137, 141, 146, 147, 148, 151."""
+
+    async def test_post_url_uses_yarl_url(self):
+        """Mutants 137 (None), 141 (removed), 146-151 (encoded param changes).
+
+        Verify that session.post() is called with a yarl.URL constructed
+        from the fields['post_url'] with encoded=True.
+        """
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(return_value=confirmed_resp),
+        )
+
+        with _patch_sessions(login_session, raw_session):
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        call = raw_session.post.call_args
+        url_arg = call[0][0] if call[0] else call[1].get("url")
+        # Must be a yarl.URL, not None, not missing
+        assert isinstance(url_arg, yarl.URL), f"Expected yarl.URL, got {type(url_arg)}"
+        url_str = str(url_arg)
+        # Must contain the SelfAsserted endpoint
+        assert "SelfAsserted" in url_str
+        # Must contain the tx and p query params
+        assert "tx=" in url_str
+        assert f"p={_POLICY}" in url_str
+
+    async def test_origin_header_uses_page_url(self):
+        """Mutants 24 (page_url=str(None)) and 70 (urlparse(None)).
+
+        If page_url becomes 'None', the origin would be wrong.
+        Verify Origin header matches the expected host.
+        """
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(return_value=confirmed_resp),
+        )
+
+        with _patch_sessions(login_session, raw_session):
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        call = raw_session.post.call_args
+        hdrs = call[1]["headers"]
+        # Origin must be the B2C host, not "None://"
+        assert hdrs["Origin"] == _HOST
+        assert "None" not in hdrs["Origin"]
+
+    async def test_cookie_header_passed_to_post(self):
+        """Mutant 107: post_headers['Cookie'] = None.
+
+        Verify Cookie header is a string (result of _build_cookie_header),
+        not None.
+        """
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(return_value=confirmed_resp),
+        )
+
+        with _patch_sessions(login_session, raw_session):
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        call = raw_session.post.call_args
+        hdrs = call[1]["headers"]
+        assert hdrs["Cookie"] is not None, "Cookie header must not be None"
+        assert isinstance(hdrs["Cookie"], str), "Cookie header must be a string"
+
+    async def test_build_cookie_header_receives_post_url(self):
+        """Mutant 102: _build_cookie_header(jar, None).
+
+        Verify cookie_header is built using the correct post_url.
+        We can check by making filter_cookies track its argument.
+        """
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(return_value=confirmed_resp),
+        )
+
+        with _patch_sessions(login_session, raw_session) as (_jar_cls, mock_jar):
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        # filter_cookies should have been called with a yarl.URL of the post_url
+        assert mock_jar.filter_cookies.called
+        fc_arg = mock_jar.filter_cookies.call_args[0][0]
+        fc_str = str(fc_arg)
+        assert "SelfAsserted" in fc_str, (
+            f"filter_cookies should receive post_url, got {fc_str}"
+        )
+
+
+class TestB2cLoginCookieMerging:
+    """Tests that verify cookie parsing and merging logic,
+    killing mutants 173, 174, 175, 177, 185, 191, 192, 194, 197, 198, 209."""
+
+    async def test_cookie_split_separator(self):
+        """Mutants 173 (split(None)), 174 (split('XX; XX')).
+
+        When existing cookies contain '; ' separator, they must be
+        parsed correctly. We verify by checking the merged cookie header.
+        """
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        # POST response with Set-Cookie to trigger merging
+        post_resp = _make_mock_response_multiheader(
+            status=200,
+            text='{"status":"200"}',
+            headers=[
+                ("Set-Cookie", "new=val; Path=/"),
+            ],
+        )
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        # Pre-populate cookie jar with existing cookies that use '; ' separator
+        m1 = MagicMock(spec=Morsel)
+        m1.key = "existing"
+        m1.value = "oldval"
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(return_value=confirmed_resp),
+        )
+
+        with _patch_sessions(login_session, raw_session) as (_jar_cls, mock_jar):
+            mock_jar.filter_cookies.return_value = {"a": m1}
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        # The confirmed GET should have merged cookies
+        get_call = raw_session.get.call_args
+        cookie_hdr = get_call[1]["headers"]["Cookie"]
+        # 'existing=oldval' from cookie jar + 'new=val' from Set-Cookie
+        assert "existing=oldval" in cookie_hdr
+        assert "new=val" in cookie_hdr
+
+    async def test_cookie_equals_in_part(self):
+        """Mutant 175: if '=' in part -> if 'XX=XX' in part.
+
+        Cookie parts always contain '=' so this would break parsing.
+        Verify that existing cookies with '=' are correctly parsed.
+        """
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(
+            status=200,
+            text='{"status":"200"}',
+        )
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        # Cookie with value containing '='
+        m1 = MagicMock(spec=Morsel)
+        m1.key = "token"
+        m1.value = "abc=def"
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(return_value=confirmed_resp),
+        )
+
+        with _patch_sessions(login_session, raw_session) as (_jar_cls, mock_jar):
+            mock_jar.filter_cookies.return_value = {"a": m1}
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        get_call = raw_session.get.call_args
+        cookie_hdr = get_call[1]["headers"]["Cookie"]
+        assert "token=abc=def" in cookie_hdr
+
+    async def test_cookie_value_not_none(self):
+        """Mutant 185: cookies[n] = v -> cookies[n] = None.
+
+        Verify the cookie value is preserved (not None).
+        """
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(
+            status=200,
+            text='{"status":"200"}',
+        )
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        m1 = MagicMock(spec=Morsel)
+        m1.key = "sess"
+        m1.value = "myvalue"
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(return_value=confirmed_resp),
+        )
+
+        with _patch_sessions(login_session, raw_session) as (_jar_cls, mock_jar):
+            mock_jar.filter_cookies.return_value = {"a": m1}
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        get_call = raw_session.get.call_args
+        cookie_hdr = get_call[1]["headers"]["Cookie"]
+        assert "sess=myvalue" in cookie_hdr
+        assert "None" not in cookie_hdr
+
+    async def test_set_cookie_split_by_semicolon(self):
+        """Mutants 194 (split(None)), 197 (split no maxsplit), 198 (rsplit).
+
+        Set-Cookie header 'name=value; Path=/' should be split on ';'
+        to extract just 'name=value'.
+        """
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        # Set-Cookie with attributes that include semicolons
+        post_resp = _make_mock_response_multiheader(
+            status=200,
+            text='{"status":"200"}',
+            headers=[
+                ("Set-Cookie", "auth=tok123; Path=/; HttpOnly; Secure"),
+            ],
+        )
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(return_value=confirmed_resp),
+        )
+
+        with _patch_sessions(login_session, raw_session):
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        get_call = raw_session.get.call_args
+        cookie_hdr = get_call[1]["headers"]["Cookie"]
+        # Must contain just 'auth=tok123', not 'Path=/' etc.
+        assert "auth=tok123" in cookie_hdr
+        assert "Path" not in cookie_hdr
+
+    async def test_set_cookie_split_equals_uses_split_not_rsplit(self):
+        """Mutant 209: sc_pair.split('=', 1) -> sc_pair.rsplit('=', 1).
+
+        With 'name=val=ue', split gives ('name', 'val=ue') while
+        rsplit gives ('name=val', 'ue'). Verify correct behavior.
+        """
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response_multiheader(
+            status=200,
+            text='{"status":"200"}',
+            headers=[
+                ("Set-Cookie", "data=abc=xyz; Path=/"),
+            ],
+        )
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(return_value=confirmed_resp),
+        )
+
+        with _patch_sessions(login_session, raw_session):
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        get_call = raw_session.get.call_args
+        cookie_hdr = get_call[1]["headers"]["Cookie"]
+        # split('=', 1) gives name='data', value='abc=xyz'
+        # rsplit('=', 1) gives name='data=abc', value='xyz'
+        assert "data=abc=xyz" in cookie_hdr
+
+    async def test_set_cookie_header_case_insensitive(self):
+        """Mutants 191 ('set-cookie') and 192 ('SET-COOKIE').
+
+        CIMultiDict is case-insensitive, so getall('Set-Cookie') works
+        regardless of actual header casing. These mutants are effectively
+        equivalent with CIMultiDict. Document this fact.
+        """
+        # NOTE: Mutants 191 and 192 change the "Set-Cookie" string in
+        # resp.headers.getall("Set-Cookie", []) to "set-cookie" or
+        # "SET-COOKIE". Since resp.headers is a CIMultiDict (case-
+        # insensitive), all three forms return the same results.
+        # These are equivalent mutants.
+        pass
+
+
+class TestB2cLoginLogCallMutants:
+    """Tests that kill logging-related mutants inside b2c_login_with_credentials.
+
+    Mutants 11, 12, 15, 16, 26, 28, 37-47, 51-57, 111-118, 127, 155, 157, 169.
+    Many of these modify _log_request/_log_response call args or
+    _LOGGER.debug format strings.
+    """
+
+    async def _run_flow_with_logging(self, caplog):
+        """Helper: run happy-path flow and return caplog."""
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(return_value=confirmed_resp),
+        )
+
+        with (
+            _patch_sessions(login_session, raw_session),
+            caplog.at_level(logging.DEBUG, "flameconnect"),
+        ):
+            result = await b2c_login_with_credentials(
+                AUTH_URI, "user@test.com", "pass123"
+            )
+        return result
+
+    async def test_log_request_get_method(self, caplog):
+        """Mutants 11 (None), 15 ('XXGETXX'), 16 ('get').
+
+        Verify the initial GET log includes correct method.
+        """
+        await self._run_flow_with_logging(caplog)
+        assert ">>> GET" in caplog.text
+
+    async def test_log_request_get_url(self, caplog):
+        """Mutant 12: auth_uri -> None."""
+        await self._run_flow_with_logging(caplog)
+        assert AUTH_URI in caplog.text
+
+    async def test_log_response_body_passed(self, caplog):
+        """Mutants 26, 28: _log_response(resp, login_html) -> (resp, None) or (resp,).
+
+        When body is None, _log_response skips body logging.
+        With the real login_html, body should appear in logs.
+        """
+        await self._run_flow_with_logging(caplog)
+        # The login HTML contains 'SETTINGS' which should appear in body log
+        assert "SETTINGS" in caplog.text
+
+    async def test_parsed_login_page_debug(self, caplog):
+        """Mutants 37-47: _LOGGER.debug('Parsed login page: ...') mutations.
+
+        Verify the debug message for parsed login page appears correctly.
+        """
+        await self._run_flow_with_logging(caplog)
+        assert "Parsed login page:" in caplog.text
+        # Verify csrf prefix is logged (first 16 chars of 'dGVzdC1jc3JmLXRva2Vu')
+        assert "dGVzdC1jc3JmLXRv" in caplog.text  # first 16 chars
+        # Verify tx prefix is logged (first 40 chars)
+        assert "StateProperties=eyJ0eXAiOiJKV1QiLCJhbGci" in caplog.text
+
+    async def test_parsed_debug_has_ellipsis(self, caplog):
+        """Mutants 52, 57: '...' -> 'XX...XX'."""
+        await self._run_flow_with_logging(caplog)
+        assert "..." in caplog.text
+        # XX...XX should not appear
+        assert "XX...XX" not in caplog.text
+
+    async def test_log_request_post_method(self, caplog):
+        """Mutants 118 (None), 127 ('post'): _log_request('POST', ...) mutations."""
+        await self._run_flow_with_logging(caplog)
+        assert ">>> POST" in caplog.text
+
+    async def test_cookies_debug_line(self, caplog):
+        """Mutants 111-117: _LOGGER.debug('>>>   cookies: %s', ...) mutations."""
+        await self._run_flow_with_logging(caplog)
+        assert ">>>   cookies:" in caplog.text
+        assert "XX" not in caplog.text.replace("XMLHttpRequest", "")
+
+    async def test_log_response_post_body(self, caplog):
+        """Mutants 155, 157: _log_response(resp, body) -> (resp, None) or (resp,)."""
+        await self._run_flow_with_logging(caplog)
+        # The POST response body is '{"status":"200"}', it should be logged
+        assert '"status":"200"' in caplog.text
+
+    async def test_error_message_exact(self):
+        """Mutant 169: error message 'Invalid email or password' ->
+        'XXInvalid email or passwordXX'."""
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(
+            status=200,
+            text='{"status":"400","message":"Invalid"}',
+        )
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(return_value=MagicMock()),
+        )
+
+        with (
+            _patch_sessions(login_session, raw_session),
+            pytest.raises(
+                AuthenticationError,
+                match=r"^Invalid email or password$",
+            ),
+        ):
+            await b2c_login_with_credentials(AUTH_URI, "bad@test.com", "wrong")
+
+
+class TestB2cLoginConfirmedQueryString:
+    """Test the confirmed GET request query string in detail.
+
+    Kills mutants related to confirmed_qs construction (around lines 269-274).
+    """
+
+    async def test_confirmed_query_has_remember_me_false(self):
+        """Verify rememberMe=false is in the confirmed URL query string."""
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(return_value=confirmed_resp),
+        )
+
+        with _patch_sessions(login_session, raw_session):
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        get_call = raw_session.get.call_args
+        url_str = str(get_call[0][0] if get_call[0] else get_call[1].get("url"))
+        assert "rememberMe=false" in url_str
+        # Verify all expected params
+        assert "csrf_token=dGVzdC1jc3JmLXRva2Vu" in url_str
+        assert f"p={_POLICY}" in url_str
+
+    async def test_confirmed_get_url_uses_yarl_encoded(self):
+        """Verify the confirmed GET uses yarl.URL with encoded=True."""
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(return_value=confirmed_resp),
+        )
+
+        with _patch_sessions(login_session, raw_session):
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        get_call = raw_session.get.call_args
+        url_arg = get_call[0][0] if get_call[0] else get_call[1].get("url")
+        assert isinstance(url_arg, yarl.URL), f"Expected yarl.URL, got {type(url_arg)}"
+
+
+class TestB2cLoginCustomSchemeDetection:
+    """Kill mutants around the custom scheme redirect detection (line 297)."""
+
+    async def test_redirect_with_msal_prefix_not_auth(self):
+        """Ensure 'msal' prefix AND '://auth' must both match.
+
+        A Location like 'msalXXX://other' should NOT be treated as the
+        custom-scheme redirect.
+        """
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        # A redirect that starts with 'msal' but doesn't have '://auth'
+        not_auth_resp = _make_mock_response(
+            status=302,
+            headers={"Location": "msaltest://notauth?code=abc"},
+        )
+        # Then the real redirect
+        final_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        session = _make_mock_session(
+            get=MagicMock(side_effect=[login_resp, not_auth_resp, final_resp]),
+            post=MagicMock(return_value=post_resp),
+        )
+
+        with _patch_session(session):
+            result = await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+        assert result == REDIRECT_URL
+
+    async def test_msal_redirect_detected_correctly(self):
+        """Verify the exact msal redirect URL is returned without modification."""
+        redirect = (
+            "msal1af761dc-085a-411f-9cb9-53e5e2115bd2://auth?code=ABC123&state=XYZ"
+        )
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": redirect},
+        )
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(return_value=confirmed_resp),
+        )
+
+        with _patch_sessions(login_session, raw_session):
+            result = await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+        assert result == redirect
+
+
+# -------------------------------------------------------------------
+# Additional mutant-killing tests (round 2)
+# -------------------------------------------------------------------
+
+
+class TestRelativeRedirectUrlResolution:
+    """Kill mutants M295, M300, M301 related to relative URL handling."""
+
+    async def test_relative_redirect_resolved_to_absolute_url(self):
+        """M295: flips not in startswith check.
+        M300: urljoin(None, location).
+        M301: urljoin(next_url, None).
+
+        Verify that after a relative redirect, the GET URL is absolute
+        (contains the scheme/host from the confirmed URL).
+        """
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        # First: relative redirect
+        relative_resp = _make_mock_response(
+            status=302,
+            headers={"Location": "/relative/next"},
+        )
+        # Then: final msal redirect
+        final_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(side_effect=[relative_resp, final_resp]),
+        )
+
+        with _patch_sessions(login_session, raw_session):
+            result = await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        assert result == REDIRECT_URL
+
+        # The second GET (after relative redirect) must be an absolute URL
+        # that includes the host from the confirmed URL, not just "/relative/next"
+        second_get_call = raw_session.get.call_args_list[1]
+        resolved_url = str(
+            second_get_call[0][0]
+            if second_get_call[0]
+            else second_get_call[1].get("url")
+        )
+        # With correct code: urljoin resolves "/relative/next" against the confirmed URL
+        # With M295 (flipped): "/relative/next" is used as-is (not absolute)
+        # With M300: urljoin(None, "/relative/next") → "/relative/next" (not absolute)
+        # With M301: urljoin(base, None) → base (wrong URL entirely)
+        assert resolved_url.startswith("http"), (
+            f"Relative redirect must be resolved to absolute URL, got: {resolved_url}"
+        )
+        assert "/relative/next" in resolved_url
+
+
+class TestCookieParsingMultipleCookies:
+    """Kill mutants M173, M174, M215 related to cookie header separator parsing."""
+
+    async def test_two_cookies_split_correctly(self):
+        """M173: split('; ') → split(None) — splits on whitespace, causing trailing ';'.
+        M174: split('; ') → split('XX; XX') — no match, whole string is one part.
+        M215: '; '.join → 'XX; XX'.join — wrong separator in output.
+
+        With 2+ cookies from the jar, the cookie header must be properly
+        split and re-joined with '; ' separator.
+        """
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response_multiheader(
+            status=200,
+            text='{"status":"200"}',
+            headers=[("Set-Cookie", "added=new; Path=/")],
+        )
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        # Two cookies in the jar
+        m1 = MagicMock(spec=Morsel)
+        m1.key = "alpha"
+        m1.value = "111"
+        m2 = MagicMock(spec=Morsel)
+        m2.key = "beta"
+        m2.value = "222"
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(return_value=confirmed_resp),
+        )
+
+        with _patch_sessions(login_session, raw_session) as (_jar_cls, mock_jar):
+            mock_jar.filter_cookies.return_value = {"a": m1, "b": m2}
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        get_call = raw_session.get.call_args
+        cookie_hdr = get_call[1]["headers"]["Cookie"]
+        # All three cookies must be present as separate key=value pairs
+        assert "alpha=111" in cookie_hdr
+        assert "beta=222" in cookie_hdr
+        assert "added=new" in cookie_hdr
+        # No double-semicolons (caused by M173 split(None) trailing ';')
+        assert ";;" not in cookie_hdr
+        # No "XX" in separator (caused by M215 "XX; XX".join)
+        assert "XX" not in cookie_hdr
+
+
+class TestSetCookieSemicolonParsing:
+    """Kill mutant M194: split(';', 1) → split(None, 1) for Set-Cookie."""
+
+    async def test_set_cookie_value_no_trailing_semicolon(self):
+        """M194: split(None, 1) splits on whitespace instead of ';',
+        leaving a trailing ';' on the cookie pair.
+
+        Set-Cookie: 'sess=abc123; Path=/; HttpOnly'
+        Correct: split(';', 1)[0] → 'sess=abc123'
+        Mutant:  split(None, 1)[0] → 'sess=abc123;' (trailing semicolon)
+
+        Verify the merged cookie value doesn't have a trailing ';'.
+        """
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response_multiheader(
+            status=200,
+            text='{"status":"200"}',
+            headers=[
+                ("Set-Cookie", "sess=abc123; Path=/; HttpOnly"),
+            ],
+        )
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(return_value=confirmed_resp),
+        )
+
+        with _patch_sessions(login_session, raw_session):
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        get_call = raw_session.get.call_args
+        cookie_hdr = get_call[1]["headers"]["Cookie"]
+        assert "sess=abc123" in cookie_hdr
+        # M194 would produce "sess=abc123;" — check no trailing semicolon
+        # by checking the exact value doesn't include "abc123;"
+        assert "abc123;" not in cookie_hdr
+
+
+class TestCookieSplitVsRsplit:
+    """Kill mutant M182: part.split('=', 1) → part.rsplit('=', 1)."""
+
+    async def test_cookie_with_equals_in_value_overridden_by_set_cookie(self):
+        """M182: rsplit('=', 1) on 'token=abc=def' gives ('token=abc', 'def')
+        instead of ('token', 'abc=def'). When a Set-Cookie also sets 'token',
+        the split version replaces the old 'token' value but the rsplit
+        version creates a separate 'token=abc' key.
+
+        Verify that after Set-Cookie sets 'token=updated', the old
+        'token=abc=def' is gone (replaced, not duplicated).
+        """
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response_multiheader(
+            status=200,
+            text='{"status":"200"}',
+            headers=[("Set-Cookie", "token=updated; Path=/")],
+        )
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        # Cookie jar has a cookie with '=' in its value
+        m1 = MagicMock(spec=Morsel)
+        m1.key = "token"
+        m1.value = "abc=def"
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(return_value=confirmed_resp),
+        )
+
+        with _patch_sessions(login_session, raw_session) as (_jar_cls, mock_jar):
+            mock_jar.filter_cookies.return_value = {"a": m1}
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        get_call = raw_session.get.call_args
+        cookie_hdr = get_call[1]["headers"]["Cookie"]
+        # With correct split('=', 1): cookies['token'] = 'abc=def', then
+        # Set-Cookie overrides cookies['token'] = 'updated'
+        # Result: "token=updated" only
+        assert "token=updated" in cookie_hdr
+        # With rsplit('=', 1): cookies['token=abc'] = 'def', then
+        # Set-Cookie adds cookies['token'] = 'updated'
+        # Result: "token=abc=def; token=updated" — old value persists
+        assert cookie_hdr.count("token") == 1, (
+            f"Expected 'token' to appear once (overridden), got: {cookie_hdr}"
+        )
+
+
+class TestLogNoneDetection:
+    """Kill logging mutants M11 and M12 by detecting 'None' in log output."""
+
+    async def test_no_none_in_log_method_or_url(self, caplog):
+        """M11: _log_request(None, auth_uri) — logs '>>> None ...'
+        M12: _log_request('GET', None) — logs '>>> GET None'
+
+        Verify that no log line contains 'None' where a method or URL should be.
+        """
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        login_session = _make_mock_session(
+            get=MagicMock(return_value=login_resp),
+        )
+        raw_session = _make_mock_session(
+            post=MagicMock(return_value=post_resp),
+            get=MagicMock(return_value=confirmed_resp),
+        )
+
+        with (
+            _patch_sessions(login_session, raw_session),
+            caplog.at_level(logging.DEBUG, "flameconnect"),
+        ):
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        # Check that ">>> " log lines don't contain "None" as method or URL
+        request_lines = [x for x in caplog.text.splitlines() if ">>>" in x]
+        for line in request_lines:
+            # Method/URL should never be None
+            if ">>> GET " in line or ">>> POST " in line:
+                assert " None" not in line.split(">>>")[1], (
+                    f"Found 'None' in log line: {line}"
+                )

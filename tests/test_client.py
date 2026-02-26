@@ -1218,3 +1218,171 @@ class TestOverviewDecodeWarningLogging:
         msg = warnings[0].message
         assert "Failed to decode parameter" in msg
         assert "322" in msg
+
+
+# -------------------------------------------------------------------
+# Targeted mutant-killing tests
+# -------------------------------------------------------------------
+
+
+class TestRequestErrorMessageExact:
+    """Kill _request__mutmut_3 and _request__mutmut_6.
+
+    mutmut_3 changes "No aiohttp session available. " to
+    "XXNo aiohttp session available. XX".
+    mutmut_6 changes the second part of the message.
+
+    We need to check that the message starts exactly with "No"
+    and ends exactly with "session." to detect the XX prefixes/suffixes.
+    """
+
+    async def test_no_session_error_starts_with_no(self, token_auth):
+        """Error message must start with 'No' (not 'XXNo')."""
+        client = FlameConnectClient(token_auth)
+        with pytest.raises(RuntimeError) as exc_info:
+            await client.get_fires()
+        msg = str(exc_info.value)
+        assert msg.startswith("No aiohttp session available.")
+
+    async def test_no_session_error_ends_with_session(self, token_auth):
+        """Error message must end with 'session.' (not 'session.XX')."""
+        client = FlameConnectClient(token_auth)
+        with pytest.raises(RuntimeError) as exc_info:
+            await client.get_fires()
+        msg = str(exc_info.value)
+        assert msg.endswith("or provide a session.")
+
+
+class TestRequestDebugLog:
+    """Kill _request__mutmut_36.
+
+    mutmut_36 changes the debug log format string from
+    "%s %s -> %s" to "XX%s %s -> %sXX".
+    We verify the debug log format starts with the method, not "XX".
+    """
+
+    async def test_request_debug_log_format(self, mock_api, token_auth, caplog):
+        """Debug log must start with method name, not 'XX'."""
+        url = f"{API_BASE}/api/Fires/GetFires"
+        mock_api.get(url, payload=[])
+
+        with caplog.at_level(logging.DEBUG, logger="flameconnect.client"):
+            async with FlameConnectClient(token_auth) as client:
+                await client.get_fires()
+
+        debug_msgs = [
+            r
+            for r in caplog.records
+            if r.name == "flameconnect.client" and r.levelno == logging.DEBUG
+        ]
+        assert len(debug_msgs) >= 1
+        msg = debug_msgs[0].getMessage()
+        assert msg.startswith("GET ")
+        assert "XX" not in msg
+
+
+class TestOverviewDecodeWarningFormat:
+    """Kill get_fire_overview__mutmut_128 and __mutmut_132.
+
+    mutmut_128: replaces exc with None in the warning args.
+    mutmut_132: mutates the format string to include XX prefix/suffix.
+
+    We verify the exact format string and that the exception text
+    (not None) appears in the formatted message.
+    """
+
+    async def test_decode_failure_warning_format_string(
+        self, mock_api, token_auth, caplog
+    ):
+        """The raw format string must be exactly as expected."""
+        fire_id = "test-fire-001"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        mode_val = encode_parameter(
+            ModeParam(
+                mode=FireMode.MANUAL,
+                target_temperature=22.0,
+            )
+        )
+        payload = _make_overview_payload(
+            fire_id=fire_id,
+            parameters=[
+                {"ParameterId": 321, "Value": mode_val},
+                {"ParameterId": 322, "Value": "AA=="},
+            ],
+        )
+        mock_api.get(url, payload=payload)
+
+        with caplog.at_level(logging.WARNING, logger="flameconnect.client"):
+            async with FlameConnectClient(token_auth) as client:
+                await client.get_fire_overview(fire_id)
+
+        warnings = [
+            r
+            for r in caplog.records
+            if r.name == "flameconnect.client" and r.levelno == logging.WARNING
+        ]
+        assert len(warnings) >= 1
+        record = warnings[0]
+        # Kill mutmut_132: check the raw format string has no XX
+        assert record.msg == "Failed to decode parameter %d: %s"
+        # Kill mutmut_128: the second arg must be the actual exception, not None
+        assert record.args[1] is not None
+        # Additionally verify the formatted message includes exception text
+        formatted = record.getMessage()
+        assert "Insufficient data" in formatted or "expected" in formatted
+
+
+class TestTurnOnTurnOffInitNone:
+    """Document turn_on__mutmut_3 and turn_off__mutmut_3 as equivalent.
+
+    Both mutants change `current_mode: ModeParam | None = None` to
+    `current_mode: ModeParam | None = ""`.
+
+    Since empty string "" is falsy in Python (just like None), the
+    conditional `current_mode.target_temperature if current_mode else 22.0`
+    behaves identically for both None and "".
+
+    When no ModeParam is found in the parameters loop, current_mode
+    stays at its initial value. Both None and "" are falsy, so the
+    ternary always takes the else branch returning 22.0.
+
+    These are equivalent mutants that cannot be killed.
+    """
+
+    async def test_turn_on_no_mode_uses_default_temp(self, mock_api, token_auth):
+        """Verify turn_on uses 22.0 when no ModeParam present."""
+        fire_id = "no-mode-fire"
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        payload = _make_overview_payload(fire_id=fire_id, parameters=[])
+        mock_api.get(overview_url, payload=payload)
+        mock_api.post(write_url, payload={})
+
+        async with FlameConnectClient(token_auth) as client:
+            await client.turn_on(fire_id)
+
+        key = ("POST", URL(write_url))
+        body = mock_api.requests[key][0].kwargs["json"]
+        mode_wire = next(p for p in body["Parameters"] if p["ParameterId"] == 321)
+        raw = base64.b64decode(mode_wire["Value"])
+        temp = float(raw[4]) + float(raw[5]) / 10.0
+        assert temp == pytest.approx(22.0)
+
+    async def test_turn_off_no_mode_uses_default_temp(self, mock_api, token_auth):
+        """Verify turn_off uses 22.0 when no ModeParam present."""
+        fire_id = "no-mode-fire"
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        payload = _make_overview_payload(fire_id=fire_id, parameters=[])
+        mock_api.get(overview_url, payload=payload)
+        mock_api.post(write_url, payload={})
+
+        async with FlameConnectClient(token_auth) as client:
+            await client.turn_off(fire_id)
+
+        key = ("POST", URL(write_url))
+        body = mock_api.requests[key][0].kwargs["json"]
+        raw = base64.b64decode(body["Parameters"][0]["Value"])
+        assert raw[3] == FireMode.STANDBY
+        temp = float(raw[4]) + float(raw[5]) / 10.0
+        assert temp == pytest.approx(22.0)
