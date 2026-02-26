@@ -173,3 +173,25 @@ graph TD
 - 2026-02-25: Initial plan creation (v1) — expanded mutation testing to 4 modules
 - 2026-02-25: Overwrite with OOM fix focus (v2) — added `--max-children 2`, carried forward mutant-killing tasks
 - 2026-02-25: Refinement — corrected mutation scores from actual meta files (protocol 100%, client 98%, auth 100%, b2c_login 73%); removed incorrect `setup.cfg` max-children claim (CLI-only flag); restructured scope to focus on b2c_login.py; dropped auth.py task; added survivor breakdown by function
+
+## Execution Summary
+
+**Status**: ✅ Completed Successfully
+**Completed Date**: 2026-02-26
+
+### Results
+- **CI OOM Fix**: Added `--max-children 2` to `.github/workflows/ci.yml` mutmut step. One-line change.
+- **b2c_login.py**: Kill rate raised from 73% to 90.3% (408 killed / 452 total, 44 survivors). Added 5 new test classes with targeted assertions for cookie parsing, relative URL resolution, error message anchoring, and log integrity.
+- **protocol.py**: Killed 2 of 3 survivors (`encode_temperature` multiplier, `_make_header` signed/unsigned format). 1 documented as equivalent (ascii codec casing in `encode_parameter`).
+- **client.py**: Killed 5 of 7 survivors (`_request` error message and debug log, `get_fire_overview` decode warning format). 2 documented as equivalent (`turn_on`/`turn_off` init `None` vs empty string).
+- All 1044 tests pass. All lint checks clean.
+
+### Noteworthy Events
+- The b2c_login agent ran into context/timeout limits during its mutmut verification loop and had to be stopped and completed manually.
+- Many b2c_login survivors (26 of 44 remaining) are pure logging mutations that don't affect program behavior — they only change `_log_request`/`_log_response` call arguments or `_LOGGER.debug` format strings.
+- Several cookie-parsing mutants (`split` vs `rsplit`, `split(";", 1)` vs `split(";", 2)`) are effectively equivalent for realistic cookie values, as the string output is identical.
+- CIMultiDict header case mutations (`"Set-Cookie"` vs `"set-cookie"` vs `"SET-COOKIE"`) are equivalent because aiohttp uses case-insensitive header dictionaries.
+
+### Recommendations
+- Monitor CI memory usage after merging. If OOM recurs with growing test suite, drop to `--max-children 1`.
+- The 44 remaining b2c_login survivors are predominantly logging-only mutations and case-insensitive header mutations — accept as equivalent.
