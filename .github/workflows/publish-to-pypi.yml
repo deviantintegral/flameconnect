@@ -1,8 +1,10 @@
-name: Publish to TestPyPI
+name: Publish to PyPI
 
 on:
   push:
     branches: [main]
+  release:
+    types: [published]
 
 jobs:
   build:
@@ -23,6 +25,7 @@ jobs:
 
   publish-to-testpypi:
     needs: build
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: testpypi
     permissions:
@@ -35,3 +38,17 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
         with:
           repository-url: https://test.pypi.org/legacy/
+
+  publish-to-pypi:
+    needs: build
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: python-package-distributions
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # v1.13.0
