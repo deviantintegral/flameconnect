@@ -830,7 +830,10 @@ def build_parser() -> argparse.ArgumentParser:
     """Build and return the argparse parser for the CLI."""
     parser = argparse.ArgumentParser(
         prog="flameconnect",
-        description=("Control Dimplex fireplaces via the Flame Connect cloud API"),
+        description=(
+            "Control Dimplex, Faber, and Real Flame fireplaces"
+            " via the Flame Connect cloud API"
+        ),
     )
     parser.add_argument(
         "-v",
@@ -865,7 +868,7 @@ def build_parser() -> argparse.ArgumentParser:
             "Parameter name: mode, flame-speed, brightness, pulsating,"
             " flame-color, media-theme, heat-mode, heat-temp, timer,"
             " temp-unit, flame-effect, media-light, media-color,"
-            " overhead-light, overhead-color, light-status, ambient-sensor"
+            " overhead-light, overhead-color, ambient-sensor"
         ),
     )
     sp_set.add_argument("value", help="Value to set")
