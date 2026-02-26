@@ -17,6 +17,7 @@ from flameconnect.cli import (
     _set_flame_effect,
     _set_flame_speed,
     _set_heat_mode,
+    _set_heat_status,
     _set_heat_temp,
     _set_media_color,
     _set_media_light,
@@ -573,6 +574,16 @@ class TestCmdSetDispatch:
         key = ("POST", URL(WRITE_URL))
         assert len(mock_api.requests[key]) == 1
 
+    async def test_dispatch_heat_status(self, mock_api, token_auth, overview_payload):
+        mock_api.get(OVERVIEW_URL, payload=overview_payload)
+        mock_api.post(WRITE_URL, payload={})
+
+        async with FlameConnectClient(token_auth) as client:
+            await cmd_set(client, FIRE_ID, "heat-status", "on")
+
+        key = ("POST", URL(WRITE_URL))
+        assert len(mock_api.requests[key]) == 1
+
     async def test_dispatch_unknown_param(self, mock_api, token_auth, capsys):
         async with FlameConnectClient(token_auth) as client:
             with pytest.raises(SystemExit):
@@ -725,6 +736,47 @@ class TestSetAmbientSensor:
         async with FlameConnectClient(token_auth) as client:
             with pytest.raises(SystemExit):
                 await _set_ambient_sensor(client, FIRE_ID, "maybe")
+        captured = capsys.readouterr()
+        assert "Error" in captured.out
+
+
+# ---------------------------------------------------------------------------
+# _set_heat_status
+# ---------------------------------------------------------------------------
+
+
+class TestSetHeatStatus:
+    """Tests for the _set_heat_status CLI command."""
+
+    async def test_set_heat_status_on(self, mock_api, token_auth, overview_payload):
+        mock_api.get(OVERVIEW_URL, payload=overview_payload)
+        mock_api.post(WRITE_URL, payload={})
+
+        async with FlameConnectClient(token_auth) as client:
+            await _set_heat_status(client, FIRE_ID, "on")
+
+        key = ("POST", URL(WRITE_URL))
+        calls = mock_api.requests[key]
+        assert len(calls) == 1
+        body = calls[0].kwargs["json"]
+        assert body["FireId"] == FIRE_ID
+        assert body["Parameters"][0]["ParameterId"] == 323
+
+    async def test_set_heat_status_off(self, mock_api, token_auth, overview_payload):
+        mock_api.get(OVERVIEW_URL, payload=overview_payload)
+        mock_api.post(WRITE_URL, payload={})
+
+        async with FlameConnectClient(token_auth) as client:
+            await _set_heat_status(client, FIRE_ID, "off")
+
+        key = ("POST", URL(WRITE_URL))
+        calls = mock_api.requests[key]
+        assert len(calls) == 1
+
+    async def test_set_heat_status_invalid(self, mock_api, token_auth, capsys):
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(SystemExit):
+                await _set_heat_status(client, FIRE_ID, "maybe")
         captured = capsys.readouterr()
         assert "Error" in captured.out
 
