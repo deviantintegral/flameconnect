@@ -1160,7 +1160,12 @@ class TestRequestLogging:
     """
 
     async def test_request_logs_method_url_status(self, mock_api, token_auth, caplog):
-        """Verify debug log contains method, URL, status."""
+        """Verify debug log contains method, URL, status.
+
+        The startswith('GET') assertion kills _request__mutmut_36 which
+        changes the format string to 'XX%s %s -> %sXX', causing the
+        rendered message to start with 'XX' instead of the method name.
+        """
         url = f"{API_BASE}/api/Fires/GetFires"
         mock_api.get(url, payload=[])
 
@@ -1176,7 +1181,7 @@ class TestRequestLogging:
         ]
         assert len(found) >= 1
         msg = found[0].message
-        assert "GET" in msg
+        assert msg.startswith("GET")
         assert url in msg
         assert "200" in msg
 
