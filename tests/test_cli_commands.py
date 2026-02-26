@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -1260,12 +1261,32 @@ class TestAsyncMain:
             await async_main(args)
             mock_tui.assert_awaited_once_with(verbose=False)
 
-    async def test_none_command_prints_help(self, capsys):
+    async def test_none_command_prints_help_without_tui(self, capsys, monkeypatch):
         args = argparse.Namespace(command=None, verbose=False)
+        import builtins
+
+        real_import = builtins.__import__
+
+        def _guarded_import(name, *a, **kw):  # type: ignore[no-untyped-def]
+            if name == "flameconnect.tui":
+                raise ImportError("no tui")
+            return real_import(name, *a, **kw)
+
+        monkeypatch.setattr(builtins, "__import__", _guarded_import)
+        monkeypatch.setitem(sys.modules, "flameconnect.tui", None)
         await async_main(args)
         captured = capsys.readouterr()
         assert "flameconnect" in captured.out
         assert "usage" in captured.out.lower()
+
+    async def test_none_command_launches_tui_with_textual(self):
+        args = argparse.Namespace(command=None, verbose=False)
+        mock_run_tui = AsyncMock()
+        mock_module = MagicMock()
+        mock_module.run_tui = mock_run_tui
+        with patch.dict("sys.modules", {"flameconnect.tui": mock_module}):
+            await async_main(args)
+        mock_run_tui.assert_awaited_once_with(verbose=False)
 
     async def test_list_command(self):
         args = argparse.Namespace(command="list", verbose=False)

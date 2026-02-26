@@ -987,7 +987,12 @@ async def _cli_auth_prompt(auth_uri: str, redirect_uri: str) -> str:
 async def async_main(args: argparse.Namespace) -> None:
     """Run the appropriate subcommand."""
     if args.command is None:
-        build_parser().print_help()
+        try:
+            from flameconnect.tui import run_tui  # noqa: F811
+        except ImportError:
+            build_parser().print_help()
+            return
+        await run_tui(verbose=args.verbose)
         return
 
     if args.command == "tui":
