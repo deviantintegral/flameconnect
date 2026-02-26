@@ -36,6 +36,7 @@ from flameconnect.models import (
     TimerParam,
     TimerStatus,
 )
+from flameconnect.protocol import _make_header as _wire_make_header
 from flameconnect.protocol import decode_parameter, encode_parameter
 
 # ---------------------------------------------------------------------------
@@ -850,6 +851,17 @@ class TestMakeHeaderFormat:
         # Unsigned LE: 0xEC, 0x00
         assert raw[0] == 0xEC
         assert raw[1] == 0x00
+
+    def test_payload_size_above_signed_byte_range(self):
+        """payload_size >= 128 requires unsigned byte format <HB, not signed <hb.
+
+        struct.pack('<hb', ..., 128) raises struct.error because 128 is out of
+        range for a signed byte.  Kills _make_header__mutmut_8 which changes
+        the format string from '<HB' to '<hb'.
+        """
+        header = _wire_make_header(100, 128)
+        assert len(header) == 3
+        assert header[2] == 128
 
 
 # ---------------------------------------------------------------------------
