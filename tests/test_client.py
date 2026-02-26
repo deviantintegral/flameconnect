@@ -789,14 +789,15 @@ class TestApiErrorHandling:
 
         Kills _request__mutmut_3/6/7/8 by matching both parts
         of the error message.  The leading ^ anchor kills mutmut_3
-        which prepends 'XX' to the first string literal.
+        which prepends 'XX' to the first string literal.  The trailing
+        $ anchor kills mutmut_6 which appends 'XX' to the second literal.
         """
         client = FlameConnectClient(token_auth)
         with pytest.raises(
             RuntimeError,
             match=(
                 r"^No aiohttp session available.*"
-                r"Use the client as an async context manager"
+                r"Use the client as an async context manager or provide a session\.$"
             ),
         ):
             await client.get_fires()
