@@ -23,6 +23,15 @@ jobs:
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: "3.13"
+      - name: Set dev version for TestPyPI
+        if: github.event_name == 'push'
+        run: |
+          CURRENT_VERSION=$(python -c "
+          import tomllib
+          with open('pyproject.toml', 'rb') as f:
+              print(tomllib.load(f)['project']['version'])
+          ")
+          sed -i "s/^version = \".*\"/version = \"${CURRENT_VERSION}.dev${GITHUB_RUN_NUMBER}\"/" pyproject.toml
       - run: uv build
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
