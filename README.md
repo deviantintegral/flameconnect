@@ -53,7 +53,8 @@ FlameConnect supports two authentication modes depending on your use case.
 Uses the built-in `MsalAuth` provider, which runs an interactive Azure AD B2C login
 through your browser. On first run a browser window opens for you to sign in with
 your Flame Connect account credentials. Subsequent runs reuse the cached token
-stored at `~/.flameconnect_token.json`, refreshing it automatically when it expires.
+stored at `$XDG_CACHE_HOME/flameconnect/token.json` (defaulting to
+`~/.cache/flameconnect/token.json`), refreshing it automatically when it expires.
 
 ```python
 from flameconnect import FlameConnectClient, MsalAuth
