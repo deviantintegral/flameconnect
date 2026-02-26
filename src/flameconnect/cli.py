@@ -988,7 +988,7 @@ async def async_main(args: argparse.Namespace) -> None:
     """Run the appropriate subcommand."""
     if args.command is None:
         try:
-            from flameconnect.tui import run_tui  # noqa: F811
+            from flameconnect.tui import run_tui
         except ImportError:
             build_parser().print_help()
             return
