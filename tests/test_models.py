@@ -9,6 +9,7 @@ import pytest
 from flameconnect.models import (
     ConnectionState,
     Fire,
+    FireFeatures,
     FireMode,
     FlameColor,
     FlameEffect,
@@ -96,6 +97,17 @@ class TestRGBWColorConstruction:
         c1 = RGBWColor(red=10, green=20, blue=30, white=40)
         c2 = RGBWColor(red=10, green=20, blue=30, white=50)
         assert c1 != c2
+
+
+class TestFireFeaturesDefaults:
+    """Test FireFeatures dataclass defaults."""
+
+    def test_all_fields_default_to_false(self):
+        features = FireFeatures()
+        for field in dataclasses.fields(features):
+            assert getattr(features, field.name) is False, (
+                f"FireFeatures.{field.name} should default to False"
+            )
 
 
 # ---------------------------------------------------------------------------

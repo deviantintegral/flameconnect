@@ -21,6 +21,7 @@ from flameconnect.models import (
     ConnectionState,
     ErrorParam,
     Fire,
+    FireFeatures,
     FireMode,
     FlameEffect,
     FlameEffectParam,
@@ -136,6 +137,15 @@ class TestGetFires:
         assert fire.with_heat is True
         assert fire.is_iot_fire is True
 
+        # FireFeatures assertions
+        assert isinstance(fire.features, FireFeatures)
+        assert fire.features.sound is True
+        assert fire.features.simple_heat is True
+        assert fire.features.advanced_heat is True
+        assert fire.features.flame_height is True
+        assert fire.features.rgb_flame_accent is True
+        assert fire.features.moods is False
+
     async def test_empty_fires(self, mock_api, token_auth):
         url = f"{API_BASE}/api/Fires/GetFires"
         mock_api.get(url, payload=[])
@@ -196,6 +206,15 @@ class TestGetFireOverview:
         assert TempUnitParam in param_types
         assert SoundParam in param_types
         assert LogEffectParam in param_types
+
+        # FireFeatures assertions
+        assert isinstance(overview.fire.features, FireFeatures)
+        assert overview.fire.features.sound is True
+        assert overview.fire.features.simple_heat is True
+        assert overview.fire.features.advanced_heat is True
+        assert overview.fire.features.flame_height is True
+        assert overview.fire.features.rgb_flame_accent is True
+        assert overview.fire.features.moods is False
 
     async def test_mode_param_values(
         self, mock_api, token_auth, get_fire_overview_payload
@@ -353,6 +372,20 @@ class TestGetFireOverview:
             overview = await client.get_fire_overview(fire_id)
 
         assert overview.parameters == []
+
+    async def test_fire_features_default_when_missing(self, mock_api, token_auth):
+        """When FireFeature key is absent, features defaults to all-false."""
+        fire_id = "no-features-fire"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = _make_overview_payload(fire_id=fire_id, parameters=[])
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            overview = await client.get_fire_overview(fire_id)
+
+        features = overview.fire.features
+        assert isinstance(features, FireFeatures)
+        assert features == FireFeatures()
 
     async def test_continue_on_decode_failure_not_break(self, mock_api, token_auth):
         """After a bad parameter, good ones still decode.

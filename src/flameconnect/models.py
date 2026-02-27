@@ -164,6 +164,36 @@ NAMED_COLORS: dict[str, RGBWColor] = {
 
 
 @dataclass(frozen=True, slots=True)
+class FireFeatures:
+    """Boolean feature flags reported by the fireplace."""
+
+    sound: bool = False
+    simple_heat: bool = False
+    advanced_heat: bool = False
+    seven_day_timer: bool = False
+    count_down_timer: bool = False
+    moods: bool = False
+    flame_height: bool = False
+    rgb_flame_accent: bool = False
+    flame_dimming: bool = False
+    rgb_fuel_bed: bool = False
+    fuel_bed_dimming: bool = False
+    flame_fan_speed: bool = False
+    rgb_back_light: bool = False
+    front_light_amber: bool = False
+    pir_toggle_smart_sense: bool = False
+    lgt1_to_5: bool = False
+    requires_warm_up: bool = False
+    apply_flame_only_first: bool = False
+    flame_amber: bool = False
+    check_if_remote_was_used: bool = False
+    media_accent: bool = False
+    power_boost: bool = False
+    fan_only: bool = False
+    rgb_log_effect: bool = False
+
+
+@dataclass(frozen=True, slots=True)
 class Fire:
     """Represents a registered fireplace."""
 
@@ -176,6 +206,7 @@ class Fire:
     connection_state: ConnectionState
     with_heat: bool
     is_iot_fire: bool
+    features: FireFeatures = FireFeatures()
 
 
 # ---------------------------------------------------------------------------

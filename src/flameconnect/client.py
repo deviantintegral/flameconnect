@@ -17,6 +17,7 @@ from flameconnect.exceptions import ApiError
 from flameconnect.models import (
     ConnectionState,
     Fire,
+    FireFeatures,
     FireMode,
     FireOverview,
     FlameEffect,
@@ -33,6 +34,36 @@ from flameconnect.models import (
 from flameconnect.protocol import decode_parameter, encode_parameter
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _parse_fire_features(data: dict[str, Any]) -> FireFeatures:
+    """Parse a FireFeature JSON object into a FireFeatures dataclass."""
+    return FireFeatures(
+        sound=data.get("Sound", False),
+        simple_heat=data.get("SimpleHeat", False),
+        advanced_heat=data.get("AdvancedHeat", False),
+        seven_day_timer=data.get("SevenDayTimer", False),
+        count_down_timer=data.get("CountDownTimer", False),
+        moods=data.get("Moods", False),
+        flame_height=data.get("FlameHeight", False),
+        rgb_flame_accent=data.get("RgbFlameAccent", False),
+        flame_dimming=data.get("FlameDimming", False),
+        rgb_fuel_bed=data.get("RgbFuelBed", False),
+        fuel_bed_dimming=data.get("FuelBedDimming", False),
+        flame_fan_speed=data.get("FlameFanSpeed", False),
+        rgb_back_light=data.get("RgbBackLight", False),
+        front_light_amber=data.get("FrontLightAmber", False),
+        pir_toggle_smart_sense=data.get("PirToggleSmartSense", False),
+        lgt1_to_5=data.get("Lgt1To5", False),
+        requires_warm_up=data.get("RequiresWarmUp", False),
+        apply_flame_only_first=data.get("ApplyFlameOnlyFirst", False),
+        flame_amber=data.get("FlameAmber", False),
+        check_if_remote_was_used=data.get("CheckIfRemoteWasUsed", False),
+        media_accent=data.get("MediaAccent", False),
+        power_boost=data.get("PowerBoost", False),
+        fan_only=data.get("FanOnly", False),
+        rgb_log_effect=data.get("RgbLogEffect", False),
+    )
 
 
 def _get_parameter_id(param: Parameter) -> int:
@@ -153,6 +184,7 @@ class FlameConnectClient:
 
         fires: list[Fire] = []
         for entry in data:
+            features = _parse_fire_features(entry.get("FireFeature", {}))
             fire = Fire(
                 fire_id=entry["FireId"],
                 friendly_name=entry["FriendlyName"],
@@ -163,6 +195,7 @@ class FlameConnectClient:
                 connection_state=ConnectionState(entry["IoTConnectionState"]),
                 with_heat=entry["WithHeat"],
                 is_iot_fire=entry["IsIotFire"],
+                features=features,
             )
             fires.append(fire)
 
@@ -183,6 +216,11 @@ class FlameConnectClient:
         wifi: dict[str, Any] = data["WifiFireOverview"]
         fire_data: dict[str, Any] = wifi
 
+        feature_data = data.get("FireDetails", {}).get("FireFeature", {})
+        if not feature_data:
+            feature_data = wifi.get("FireFeature", {})
+        features = _parse_fire_features(feature_data)
+
         fire = Fire(
             fire_id=fire_data["FireId"],
             friendly_name=fire_data.get("FriendlyName", fire_data["FireId"]),
@@ -193,6 +231,7 @@ class FlameConnectClient:
             connection_state=ConnectionState(fire_data.get("IoTConnectionState", 0)),
             with_heat=fire_data.get("WithHeat", False),
             is_iot_fire=fire_data.get("IsIotFire", False),
+            features=features,
         )
 
         raw_params: list[dict[str, Any]] = wifi.get("Parameters", [])
