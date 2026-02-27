@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.0](https://github.com/deviantintegral/flameconnect/compare/v0.2.0...v0.3.0) (2026-02-27)
+
+
+### Features
+
+* launch TUI when available, show help otherwise ([#37](https://github.com/deviantintegral/flameconnect/issues/37)) ([8d386d2](https://github.com/deviantintegral/flameconnect/commit/8d386d2ae2221352e5e540fdee003cea4165d9fd))
+* remove custom User-Agent header from aiohttp sessions ([#35](https://github.com/deviantintegral/flameconnect/issues/35)) ([8653590](https://github.com/deviantintegral/flameconnect/commit/86535903e2aff3d7cc5b8b4cda13e356a05e72f9))
+* store token cache in XDG-compliant directory ([#36](https://github.com/deviantintegral/flameconnect/issues/36)) ([f5824ab](https://github.com/deviantintegral/flameconnect/commit/f5824aba819cbad32dbb78811e22588187ca5651))
+
 ## [0.2.0](https://github.com/deviantintegral/flameconnect/compare/v0.1.0...v0.2.0) (2026-02-26)
 
 
