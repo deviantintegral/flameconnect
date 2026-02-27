@@ -4,5 +4,7 @@
     "config:recommended",
     "helpers:pinGitHubActionDigests",
     ":enablePreCommit"
-  ]
+  ],
+  "automerge": true,
+  "minimumReleaseAge": "3 days"
 }
