@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/deviantintegral/flameconnect/compare/v0.3.0...v0.4.0) (2026-02-27)
+
+
+### Features
+
+* add FireFeatures dataclass and parse feature flags from API ([8ed0c38](https://github.com/deviantintegral/flameconnect/commit/8ed0c38ad3575b94b67dbe330ac743e4f2a2819f))
+* display fire feature flags in CLI status output ([380024a](https://github.com/deviantintegral/flameconnect/commit/380024afa9616364c0c598cbdf28750d0f3b6c3e))
+
 ## [0.3.0](https://github.com/deviantintegral/flameconnect/compare/v0.2.0...v0.3.0) (2026-02-27)
 
 
