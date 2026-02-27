@@ -2,7 +2,7 @@
 id: 1
 group: "fire-feature-flags"
 dependencies: []
-status: "pending"
+status: "completed"
 created: 2026-02-27
 skills:
   - python-dataclasses
