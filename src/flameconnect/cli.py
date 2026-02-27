@@ -15,6 +15,7 @@ from flameconnect.client import FlameConnectClient
 from flameconnect.models import (
     NAMED_COLORS,
     ErrorParam,
+    FireFeatures,
     FireMode,
     FlameColor,
     FlameEffect,
@@ -345,6 +346,43 @@ def _display_log_effect(param: LogEffectParam) -> None:
     print(f"    Pattern:        {param.pattern}")
 
 
+_FEATURE_LABELS: list[tuple[str, str]] = [
+    ("sound", "Sound"),
+    ("simple_heat", "Simple Heat"),
+    ("advanced_heat", "Advanced Heat"),
+    ("seven_day_timer", "7-Day Timer"),
+    ("count_down_timer", "Countdown Timer"),
+    ("moods", "Moods"),
+    ("flame_height", "Flame Height"),
+    ("rgb_flame_accent", "RGB Flame Accent"),
+    ("flame_dimming", "Flame Dimming"),
+    ("rgb_fuel_bed", "RGB Fuel Bed"),
+    ("fuel_bed_dimming", "Fuel Bed Dimming"),
+    ("flame_fan_speed", "Flame Fan Speed"),
+    ("rgb_back_light", "RGB Back Light"),
+    ("front_light_amber", "Front Light Amber"),
+    ("pir_toggle_smart_sense", "PIR Smart Sense"),
+    ("lgt1_to_5", "LGT 1-5"),
+    ("requires_warm_up", "Requires Warm Up"),
+    ("apply_flame_only_first", "Apply Flame Only First"),
+    ("flame_amber", "Flame Amber"),
+    ("check_if_remote_was_used", "Check If Remote Was Used"),
+    ("media_accent", "Media Accent"),
+    ("power_boost", "Power Boost"),
+    ("fan_only", "Fan Only"),
+    ("rgb_log_effect", "RGB Log Effect"),
+]
+
+
+def _display_features(features: FireFeatures) -> None:
+    """Display supported feature flags."""
+    print("\n  Supported Features")
+    print(f"  {'─' * 40}")
+    for field_name, label in _FEATURE_LABELS:
+        value = "Yes" if getattr(features, field_name) else "No"
+        print(f"    {label + ':':<28s}{value}")
+
+
 def _display_parameter(
     param: Parameter,
     temp_unit: TempUnitParam | None = None,
@@ -401,6 +439,7 @@ async def cmd_status(client: FlameConnectClient, fire_id: str) -> None:
     print(f"Fireplace: {fire.friendly_name} ({fire.fire_id})")
     state = _enum_name(_CONNECTION_STATE_NAMES, fire.connection_state)
     print(f"Connection: {state}")
+    _display_features(fire.features)
 
     if not overview.parameters:
         print("\nNo parameters returned (fireplace may be offline).")
