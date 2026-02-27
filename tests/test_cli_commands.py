@@ -11,6 +11,7 @@ import pytest
 from flameconnect.cli import (
     _convert_temp,
     _display_error,
+    _display_features,
     _display_flame_effect,
     _display_heat,
     _display_heat_mode,
@@ -40,6 +41,7 @@ from flameconnect.models import (
     ConnectionState,
     ErrorParam,
     Fire,
+    FireFeatures,
     FireMode,
     FireOverview,
     FlameColor,
@@ -672,6 +674,81 @@ class TestCmdStatus:
         await cmd_status(client, FIRE_ID)
         out = capsys.readouterr().out
         assert "Updating Firmware" in out
+
+    async def test_features_displayed(self, capsys):
+        client = AsyncMock()
+        features = FireFeatures(sound=True, advanced_heat=True)
+        fire = _make_fire(features=features)
+        overview = FireOverview(fire=fire, parameters=[_make_mode_param()])
+        client.get_fire_overview.return_value = overview
+        await cmd_status(client, FIRE_ID)
+        out = capsys.readouterr().out
+        assert "Supported Features" in out
+        assert "Sound:" in out
+        assert "Advanced Heat:" in out
+
+    async def test_features_displayed_when_offline(self, capsys):
+        """Features section appears even when no parameters returned."""
+        client = AsyncMock()
+        features = FireFeatures(flame_height=True)
+        fire = _make_fire(features=features)
+        overview = FireOverview(fire=fire, parameters=[])
+        client.get_fire_overview.return_value = overview
+        await cmd_status(client, FIRE_ID)
+        out = capsys.readouterr().out
+        assert "Supported Features" in out
+        assert "Flame Height:" in out
+
+
+class TestDisplayFeatures:
+    """Tests for _display_features()."""
+
+    def test_all_false(self, capsys):
+        _display_features(FireFeatures())
+        out = capsys.readouterr().out
+        assert "Supported Features" in out
+        # All should show No
+        assert "Yes" not in out
+        assert out.count("No") == 24
+
+    def test_some_true(self, capsys):
+        features = FireFeatures(sound=True, simple_heat=True, rgb_log_effect=True)
+        _display_features(features)
+        out = capsys.readouterr().out
+        assert out.count("Yes") == 3
+        assert out.count("No") == 21
+
+    def test_all_labels_present(self, capsys):
+        _display_features(FireFeatures())
+        out = capsys.readouterr().out
+        expected_labels = [
+            "Sound:",
+            "Simple Heat:",
+            "Advanced Heat:",
+            "7-Day Timer:",
+            "Countdown Timer:",
+            "Moods:",
+            "Flame Height:",
+            "RGB Flame Accent:",
+            "Flame Dimming:",
+            "RGB Fuel Bed:",
+            "Fuel Bed Dimming:",
+            "Flame Fan Speed:",
+            "RGB Back Light:",
+            "Front Light Amber:",
+            "PIR Smart Sense:",
+            "LGT 1-5:",
+            "Requires Warm Up:",
+            "Apply Flame Only First:",
+            "Flame Amber:",
+            "Check If Remote Was Used:",
+            "Media Accent:",
+            "Power Boost:",
+            "Fan Only:",
+            "RGB Log Effect:",
+        ]
+        for label in expected_labels:
+            assert label in out, f"Missing label: {label}"
 
 
 class TestCmdOn:
