@@ -18,6 +18,7 @@ from flameconnect.models import (
     ConnectionState,
     ErrorParam,
     Fire,
+    FireFeatures,
     FireMode,
     FireOverview,
     FlameColor,
@@ -75,6 +76,7 @@ __all__ = [
     # Dataclasses
     "ErrorParam",
     "Fire",
+    "FireFeatures",
     "FireOverview",
     "FlameEffectParam",
     "HeatModeParam",

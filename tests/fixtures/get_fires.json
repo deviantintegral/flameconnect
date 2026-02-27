@@ -8,6 +8,32 @@
     "ItemCode": "ABC123",
     "IoTConnectionState": 2,
     "WithHeat": true,
-    "IsIotFire": true
+    "IsIotFire": true,
+    "FireFeature": {
+      "Sound": true,
+      "SimpleHeat": true,
+      "AdvancedHeat": true,
+      "SevenDayTimer": false,
+      "CountDownTimer": false,
+      "Moods": false,
+      "FlameHeight": true,
+      "RgbFlameAccent": true,
+      "FlameDimming": false,
+      "RgbFuelBed": false,
+      "FuelBedDimming": false,
+      "FlameFanSpeed": false,
+      "RgbBackLight": false,
+      "FrontLightAmber": false,
+      "PirToggleSmartSense": false,
+      "Lgt1To5": false,
+      "RequiresWarmUp": false,
+      "ApplyFlameOnlyFirst": false,
+      "FlameAmber": false,
+      "CheckIfRemoteWasUsed": false,
+      "MediaAccent": false,
+      "PowerBoost": false,
+      "FanOnly": false,
+      "RgbLogEffect": false
+    }
   }
 ]
