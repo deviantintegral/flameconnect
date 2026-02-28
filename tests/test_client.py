@@ -1419,3 +1419,56 @@ class TestTurnOnTurnOffInitNone:
         assert raw[3] == FireMode.STANDBY
         temp = float(raw[4]) + float(raw[5]) / 10.0
         assert temp == pytest.approx(22.0)
+
+
+# -------------------------------------------------------------------
+# Security regression tests
+# -------------------------------------------------------------------
+
+
+class TestGetFireOverviewUrlEncoding:
+    """Security tests: fire_id must be URL-encoded in get_fire_overview.
+
+    A compromised API server could return a FireId containing URL
+    special characters (e.g. '&evil=true') to inject extra query
+    parameters into subsequent requests. The fix URL-encodes fire_id
+    via urllib.parse.quote() so injected characters are escaped.
+    """
+
+    async def test_ampersand_in_fire_id_is_encoded(self, mock_api, token_auth):
+        """'&' in fire_id must be percent-encoded, not passed raw."""
+        fire_id = "abc&evil=true"
+        # The URL must encode '&' as '%26' and '=' as '%3D'
+        encoded_id = "abc%26evil%3Dtrue"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={encoded_id}"
+        mock_api.get(url, payload={"WifiFireOverview": {"FireId": fire_id}})
+
+        async with FlameConnectClient(token_auth) as client:
+            overview = await client.get_fire_overview(fire_id)
+
+        assert overview.fire.fire_id == fire_id
+
+    async def test_hash_in_fire_id_is_encoded(self, mock_api, token_auth):
+        """'#' in fire_id must be percent-encoded."""
+        fire_id = "abc#fragment"
+        encoded_id = "abc%23fragment"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={encoded_id}"
+        mock_api.get(url, payload={"WifiFireOverview": {"FireId": fire_id}})
+
+        async with FlameConnectClient(token_auth) as client:
+            overview = await client.get_fire_overview(fire_id)
+
+        assert overview.fire.fire_id == fire_id
+
+    async def test_normal_fire_id_unchanged(
+        self, mock_api, token_auth, get_fire_overview_payload
+    ):
+        """A plain alphanumeric fire_id is unaffected by encoding."""
+        fire_id = "test-fire-001"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        mock_api.get(url, payload=get_fire_overview_payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            overview = await client.get_fire_overview(fire_id)
+
+        assert overview.fire.fire_id == fire_id

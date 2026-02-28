@@ -6,6 +6,7 @@ import base64
 import logging
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
+from urllib.parse import quote
 
 import aiohttp
 
@@ -210,7 +211,7 @@ class FlameConnectClient:
         Returns:
             A FireOverview containing the fire identity and decoded parameters.
         """
-        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={quote(fire_id, safe='')}"
         data: dict[str, Any] = await self._request("GET", url)
 
         wifi: dict[str, Any] = data["WifiFireOverview"]
