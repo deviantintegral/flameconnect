@@ -2341,3 +2341,145 @@ class TestLogNoneDetection:
                 assert " None" not in line.split(">>>")[1], (
                     f"Found 'None' in log line: {line}"
                 )
+
+
+# -------------------------------------------------------------------
+# Security regression tests
+# -------------------------------------------------------------------
+
+
+class TestRedirectUriValidation:
+    """Security tests: redirect URI must match the exact expected prefix.
+
+    Before the fix, the check was:
+        location.startswith("msal") and "://auth" in location
+
+    This was too broad. A compromised server could send:
+      - msal{CLIENT_ID}://auth.evil.com?code=...  (domain mismatch)
+      - msalEVIL://auth?code=...                  (wrong client ID)
+
+    Both would match the old check but must NOT match the new one,
+    which requires startswith(f"msal{CLIENT_ID}://auth") followed by
+    '?' or '/'.
+    """
+
+    async def test_correct_redirect_uri_accepted(self):
+        """The legitimate redirect URI is still accepted."""
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": REDIRECT_URL},
+        )
+
+        session = _make_mock_session(
+            get=MagicMock(side_effect=[login_resp, confirmed_resp]),
+            post=MagicMock(return_value=post_resp),
+        )
+
+        with _patch_session(session):
+            result = await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        assert result == REDIRECT_URL
+
+    async def test_correct_redirect_uri_with_trailing_slash_accepted(self):
+        """msal{CLIENT_ID}://auth/?... (with trailing slash) is also valid."""
+        redirect_with_slash = (
+            f"msal{_CLIENT_ID}://auth/?code=test-auth-code-123&state=test-state"
+        )
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": redirect_with_slash},
+        )
+
+        session = _make_mock_session(
+            get=MagicMock(side_effect=[login_resp, confirmed_resp]),
+            post=MagicMock(return_value=post_resp),
+        )
+
+        with _patch_session(session):
+            result = await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        assert result == redirect_with_slash
+
+    async def test_attacker_subdomain_redirect_not_accepted(self):
+        """msal{CLIENT_ID}://auth.evil.com?... must NOT be accepted.
+
+        The old check '://auth' in location would accept this because
+        the substring '://auth' appears in '://auth.evil.com'.
+        The new check requires startswith(f'msal{CLIENT_ID}://auth')
+        followed by '?' or '/', which the malicious URL fails because
+        '.' is neither.
+        """
+        malicious_redirect = f"msal{_CLIENT_ID}://auth.evil.com?code=stolen&state=xyz"
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        # The malicious redirect followed by a 200 with no real redirect
+        malicious_resp = _make_mock_response(
+            status=302,
+            headers={"Location": malicious_redirect},
+        )
+        final_200 = _make_mock_response(
+            status=200,
+            text="<html>no redirect here</html>",
+        )
+
+        session = _make_mock_session(
+            get=MagicMock(side_effect=[login_resp, malicious_resp, final_200]),
+            post=MagicMock(return_value=post_resp),
+        )
+
+        with (
+            _patch_session(session),
+            pytest.raises(
+                AuthenticationError,
+                match="Reached 200 response without finding redirect URL",
+            ),
+        ):
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+    async def test_wrong_client_id_redirect_not_accepted(self):
+        """msalWRONG_CLIENT_ID://auth?... must NOT be accepted."""
+        malicious_redirect = "msalDEADBEEF-0000-0000-0000-000000000000://auth?code=x"
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        malicious_resp = _make_mock_response(
+            status=302,
+            headers={"Location": malicious_redirect},
+        )
+        final_200 = _make_mock_response(
+            status=200,
+            text="<html>no redirect here</html>",
+        )
+
+        session = _make_mock_session(
+            get=MagicMock(side_effect=[login_resp, malicious_resp, final_200]),
+            post=MagicMock(return_value=post_resp),
+        )
+
+        with (
+            _patch_session(session),
+            pytest.raises(
+                AuthenticationError,
+                match="Reached 200 response without finding redirect URL",
+            ),
+        ):
+            await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
