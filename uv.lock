@@ -384,7 +384,7 @@ wheels = [
 
 [[package]]
 name = "flameconnect"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -408,7 +408,13 @@ tui = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "aioresponses" },
+    { name = "multidict" },
     { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "pytest-aiohttp" },
+    { name = "pytest-asyncio" },
+    { name = "yarl" },
 ]
 
 [package.metadata]
@@ -428,7 +434,15 @@ requires-dist = [
 provides-extras = ["tui", "dev"]
 
 [package.metadata.requires-dev]
-dev = [{ name = "pre-commit", specifier = ">=4.5.1" }]
+dev = [
+    { name = "aioresponses", specifier = ">=0.7.8" },
+    { name = "multidict", specifier = ">=6.7.1" },
+    { name = "pre-commit", specifier = ">=4.5.1" },
+    { name = "pytest", specifier = ">=9.0.2" },
+    { name = "pytest-aiohttp", specifier = ">=1.1.0" },
+    { name = "pytest-asyncio", specifier = ">=1.3.0" },
+    { name = "yarl", specifier = ">=1.22.0" },
+]
 
 [[package]]
 name = "frozenlist"
