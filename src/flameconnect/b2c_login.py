@@ -18,7 +18,7 @@ from flameconnect.exceptions import AuthenticationError
 
 _LOGGER = logging.getLogger(__name__)
 
-_REDIRECT_URI_PREFIX = f"msal{CLIENT_ID}://auth?"
+_REDIRECT_URI_PREFIX = f"msal{CLIENT_ID}://auth"
 
 
 _B2C_POLICY = "B2C_1A_FirePhoneSignUpOrSignInWithPhoneOrEmail"
@@ -291,7 +291,10 @@ async def b2c_login_with_credentials(auth_uri: str, email: str, password: str) -
                                     "Redirect without Location header"
                                 )
                             # Custom-scheme redirect (msal{CLIENT_ID}://auth)
-                            if location.startswith(_REDIRECT_URI_PREFIX):
+                            if location.startswith(_REDIRECT_URI_PREFIX) and (
+                                len(location) == len(_REDIRECT_URI_PREFIX)
+                                or location[len(_REDIRECT_URI_PREFIX)] in ("?", "/")
+                            ):
                                 _LOGGER.debug(
                                     "Captured custom-scheme redirect: %s",
                                     location[:120] + "...",

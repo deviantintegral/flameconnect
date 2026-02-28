@@ -2359,7 +2359,8 @@ class TestRedirectUriValidation:
       - msalEVIL://auth?code=...                  (wrong client ID)
 
     Both would match the old check but must NOT match the new one,
-    which requires startswith(f"msal{CLIENT_ID}://auth?").
+    which requires startswith(f"msal{CLIENT_ID}://auth") followed by
+    '?' or '/'.
     """
 
     async def test_correct_redirect_uri_accepted(self):
@@ -2385,13 +2386,40 @@ class TestRedirectUriValidation:
 
         assert result == REDIRECT_URL
 
+    async def test_correct_redirect_uri_with_trailing_slash_accepted(self):
+        """msal{CLIENT_ID}://auth/?... (with trailing slash) is also valid."""
+        redirect_with_slash = (
+            f"msal{_CLIENT_ID}://auth/?code=test-auth-code-123&state=test-state"
+        )
+        login_resp = _make_mock_response(
+            status=200,
+            text=SAMPLE_B2C_HTML,
+            url=SAMPLE_PAGE_URL,
+        )
+        post_resp = _make_mock_response(status=200, text='{"status":"200"}')
+        confirmed_resp = _make_mock_response(
+            status=302,
+            headers={"Location": redirect_with_slash},
+        )
+
+        session = _make_mock_session(
+            get=MagicMock(side_effect=[login_resp, confirmed_resp]),
+            post=MagicMock(return_value=post_resp),
+        )
+
+        with _patch_session(session):
+            result = await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
+
+        assert result == redirect_with_slash
+
     async def test_attacker_subdomain_redirect_not_accepted(self):
         """msal{CLIENT_ID}://auth.evil.com?... must NOT be accepted.
 
         The old check '://auth' in location would accept this because
         the substring '://auth' appears in '://auth.evil.com'.
-        The new check requires startswith(f'msal{CLIENT_ID}://auth?'),
-        which the malicious URL fails because '://auth.' != '://auth?'.
+        The new check requires startswith(f'msal{CLIENT_ID}://auth')
+        followed by '?' or '/', which the malicious URL fails because
+        '.' is neither.
         """
         malicious_redirect = f"msal{_CLIENT_ID}://auth.evil.com?code=stolen&state=xyz"
         login_resp = _make_mock_response(
