@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "flameconnect"
-version = "0.4.0"
+version = "0.4.1"
 description = "Async Python library for controlling Dimplex, Faber, and Real Flame fireplaces via the Flame Connect cloud API"
 readme = "README.md"
 license = "Apache-2.0"
