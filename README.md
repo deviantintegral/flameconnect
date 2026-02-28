@@ -8,6 +8,8 @@ Async Python library for controlling Dimplex, Faber, and Real Flame fireplaces v
 
 ![FlameConnect TUI](images/flameconnect-0.1.0.png)
 
+> 🏠 Looking for a Home Assistant integration? Try the [flame_connect_ha custom component](https://github.com/deviantintegral/flame_connect_ha).
+
 ## Installation
 
 ```bash
