@@ -2381,9 +2381,7 @@ class TestRedirectUriValidation:
         )
 
         with _patch_session(session):
-            result = await b2c_login_with_credentials(
-                AUTH_URI, "user@test.com", "pass"
-            )
+            result = await b2c_login_with_credentials(AUTH_URI, "user@test.com", "pass")
 
         assert result == REDIRECT_URL
 
@@ -2395,9 +2393,7 @@ class TestRedirectUriValidation:
         The new check requires startswith(f'msal{CLIENT_ID}://auth?'),
         which the malicious URL fails because '://auth.' != '://auth?'.
         """
-        malicious_redirect = (
-            f"msal{_CLIENT_ID}://auth.evil.com?code=stolen&state=xyz"
-        )
+        malicious_redirect = f"msal{_CLIENT_ID}://auth.evil.com?code=stolen&state=xyz"
         login_resp = _make_mock_response(
             status=200,
             text=SAMPLE_B2C_HTML,
