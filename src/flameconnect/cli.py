@@ -185,8 +185,6 @@ def _find_param[T](parameters: list[Parameter], param_type: type[T]) -> T | None
 # ---------------------------------------------------------------------------
 
 
-
-
 def _display_mode(
     param: ModeParam,
     temp_unit: TempUnitParam | None = None,

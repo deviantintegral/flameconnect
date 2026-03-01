@@ -118,8 +118,6 @@ _MODE_DISPLAY: dict[FireMode, str] = {
 }
 
 
-
-
 def _format_mode(
     param: ModeParam,
     temp_unit: TempUnitParam | None = None,
