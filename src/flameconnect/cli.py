@@ -36,6 +36,8 @@ from flameconnect.models import (
     TempUnitParam,
     TimerParam,
     TimerStatus,
+    convert_temp,
+    temp_suffix,
 )
 
 # ---------------------------------------------------------------------------
@@ -164,6 +166,12 @@ def _find_param(
 ) -> HeatParam | None: ...
 
 
+@overload
+def _find_param(
+    parameters: list[Parameter], param_type: type[TempUnitParam]
+) -> TempUnitParam | None: ...
+
+
 def _find_param[T](parameters: list[Parameter], param_type: type[T]) -> T | None:
     """Find the first parameter of a given type in a list."""
     for p in parameters:
@@ -177,35 +185,6 @@ def _find_param[T](parameters: list[Parameter], param_type: type[T]) -> T | None
 # ---------------------------------------------------------------------------
 
 
-def _temp_suffix(parameters: list[Parameter]) -> str:
-    """Return 'C' or 'F' based on TempUnitParam in *parameters*, or ''."""
-    for p in parameters:
-        if isinstance(p, TempUnitParam):
-            return "C" if p.unit == TempUnit.CELSIUS else "F"
-    return ""
-
-
-def _find_temp_unit(
-    parameters: list[Parameter],
-) -> TempUnitParam | None:
-    """Return the TempUnitParam from *parameters*, or ``None``."""
-    for p in parameters:
-        if isinstance(p, TempUnitParam):
-            return p
-    return None
-
-
-def _convert_temp(celsius: float, unit: TempUnit) -> float:
-    """Convert a Celsius temperature for display.
-
-    Returns the value unchanged when *unit* is CELSIUS, or
-    converts to Fahrenheit (rounded to 1 decimal) when FAHRENHEIT.
-    """
-    if unit == TempUnit.CELSIUS:
-        return celsius
-    return round(celsius * 9 / 5 + 32, 1)
-
-
 def _display_mode(
     param: ModeParam,
     temp_unit: TempUnitParam | None = None,
@@ -213,7 +192,7 @@ def _display_mode(
     """Display Mode parameter."""
     unit = temp_unit.unit if temp_unit else TempUnit.CELSIUS
     unit_suffix = ("C" if unit == TempUnit.CELSIUS else "F") if temp_unit else ""
-    display_temp = _convert_temp(param.target_temperature, unit)
+    display_temp = convert_temp(param.target_temperature, unit)
     print("\n  [321] Mode")
     print(f"  {'─' * 40}")
     mode = _enum_name(_FIRE_MODE_NAMES, param.mode)
@@ -251,7 +230,7 @@ def _display_heat(
     """Display HeatSettings parameter."""
     unit = temp_unit.unit if temp_unit else TempUnit.CELSIUS
     unit_suffix = ("C" if unit == TempUnit.CELSIUS else "F") if temp_unit else ""
-    display_temp = _convert_temp(param.setpoint_temperature, unit)
+    display_temp = convert_temp(param.setpoint_temperature, unit)
     print("\n  [323] Heat Settings")
     print(f"  {'─' * 40}")
     status = _enum_name(_HEAT_STATUS_NAMES, param.heat_status)
@@ -446,7 +425,7 @@ async def cmd_status(client: FlameConnectClient, fire_id: str) -> None:
         return
 
     count = len(overview.parameters)
-    temp_unit = _find_temp_unit(overview.parameters)
+    temp_unit = _find_param(overview.parameters, TempUnitParam)
     print(f"\n{count} parameter(s) reported:")
     for param in overview.parameters:
         _display_parameter(param, temp_unit)
@@ -701,7 +680,7 @@ async def _set_heat_temp(client: FlameConnectClient, fire_id: str, value: str) -
     if current is None:
         print("Error: no HeatSettings parameter found.")
         sys.exit(1)
-    unit_suffix = _temp_suffix(overview.parameters)
+    unit_suffix = temp_suffix(_find_param(overview.parameters, TempUnitParam))
     new_param = replace(current, setpoint_temperature=temp)
     await client.write_parameters(fire_id, [new_param])
     print(f"Heat temperature set to {temp}\u00b0{unit_suffix}.")

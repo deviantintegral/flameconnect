@@ -8,22 +8,11 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Static
 
-from flameconnect.models import TempUnit
+from flameconnect.models import TempUnit, convert_temp
 from flameconnect.tui.widgets import ArrowNavMixin
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
-
-
-def _convert_temp(celsius: float, unit: TempUnit) -> float:
-    """Convert a Celsius temperature for display.
-
-    Returns the value unchanged when *unit* is CELSIUS, or
-    converts to Fahrenheit (rounded to 1 decimal) when FAHRENHEIT.
-    """
-    if unit == TempUnit.CELSIUS:
-        return celsius
-    return round(celsius * 9 / 5 + 32, 1)
 
 
 def _convert_to_celsius(
@@ -98,7 +87,7 @@ class TemperatureScreen(ArrowNavMixin, ModalScreen[float | None]):
         unit_str = "\u00b0C" if self._unit == TempUnit.CELSIUS else "\u00b0F"
         celsius = self._unit == TempUnit.CELSIUS
         range_str = "5.0 \u2013 35.0" if celsius else "40.0 \u2013 95.0"
-        display_temp = _convert_temp(self._current_temp, self._unit)
+        display_temp = convert_temp(self._current_temp, self._unit)
         with Vertical(id="temp-dialog"):
             yield Static(
                 f"Set Temperature (current: {display_temp}{unit_str})",

@@ -9,7 +9,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from flameconnect.cli import (
-    _convert_temp,
     _display_error,
     _display_features,
     _display_flame_effect,
@@ -24,9 +23,7 @@ from flameconnect.cli import (
     _display_timer,
     _enum_name,
     _find_param,
-    _find_temp_unit,
     _format_rgbw,
-    _temp_suffix,
     async_main,
     build_parser,
     cmd_list,
@@ -66,6 +63,8 @@ from flameconnect.models import (
     TempUnitParam,
     TimerParam,
     TimerStatus,
+    convert_temp,
+    temp_suffix,
 )
 
 # ---------------------------------------------------------------------------
@@ -163,52 +162,34 @@ class TestFormatRGBW:
         assert _format_rgbw(c) == "RGBW(255, 128, 64, 32)"
 
 
-class TestFindTempUnit:
-    """Tests for _find_temp_unit()."""
-
-    def test_found(self):
-        tu = TempUnitParam(unit=TempUnit.CELSIUS)
-        result = _find_temp_unit([_make_mode_param(), tu])
-        assert result is tu
-
-    def test_not_found(self):
-        result = _find_temp_unit([_make_mode_param()])
-        assert result is None
-
-    def test_empty_list(self):
-        assert _find_temp_unit([]) is None
-
-
 class TestTempSuffix:
-    """Tests for _temp_suffix()."""
+    """Tests for temp_suffix()."""
 
     def test_celsius(self):
-        params: list[Parameter] = [TempUnitParam(unit=TempUnit.CELSIUS)]
-        assert _temp_suffix(params) == "C"
+        assert temp_suffix(TempUnitParam(unit=TempUnit.CELSIUS)) == "C"
 
     def test_fahrenheit(self):
-        params: list[Parameter] = [TempUnitParam(unit=TempUnit.FAHRENHEIT)]
-        assert _temp_suffix(params) == "F"
+        assert temp_suffix(TempUnitParam(unit=TempUnit.FAHRENHEIT)) == "F"
 
     def test_missing(self):
-        assert _temp_suffix([]) == ""
+        assert temp_suffix(None) == ""
 
 
 class TestConvertTemp:
-    """Tests for _convert_temp()."""
+    """Tests for convert_temp()."""
 
     def test_celsius_passthrough(self):
-        assert _convert_temp(22.0, TempUnit.CELSIUS) == 22.0
+        assert convert_temp(22.0, TempUnit.CELSIUS) == 22.0
 
     def test_fahrenheit_conversion(self):
-        assert _convert_temp(0.0, TempUnit.FAHRENHEIT) == 32.0
+        assert convert_temp(0.0, TempUnit.FAHRENHEIT) == 32.0
 
     def test_fahrenheit_100(self):
-        assert _convert_temp(100.0, TempUnit.FAHRENHEIT) == 212.0
+        assert convert_temp(100.0, TempUnit.FAHRENHEIT) == 212.0
 
     def test_fahrenheit_negative(self):
         # -40 C == -40 F
-        assert _convert_temp(-40.0, TempUnit.FAHRENHEIT) == -40.0
+        assert convert_temp(-40.0, TempUnit.FAHRENHEIT) == -40.0
 
 
 class TestFindParam:
