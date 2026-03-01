@@ -309,6 +309,9 @@ git clone https://github.com/deviantintegral/flameconnect.git
 cd flameconnect
 uv sync --dev --all-extras
 
+# Install pre-commit hooks
+uv run pre-commit install --install-hooks
+
 # Lint and type-check
 uv run ruff check .
 uv run mypy src/
