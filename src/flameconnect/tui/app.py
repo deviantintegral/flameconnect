@@ -17,7 +17,15 @@ from textual.widgets import Footer, Header, OptionList, Static
 from textual.widgets.option_list import Option
 
 from flameconnect import __version__
-from flameconnect.models import display_name
+from flameconnect.models import (
+    FlameEffectParam,
+    HeatParam,
+    LightStatus,
+    TempUnitParam,
+    TimerParam,
+    TimerStatus,
+    display_name,
+)
 from flameconnect.tui.auth_screen import AuthScreen
 from flameconnect.tui.screens import DashboardScreen
 
@@ -178,6 +186,21 @@ class FlameConnectApp(App[None]):
         self.fires: list[Fire] = []
         self._write_in_progress = False
         self._help_visible: bool = False
+
+    def _get_current_param[T](
+        self,
+        param_type: type[T],
+    ) -> tuple[DashboardScreen, str, T] | None:
+        """Return (screen, fire_id, param) if all guards pass, else None."""
+        screen = self.screen
+        if not isinstance(screen, DashboardScreen):
+            return None
+        if self.fire_id is None or self._write_in_progress:
+            return None
+        current = screen.current_parameters.get(param_type)
+        if not isinstance(current, param_type):
+            return None
+        return screen, self.fire_id, current
 
     def compose(self) -> ComposeResult:
         """Compose the initial app layout with fireplace selector."""
@@ -358,7 +381,6 @@ class FlameConnectApp(App[None]):
 
     def action_set_flame_speed(self) -> None:
         """Handle the 'f' key binding to open flame speed dialog."""
-        from flameconnect.models import FlameEffectParam
         from flameconnect.tui.flame_speed_screen import FlameSpeedScreen
 
         screen = self.screen
@@ -382,64 +404,44 @@ class FlameConnectApp(App[None]):
 
     def _apply_flame_speed(self, speed: int) -> None:
         """Write the selected flame speed to the fireplace."""
-        from flameconnect.models import FlameEffectParam
-
-        screen = self.screen
-        if not isinstance(screen, DashboardScreen):
+        result = self._get_current_param(FlameEffectParam)
+        if result is None:
             return
-        if self.fire_id is None or self._write_in_progress:
-            return
-
-        params = screen.current_parameters
-        current = params.get(FlameEffectParam)
-        if not isinstance(current, FlameEffectParam):
-            return
+        _, fire_id, current = result
         new_param = replace(current, flame_speed=speed)
         self._run_command(
-            self.client.write_parameters(self.fire_id, [new_param]),
+            self.client.write_parameters(fire_id, [new_param]),
             f"Setting flame speed to {speed}...",
             "Flame speed change failed",
         )
 
     def action_toggle_brightness(self) -> None:
         """Handle the 'b' key binding to toggle brightness high/low."""
-        from flameconnect.models import Brightness, FlameEffectParam
+        from flameconnect.models import Brightness
 
-        screen = self.screen
-        if not isinstance(screen, DashboardScreen):
+        result = self._get_current_param(FlameEffectParam)
+        if result is None:
             return
-        if self.fire_id is None or self._write_in_progress:
-            return
-
-        params = screen.current_parameters
-        current = params.get(FlameEffectParam)
-        if not isinstance(current, FlameEffectParam):
-            return
+        _, fire_id, current = result
         new_brightness = (
             Brightness.LOW if current.brightness == Brightness.HIGH else Brightness.HIGH
         )
         new_param = replace(current, brightness=new_brightness)
         label = "Low" if new_brightness == Brightness.LOW else "High"
         self._run_command(
-            self.client.write_parameters(self.fire_id, [new_param]),
+            self.client.write_parameters(fire_id, [new_param]),
             f"Setting brightness to {label}...",
             "Brightness toggle failed",
         )
 
     def action_toggle_flame_effect(self) -> None:
         """Handle the 'e' key binding to toggle flame effect on/off."""
-        from flameconnect.models import FlameEffect, FlameEffectParam
+        from flameconnect.models import FlameEffect
 
-        screen = self.screen
-        if not isinstance(screen, DashboardScreen):
+        result = self._get_current_param(FlameEffectParam)
+        if result is None:
             return
-        if self.fire_id is None or self._write_in_progress:
-            return
-
-        params = screen.current_parameters
-        current = params.get(FlameEffectParam)
-        if not isinstance(current, FlameEffectParam):
-            return
+        _, fire_id, current = result
         new_val = (
             FlameEffect.OFF
             if current.flame_effect == FlameEffect.ON
@@ -448,25 +450,19 @@ class FlameConnectApp(App[None]):
         new_param = replace(current, flame_effect=new_val)
         label = "On" if new_val == FlameEffect.ON else "Off"
         self._run_command(
-            self.client.write_parameters(self.fire_id, [new_param]),
+            self.client.write_parameters(fire_id, [new_param]),
             f"Setting flame effect to {label}...",
             "Flame effect toggle failed",
         )
 
     def action_toggle_pulsating(self) -> None:
         """Handle the 'g' key binding to toggle pulsating on/off."""
-        from flameconnect.models import FlameEffectParam, PulsatingEffect
+        from flameconnect.models import PulsatingEffect
 
-        screen = self.screen
-        if not isinstance(screen, DashboardScreen):
+        result = self._get_current_param(FlameEffectParam)
+        if result is None:
             return
-        if self.fire_id is None or self._write_in_progress:
-            return
-
-        params = screen.current_parameters
-        current = params.get(FlameEffectParam)
-        if not isinstance(current, FlameEffectParam):
-            return
+        _, fire_id, current = result
         new_val = (
             PulsatingEffect.OFF
             if current.pulsating_effect == PulsatingEffect.ON
@@ -475,50 +471,34 @@ class FlameConnectApp(App[None]):
         new_param = replace(current, pulsating_effect=new_val)
         label = "On" if new_val == PulsatingEffect.ON else "Off"
         self._run_command(
-            self.client.write_parameters(self.fire_id, [new_param]),
+            self.client.write_parameters(fire_id, [new_param]),
             f"Setting pulsating to {label}...",
             "Pulsating toggle failed",
         )
 
     def action_toggle_media_light(self) -> None:
         """Handle the 'l' key binding to toggle media light on/off."""
-        from flameconnect.models import FlameEffectParam, LightStatus
-
-        screen = self.screen
-        if not isinstance(screen, DashboardScreen):
+        result = self._get_current_param(FlameEffectParam)
+        if result is None:
             return
-        if self.fire_id is None or self._write_in_progress:
-            return
-
-        params = screen.current_parameters
-        current = params.get(FlameEffectParam)
-        if not isinstance(current, FlameEffectParam):
-            return
+        _, fire_id, current = result
         new_val = (
             LightStatus.OFF if current.media_light == LightStatus.ON else LightStatus.ON
         )
         new_param = replace(current, media_light=new_val)
         label = "On" if new_val == LightStatus.ON else "Off"
         self._run_command(
-            self.client.write_parameters(self.fire_id, [new_param]),
+            self.client.write_parameters(fire_id, [new_param]),
             f"Setting media light to {label}...",
             "Media light toggle failed",
         )
 
     def action_toggle_overhead_light(self) -> None:
         """Handle the 'o' key binding to toggle overhead light on/off."""
-        from flameconnect.models import FlameEffectParam, LightStatus
-
-        screen = self.screen
-        if not isinstance(screen, DashboardScreen):
+        result = self._get_current_param(FlameEffectParam)
+        if result is None:
             return
-        if self.fire_id is None or self._write_in_progress:
-            return
-
-        params = screen.current_parameters
-        current = params.get(FlameEffectParam)
-        if not isinstance(current, FlameEffectParam):
-            return
+        _, fire_id, current = result
         new_val = (
             LightStatus.OFF
             if current.light_status == LightStatus.ON
@@ -527,25 +507,17 @@ class FlameConnectApp(App[None]):
         new_param = replace(current, light_status=new_val)
         label = "On" if new_val == LightStatus.ON else "Off"
         self._run_command(
-            self.client.write_parameters(self.fire_id, [new_param]),
+            self.client.write_parameters(fire_id, [new_param]),
             f"Setting overhead light to {label}...",
             "Overhead light toggle failed",
         )
 
     def action_toggle_ambient_sensor(self) -> None:
         """Handle the 'a' key binding to toggle ambient sensor on/off."""
-        from flameconnect.models import FlameEffectParam, LightStatus
-
-        screen = self.screen
-        if not isinstance(screen, DashboardScreen):
+        result = self._get_current_param(FlameEffectParam)
+        if result is None:
             return
-        if self.fire_id is None or self._write_in_progress:
-            return
-
-        params = screen.current_parameters
-        current = params.get(FlameEffectParam)
-        if not isinstance(current, FlameEffectParam):
-            return
+        _, fire_id, current = result
         new_val = (
             LightStatus.OFF
             if current.ambient_sensor == LightStatus.ON
@@ -554,14 +526,13 @@ class FlameConnectApp(App[None]):
         new_param = replace(current, ambient_sensor=new_val)
         label = "On" if new_val == LightStatus.ON else "Off"
         self._run_command(
-            self.client.write_parameters(self.fire_id, [new_param]),
+            self.client.write_parameters(fire_id, [new_param]),
             f"Setting ambient sensor to {label}...",
             "Ambient sensor toggle failed",
         )
 
     def action_set_flame_color(self) -> None:
         """Handle the 'c' key binding to open flame color dialog."""
-        from flameconnect.models import FlameEffectParam
         from flameconnect.tui.flame_color_screen import FlameColorScreen
 
         screen = self.screen
@@ -585,29 +556,20 @@ class FlameConnectApp(App[None]):
 
     def _apply_flame_color(self, color: FlameColor) -> None:
         """Write the selected flame color to the fireplace."""
-        from flameconnect.models import FlameEffectParam
-
-        screen = self.screen
-        if not isinstance(screen, DashboardScreen):
+        result = self._get_current_param(FlameEffectParam)
+        if result is None:
             return
-        if self.fire_id is None or self._write_in_progress:
-            return
-
-        params = screen.current_parameters
-        current = params.get(FlameEffectParam)
-        if not isinstance(current, FlameEffectParam):
-            return
+        _, fire_id, current = result
         new_param = replace(current, flame_color=color)
         label = display_name(color)
         self._run_command(
-            self.client.write_parameters(self.fire_id, [new_param]),
+            self.client.write_parameters(fire_id, [new_param]),
             f"Setting flame color to {label}...",
             "Flame color change failed",
         )
 
     def action_set_media_theme(self) -> None:
         """Handle the 'm' key binding to open media theme dialog."""
-        from flameconnect.models import FlameEffectParam
         from flameconnect.tui.media_theme_screen import MediaThemeScreen
 
         screen = self.screen
@@ -631,55 +593,23 @@ class FlameConnectApp(App[None]):
 
     def _apply_media_theme(self, theme: MediaTheme) -> None:
         """Write the selected media theme to the fireplace."""
-        from flameconnect.models import FlameEffectParam
-
-        screen = self.screen
-        if not isinstance(screen, DashboardScreen):
+        result = self._get_current_param(FlameEffectParam)
+        if result is None:
             return
-        if self.fire_id is None or self._write_in_progress:
-            return
-
-        params = screen.current_parameters
-        current = params.get(FlameEffectParam)
-        if not isinstance(current, FlameEffectParam):
-            return
-
-        _LOGGER.debug("Media theme change: current=%s", current)
-
+        _, fire_id, current = result
+        _LOGGER.debug(
+            "Media theme change: current=%s, new=%s", current.media_theme, theme
+        )
         new_param = replace(current, media_theme=theme)
-
-        _LOGGER.debug("Media theme change: sending=%s", new_param)
-
         label = display_name(theme)
-        fire_id = self.fire_id
-        self._write_in_progress = True
-        screen.log_message(f"Setting media theme to {label}...")
-
-        async def _worker() -> None:
-            try:
-                await self.client.write_parameters(fire_id, [new_param])
-                s = self.screen
-                if isinstance(s, DashboardScreen):
-                    await s.refresh_state()
-                    refreshed_params = s.current_parameters
-                    refreshed = refreshed_params.get(FlameEffectParam)
-                    _LOGGER.debug("Media theme change: after_refresh=%s", refreshed)
-            except Exception as exc:
-                _LOGGER.exception("Media theme change failed")
-                s = self.screen
-                if isinstance(s, DashboardScreen):
-                    s.log_message(
-                        f"Media theme change failed: {exc}",
-                        level=logging.ERROR,
-                    )
-            finally:
-                self._write_in_progress = False
-
-        self.run_worker(_worker(), exclusive=True, thread=False)
+        self._run_command(
+            self.client.write_parameters(fire_id, [new_param]),
+            f"Setting media theme to {label}...",
+            "Media theme change failed",
+        )
 
     def action_set_media_color(self) -> None:
         """Handle the 'd' key binding to open media color dialog."""
-        from flameconnect.models import FlameEffectParam
         from flameconnect.tui.color_screen import ColorScreen
 
         screen = self.screen
@@ -704,21 +634,13 @@ class FlameConnectApp(App[None]):
 
     def _apply_media_color(self, color: RGBWColor) -> None:
         """Write the selected media color to the fireplace."""
-        from flameconnect.models import FlameEffectParam
-
-        screen = self.screen
-        if not isinstance(screen, DashboardScreen):
+        result = self._get_current_param(FlameEffectParam)
+        if result is None:
             return
-        if self.fire_id is None or self._write_in_progress:
-            return
-
-        params = screen.current_parameters
-        current = params.get(FlameEffectParam)
-        if not isinstance(current, FlameEffectParam):
-            return
+        _, fire_id, current = result
         new_param = replace(current, media_color=color)
         self._run_command(
-            self.client.write_parameters(self.fire_id, [new_param]),
+            self.client.write_parameters(fire_id, [new_param]),
             f"Setting media color to R={color.red} G={color.green} "
             f"B={color.blue} W={color.white}...",
             "Media color change failed",
@@ -726,7 +648,6 @@ class FlameConnectApp(App[None]):
 
     def action_set_overhead_color(self) -> None:
         """Handle the 'v' key binding to open overhead color dialog."""
-        from flameconnect.models import FlameEffectParam
         from flameconnect.tui.color_screen import ColorScreen
 
         screen = self.screen
@@ -751,21 +672,13 @@ class FlameConnectApp(App[None]):
 
     def _apply_overhead_color(self, color: RGBWColor) -> None:
         """Write the selected overhead color to the fireplace."""
-        from flameconnect.models import FlameEffectParam
-
-        screen = self.screen
-        if not isinstance(screen, DashboardScreen):
+        result = self._get_current_param(FlameEffectParam)
+        if result is None:
             return
-        if self.fire_id is None or self._write_in_progress:
-            return
-
-        params = screen.current_parameters
-        current = params.get(FlameEffectParam)
-        if not isinstance(current, FlameEffectParam):
-            return
+        _, fire_id, current = result
         new_param = replace(current, overhead_color=color)
         self._run_command(
-            self.client.write_parameters(self.fire_id, [new_param]),
+            self.client.write_parameters(fire_id, [new_param]),
             f"Setting overhead color to R={color.red} G={color.green} "
             f"B={color.blue} W={color.white}...",
             "Overhead color change failed",
@@ -773,32 +686,25 @@ class FlameConnectApp(App[None]):
 
     def action_toggle_heat(self) -> None:
         """Handle the 's' key binding to toggle heater on/off."""
-        from flameconnect.models import HeatParam, HeatStatus
+        from flameconnect.models import HeatStatus
 
-        screen = self.screen
-        if not isinstance(screen, DashboardScreen):
+        result = self._get_current_param(HeatParam)
+        if result is None:
             return
-        if self.fire_id is None or self._write_in_progress:
-            return
-
-        params = screen.current_parameters
-        current = params.get(HeatParam)
-        if not isinstance(current, HeatParam):
-            return
+        _, fire_id, current = result
         new_val = (
             HeatStatus.OFF if current.heat_status == HeatStatus.ON else HeatStatus.ON
         )
         new_param = replace(current, heat_status=new_val)
         label = "On" if new_val == HeatStatus.ON else "Off"
         self._run_command(
-            self.client.write_parameters(self.fire_id, [new_param]),
+            self.client.write_parameters(fire_id, [new_param]),
             f"Setting heat to {label}...",
             "Heat toggle failed",
         )
 
     def action_set_heat_mode(self) -> None:
         """Handle the 'h' key binding to open heat mode dialog."""
-        from flameconnect.models import HeatParam
         from flameconnect.tui.heat_mode_screen import HeatModeScreen
 
         screen = self.screen
@@ -826,32 +732,25 @@ class FlameConnectApp(App[None]):
 
     def _apply_heat_mode(self, mode: HeatMode, boost_minutes: int | None) -> None:
         """Write the selected heat mode to the fireplace."""
-        from flameconnect.models import HeatMode, HeatParam
+        from flameconnect.models import HeatMode
 
-        screen = self.screen
-        if not isinstance(screen, DashboardScreen):
+        result = self._get_current_param(HeatParam)
+        if result is None:
             return
-        if self.fire_id is None or self._write_in_progress:
-            return
-
-        params = screen.current_parameters
-        current = params.get(HeatParam)
-        if not isinstance(current, HeatParam):
-            return
+        _, fire_id, current = result
         if mode == HeatMode.BOOST and boost_minutes is not None:
             new_param = replace(current, heat_mode=mode, boost_duration=boost_minutes)
         else:
             new_param = replace(current, heat_mode=mode)
         mode_label = display_name(mode)
         self._run_command(
-            self.client.write_parameters(self.fire_id, [new_param]),
+            self.client.write_parameters(fire_id, [new_param]),
             f"Setting heat mode to {mode_label}...",
             "Heat mode change failed",
         )
 
     def action_set_temperature(self) -> None:
         """Handle the 'n' key binding to open temperature adjustment dialog."""
-        from flameconnect.models import HeatParam, TempUnitParam
         from flameconnect.tui.temperature_screen import TemperatureScreen
 
         screen = self.screen
@@ -881,21 +780,13 @@ class FlameConnectApp(App[None]):
 
     def _apply_temperature(self, temp: float) -> None:
         """Write the selected temperature to the fireplace."""
-        from flameconnect.models import HeatParam
-
-        screen = self.screen
-        if not isinstance(screen, DashboardScreen):
+        result = self._get_current_param(HeatParam)
+        if result is None:
             return
-        if self.fire_id is None or self._write_in_progress:
-            return
-
-        params = screen.current_parameters
-        current = params.get(HeatParam)
-        if not isinstance(current, HeatParam):
-            return
+        _, fire_id, current = result
         new_param = replace(current, setpoint_temperature=temp)
         self._run_command(
-            self.client.write_parameters(self.fire_id, [new_param]),
+            self.client.write_parameters(fire_id, [new_param]),
             f"Setting temperature to {temp}...",
             "Temperature change failed",
         )
@@ -935,24 +826,17 @@ class FlameConnectApp(App[None]):
 
     def action_toggle_timer(self) -> None:
         """Handle the 't' key binding to toggle the timer."""
-        from flameconnect.models import TimerParam, TimerStatus
         from flameconnect.tui.timer_screen import TimerScreen
 
-        screen = self.screen
-        if not isinstance(screen, DashboardScreen):
+        result = self._get_current_param(TimerParam)
+        if result is None:
             return
-        if self.fire_id is None or self._write_in_progress:
-            return
-
-        params = screen.current_parameters
-        current = params.get(TimerParam)
-        if not isinstance(current, TimerParam):
-            return
+        _, fire_id, current = result
         if current.timer_status == TimerStatus.ENABLED:
             new_param = TimerParam(timer_status=TimerStatus.DISABLED, duration=0)
             feedback = "Disabling timer..."
             self._run_command(
-                self.client.write_parameters(self.fire_id, [new_param]),
+                self.client.write_parameters(fire_id, [new_param]),
                 feedback,
                 "Timer toggle failed",
             )
@@ -969,8 +853,6 @@ class FlameConnectApp(App[None]):
 
     def _apply_timer(self, duration: int) -> None:
         """Write the selected timer duration to the fireplace."""
-        from flameconnect.models import TimerParam, TimerStatus
-
         screen = self.screen
         if not isinstance(screen, DashboardScreen):
             return
@@ -986,18 +868,12 @@ class FlameConnectApp(App[None]):
 
     def action_toggle_temp_unit(self) -> None:
         """Handle the 'u' key binding to toggle temperature unit."""
-        from flameconnect.models import TempUnit, TempUnitParam
+        from flameconnect.models import TempUnit
 
-        screen = self.screen
-        if not isinstance(screen, DashboardScreen):
+        result = self._get_current_param(TempUnitParam)
+        if result is None:
             return
-        if self.fire_id is None or self._write_in_progress:
-            return
-
-        params = screen.current_parameters
-        current = params.get(TempUnitParam)
-        if not isinstance(current, TempUnitParam):
-            return
+        _, fire_id, current = result
         new_unit = (
             TempUnit.CELSIUS
             if current.unit == TempUnit.FAHRENHEIT
@@ -1006,7 +882,7 @@ class FlameConnectApp(App[None]):
         new_param = TempUnitParam(unit=new_unit)
         unit_label = "Celsius" if new_unit == TempUnit.CELSIUS else "Fahrenheit"
         self._run_command(
-            self.client.write_parameters(self.fire_id, [new_param]),
+            self.client.write_parameters(fire_id, [new_param]),
             f"Setting temperature unit to {unit_label}...",
             "Temperature unit toggle failed",
         )

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
@@ -13,8 +13,6 @@ from flameconnect.tui.widgets import ArrowNavMixin
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
-
-_ButtonVariant = Literal["default", "primary", "success", "warning", "error"]
 
 # Preset layout: (key letter, display label, dark name, light name)
 _PRESET_COLS: list[tuple[str, str, str, str]] = [

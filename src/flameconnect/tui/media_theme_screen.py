@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
 from flameconnect.models import MediaTheme
-from flameconnect.tui.widgets import ArrowNavMixin
+from flameconnect.tui.widgets import ArrowNavMixin, ButtonVariant
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
-
-_ButtonVariant = Literal["default", "primary", "success", "warning", "error"]
 
 _THEME_LABELS: dict[MediaTheme, tuple[str, str]] = {
     MediaTheme.USER_DEFINED: ("User Defined", "u"),
@@ -81,7 +79,7 @@ class MediaThemeScreen(ArrowNavMixin, ModalScreen[MediaTheme | None]):
         super().__init__(name=name)
         self._current_theme = current_theme
 
-    def _variant_for(self, theme: MediaTheme) -> _ButtonVariant:
+    def _variant_for(self, theme: MediaTheme) -> ButtonVariant:
         return "primary" if theme == self._current_theme else "default"
 
     def compose(self) -> ComposeResult:
