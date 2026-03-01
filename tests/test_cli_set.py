@@ -1,4 +1,4 @@
-"""Tests for the CLI set commands (_set_pulsating, _set_flame_color, etc.)."""
+"""Tests for the CLI set commands (cmd_set dispatch and individual handlers)."""
 
 from __future__ import annotations
 
@@ -11,21 +11,13 @@ from yarl import URL
 
 from flameconnect.cli import (
     _parse_color,
-    _set_ambient_sensor,
-    _set_brightness,
-    _set_flame_color,
-    _set_flame_effect,
     _set_flame_speed,
     _set_heat_mode,
     _set_heat_status,
     _set_heat_temp,
     _set_media_color,
-    _set_media_light,
-    _set_media_theme,
     _set_mode,
     _set_overhead_color,
-    _set_overhead_light,
-    _set_pulsating,
     _set_temp_unit,
     _set_timer,
     cmd_set,
@@ -57,14 +49,14 @@ def overview_payload() -> dict:
 
 
 class TestSetPulsating:
-    """Tests for the _set_pulsating CLI command."""
+    """Tests for the pulsating CLI command via cmd_set."""
 
     async def test_set_pulsating_on(self, mock_api, token_auth, overview_payload):
         mock_api.get(OVERVIEW_URL, payload=overview_payload)
         mock_api.post(WRITE_URL, payload={})
 
         async with FlameConnectClient(token_auth) as client:
-            await _set_pulsating(client, FIRE_ID, "on")
+            await cmd_set(client, FIRE_ID, "pulsating", "on")
 
         key = ("POST", URL(WRITE_URL))
         calls = mock_api.requests[key]
@@ -79,7 +71,7 @@ class TestSetPulsating:
         mock_api.post(WRITE_URL, payload={})
 
         async with FlameConnectClient(token_auth) as client:
-            await _set_pulsating(client, FIRE_ID, "off")
+            await cmd_set(client, FIRE_ID, "pulsating", "off")
 
         key = ("POST", URL(WRITE_URL))
         calls = mock_api.requests[key]
@@ -88,7 +80,7 @@ class TestSetPulsating:
     async def test_set_pulsating_invalid(self, mock_api, token_auth, capsys):
         async with FlameConnectClient(token_auth) as client:
             with pytest.raises(SystemExit):
-                await _set_pulsating(client, FIRE_ID, "invalid")
+                await cmd_set(client, FIRE_ID, "pulsating", "invalid")
         captured = capsys.readouterr()
         assert "Error" in captured.out
 
@@ -99,14 +91,14 @@ class TestSetPulsating:
 
 
 class TestSetFlameColor:
-    """Tests for the _set_flame_color CLI command."""
+    """Tests for the flame-color CLI command via cmd_set."""
 
     async def test_set_flame_color_blue(self, mock_api, token_auth, overview_payload):
         mock_api.get(OVERVIEW_URL, payload=overview_payload)
         mock_api.post(WRITE_URL, payload={})
 
         async with FlameConnectClient(token_auth) as client:
-            await _set_flame_color(client, FIRE_ID, "blue")
+            await cmd_set(client, FIRE_ID, "flame-color", "blue")
 
         key = ("POST", URL(WRITE_URL))
         calls = mock_api.requests[key]
@@ -120,7 +112,7 @@ class TestSetFlameColor:
         mock_api.post(WRITE_URL, payload={})
 
         async with FlameConnectClient(token_auth) as client:
-            await _set_flame_color(client, FIRE_ID, "all")
+            await cmd_set(client, FIRE_ID, "flame-color", "all")
 
         key = ("POST", URL(WRITE_URL))
         calls = mock_api.requests[key]
@@ -133,7 +125,7 @@ class TestSetFlameColor:
         mock_api.post(WRITE_URL, payload={})
 
         async with FlameConnectClient(token_auth) as client:
-            await _set_flame_color(client, FIRE_ID, "yellow-red")
+            await cmd_set(client, FIRE_ID, "flame-color", "yellow-red")
 
         key = ("POST", URL(WRITE_URL))
         assert len(mock_api.requests[key]) == 1
@@ -141,7 +133,7 @@ class TestSetFlameColor:
     async def test_set_flame_color_invalid(self, mock_api, token_auth, capsys):
         async with FlameConnectClient(token_auth) as client:
             with pytest.raises(SystemExit):
-                await _set_flame_color(client, FIRE_ID, "rainbow")
+                await cmd_set(client, FIRE_ID, "flame-color", "rainbow")
         captured = capsys.readouterr()
         assert "Error" in captured.out
 
@@ -152,7 +144,7 @@ class TestSetFlameColor:
 
 
 class TestSetMediaTheme:
-    """Tests for the _set_media_theme CLI command."""
+    """Tests for the media-theme CLI command via cmd_set."""
 
     async def test_set_media_theme_kaleidoscope(
         self, mock_api, token_auth, overview_payload
@@ -161,7 +153,7 @@ class TestSetMediaTheme:
         mock_api.post(WRITE_URL, payload={})
 
         async with FlameConnectClient(token_auth) as client:
-            await _set_media_theme(client, FIRE_ID, "kaleidoscope")
+            await cmd_set(client, FIRE_ID, "media-theme", "kaleidoscope")
 
         key = ("POST", URL(WRITE_URL))
         calls = mock_api.requests[key]
@@ -176,7 +168,7 @@ class TestSetMediaTheme:
         mock_api.post(WRITE_URL, payload={})
 
         async with FlameConnectClient(token_auth) as client:
-            await _set_media_theme(client, FIRE_ID, "midnight")
+            await cmd_set(client, FIRE_ID, "media-theme", "midnight")
 
         key = ("POST", URL(WRITE_URL))
         assert len(mock_api.requests[key]) == 1
@@ -188,7 +180,7 @@ class TestSetMediaTheme:
         mock_api.post(WRITE_URL, payload={})
 
         async with FlameConnectClient(token_auth) as client:
-            await _set_media_theme(client, FIRE_ID, "user-defined")
+            await cmd_set(client, FIRE_ID, "media-theme", "user-defined")
 
         key = ("POST", URL(WRITE_URL))
         assert len(mock_api.requests[key]) == 1
@@ -196,7 +188,7 @@ class TestSetMediaTheme:
     async def test_set_media_theme_invalid(self, mock_api, token_auth, capsys):
         async with FlameConnectClient(token_auth) as client:
             with pytest.raises(SystemExit):
-                await _set_media_theme(client, FIRE_ID, "neon")
+                await cmd_set(client, FIRE_ID, "media-theme", "neon")
         captured = capsys.readouterr()
         assert "Error" in captured.out
 
@@ -329,14 +321,14 @@ class TestSetFlameSpeed:
 
 
 class TestSetBrightness:
-    """Tests for the _set_brightness CLI command."""
+    """Tests for the brightness CLI command via cmd_set."""
 
     async def test_set_brightness_low(self, mock_api, token_auth, overview_payload):
         mock_api.get(OVERVIEW_URL, payload=overview_payload)
         mock_api.post(WRITE_URL, payload={})
 
         async with FlameConnectClient(token_auth) as client:
-            await _set_brightness(client, FIRE_ID, "low")
+            await cmd_set(client, FIRE_ID, "brightness", "low")
 
         key = ("POST", URL(WRITE_URL))
         calls = mock_api.requests[key]
@@ -347,7 +339,7 @@ class TestSetBrightness:
         mock_api.post(WRITE_URL, payload={})
 
         async with FlameConnectClient(token_auth) as client:
-            await _set_brightness(client, FIRE_ID, "high")
+            await cmd_set(client, FIRE_ID, "brightness", "high")
 
         key = ("POST", URL(WRITE_URL))
         assert len(mock_api.requests[key]) == 1
@@ -355,7 +347,7 @@ class TestSetBrightness:
     async def test_set_brightness_invalid(self, mock_api, token_auth, capsys):
         async with FlameConnectClient(token_auth) as client:
             with pytest.raises(SystemExit):
-                await _set_brightness(client, FIRE_ID, "medium")
+                await cmd_set(client, FIRE_ID, "brightness", "medium")
         captured = capsys.readouterr()
         assert "Error" in captured.out
 
@@ -625,14 +617,14 @@ class TestParseColor:
 
 
 class TestSetFlameEffect:
-    """Tests for the _set_flame_effect CLI command."""
+    """Tests for the flame-effect CLI command via cmd_set."""
 
     async def test_set_flame_effect_on(self, mock_api, token_auth, overview_payload):
         mock_api.get(OVERVIEW_URL, payload=overview_payload)
         mock_api.post(WRITE_URL, payload={})
 
         async with FlameConnectClient(token_auth) as client:
-            await _set_flame_effect(client, FIRE_ID, "on")
+            await cmd_set(client, FIRE_ID, "flame-effect", "on")
 
         key = ("POST", URL(WRITE_URL))
         calls = mock_api.requests[key]
@@ -645,7 +637,7 @@ class TestSetFlameEffect:
     async def test_set_flame_effect_invalid(self, mock_api, token_auth, capsys):
         async with FlameConnectClient(token_auth) as client:
             with pytest.raises(SystemExit):
-                await _set_flame_effect(client, FIRE_ID, "maybe")
+                await cmd_set(client, FIRE_ID, "flame-effect", "maybe")
         captured = capsys.readouterr()
         assert "Error" in captured.out
 
@@ -656,14 +648,14 @@ class TestSetFlameEffect:
 
 
 class TestSetMediaLight:
-    """Tests for the _set_media_light CLI command."""
+    """Tests for the media-light CLI command via cmd_set."""
 
     async def test_set_media_light_on(self, mock_api, token_auth, overview_payload):
         mock_api.get(OVERVIEW_URL, payload=overview_payload)
         mock_api.post(WRITE_URL, payload={})
 
         async with FlameConnectClient(token_auth) as client:
-            await _set_media_light(client, FIRE_ID, "on")
+            await cmd_set(client, FIRE_ID, "media-light", "on")
 
         key = ("POST", URL(WRITE_URL))
         calls = mock_api.requests[key]
@@ -675,7 +667,7 @@ class TestSetMediaLight:
     async def test_set_media_light_invalid(self, mock_api, token_auth, capsys):
         async with FlameConnectClient(token_auth) as client:
             with pytest.raises(SystemExit):
-                await _set_media_light(client, FIRE_ID, "maybe")
+                await cmd_set(client, FIRE_ID, "media-light", "maybe")
         captured = capsys.readouterr()
         assert "Error" in captured.out
 
@@ -686,14 +678,14 @@ class TestSetMediaLight:
 
 
 class TestSetOverheadLight:
-    """Tests for the _set_overhead_light CLI command."""
+    """Tests for the overhead-light CLI command via cmd_set."""
 
     async def test_set_overhead_light_on(self, mock_api, token_auth, overview_payload):
         mock_api.get(OVERVIEW_URL, payload=overview_payload)
         mock_api.post(WRITE_URL, payload={})
 
         async with FlameConnectClient(token_auth) as client:
-            await _set_overhead_light(client, FIRE_ID, "on")
+            await cmd_set(client, FIRE_ID, "overhead-light", "on")
 
         key = ("POST", URL(WRITE_URL))
         calls = mock_api.requests[key]
@@ -705,7 +697,7 @@ class TestSetOverheadLight:
     async def test_set_overhead_light_invalid(self, mock_api, token_auth, capsys):
         async with FlameConnectClient(token_auth) as client:
             with pytest.raises(SystemExit):
-                await _set_overhead_light(client, FIRE_ID, "maybe")
+                await cmd_set(client, FIRE_ID, "overhead-light", "maybe")
         captured = capsys.readouterr()
         assert "Error" in captured.out
 
@@ -716,14 +708,14 @@ class TestSetOverheadLight:
 
 
 class TestSetAmbientSensor:
-    """Tests for the _set_ambient_sensor CLI command."""
+    """Tests for the ambient-sensor CLI command via cmd_set."""
 
     async def test_set_ambient_sensor_on(self, mock_api, token_auth, overview_payload):
         mock_api.get(OVERVIEW_URL, payload=overview_payload)
         mock_api.post(WRITE_URL, payload={})
 
         async with FlameConnectClient(token_auth) as client:
-            await _set_ambient_sensor(client, FIRE_ID, "on")
+            await cmd_set(client, FIRE_ID, "ambient-sensor", "on")
 
         key = ("POST", URL(WRITE_URL))
         calls = mock_api.requests[key]
@@ -735,7 +727,7 @@ class TestSetAmbientSensor:
     async def test_set_ambient_sensor_invalid(self, mock_api, token_auth, capsys):
         async with FlameConnectClient(token_auth) as client:
             with pytest.raises(SystemExit):
-                await _set_ambient_sensor(client, FIRE_ID, "maybe")
+                await cmd_set(client, FIRE_ID, "ambient-sensor", "maybe")
         captured = capsys.readouterr()
         assert "Error" in captured.out
 

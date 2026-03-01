@@ -21,7 +21,6 @@ from flameconnect.cli import (
     _display_sound,
     _display_temp_unit,
     _display_timer,
-    _enum_name,
     _find_param,
     _format_rgbw,
     async_main,
@@ -132,22 +131,6 @@ def _make_fire(**overrides) -> Fire:
 # ===================================================================
 # Helper function tests
 # ===================================================================
-
-
-class TestEnumName:
-    """Tests for _enum_name()."""
-
-    def test_known_value(self):
-        mapping = {0: "Off", 1: "On"}
-        assert _enum_name(mapping, 0) == "Off"
-        assert _enum_name(mapping, 1) == "On"
-
-    def test_unknown_value(self):
-        mapping = {0: "Off", 1: "On"}
-        assert _enum_name(mapping, 99) == "Unknown(99)"
-
-    def test_empty_mapping(self):
-        assert _enum_name({}, 5) == "Unknown(5)"
 
 
 class TestFormatRGBW:
