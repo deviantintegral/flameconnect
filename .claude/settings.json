@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && uv sync --dev --all-extras && uv run pre-commit install --install-hooks",
+            "timeout": 120,
+            "statusMessage": "Syncing dependencies and installing pre-commit hooks..."
+          }
+        ]
+      }
+    ]
+  }
+}
