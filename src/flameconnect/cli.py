@@ -8,12 +8,16 @@ import logging
 import sys
 import webbrowser
 from dataclasses import replace
-from typing import overload
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 from flameconnect.auth import MsalAuth
 from flameconnect.client import FlameConnectClient
 from flameconnect.models import (
     NAMED_COLORS,
+    Brightness,
     ErrorParam,
     FireFeatures,
     FireMode,
@@ -23,6 +27,7 @@ from flameconnect.models import (
     HeatMode,
     HeatModeParam,
     HeatParam,
+    HeatStatus,
     LightStatus,
     LogEffectParam,
     MediaTheme,
@@ -37,59 +42,20 @@ from flameconnect.models import (
     TimerParam,
     TimerStatus,
     convert_temp,
+    display_name,
     temp_suffix,
 )
 
 # ---------------------------------------------------------------------------
-# Enum display name lookups
+# Enum display-name overrides (only where display_name() is insufficient)
 # ---------------------------------------------------------------------------
 
-_FIRE_MODE_NAMES: dict[int, str] = {0: "Standby", 1: "On"}
-_BRIGHTNESS_NAMES: dict[int, str] = {0: "High", 1: "Low"}
-_PULSATING_NAMES: dict[int, str] = {0: "Off", 1: "On"}
-_FLAME_EFFECT_NAMES: dict[int, str] = {0: "Off", 1: "On"}
-_HEAT_STATUS_NAMES: dict[int, str] = {0: "Off", 1: "On"}
-_HEAT_MODE_NAMES: dict[int, str] = {
-    0: "Normal",
-    1: "Boost",
-    2: "Eco",
-    3: "Fan Only",
-    4: "Schedule",
-}
-_HEAT_CONTROL_NAMES: dict[int, str] = {
-    0: "Software Disabled",
-    1: "Hardware Disabled",
-    2: "Enabled",
-}
-_FLAME_COLOR_NAMES: dict[int, str] = {
-    0: "All",
-    1: "Yellow/Red",
-    2: "Yellow/Blue",
-    3: "Blue",
-    4: "Red",
-    5: "Yellow",
-    6: "Blue/Red",
-}
-_LIGHT_STATUS_NAMES: dict[int, str] = {0: "Off", 1: "On"}
-_TIMER_STATUS_NAMES: dict[int, str] = {0: "Disabled", 1: "Enabled"}
-_TEMP_UNIT_NAMES: dict[int, str] = {0: "Fahrenheit", 1: "Celsius"}
-_LOG_EFFECT_NAMES: dict[int, str] = {0: "Off", 1: "On"}
-_MEDIA_THEME_NAMES: dict[int, str] = {
-    0: "User Defined",
-    1: "White",
-    2: "Blue",
-    3: "Purple",
-    4: "Red",
-    5: "Green",
-    6: "Prism",
-    7: "Kaleidoscope",
-    8: "Midnight",
-}
-_CONNECTION_STATE_NAMES: dict[int, str] = {
-    0: "Unknown",
-    1: "Not Connected",
-    2: "Connected",
-    3: "Updating Firmware",
+_FIRE_MODE_DISPLAY: dict[FireMode, str] = {FireMode.MANUAL: "On"}
+
+_FLAME_COLOR_DISPLAY: dict[FlameColor, str] = {
+    FlameColor.YELLOW_RED: "Yellow/Red",
+    FlameColor.YELLOW_BLUE: "Yellow/Blue",
+    FlameColor.BLUE_RED: "Blue/Red",
 }
 
 # Mapping from CLI heat-mode string to HeatMode enum value
@@ -139,37 +105,14 @@ _SET_PARAM_NAMES = (
 )
 
 
-def _enum_name(mapping: dict[int, str], value: int) -> str:
-    """Look up a human-readable name for an enum value."""
-    return mapping.get(value, f"Unknown({value})")
-
-
 def _format_rgbw(color: RGBWColor) -> str:
     """Format an RGBWColor for display."""
     return f"RGBW({color.red}, {color.green}, {color.blue}, {color.white})"
 
 
 # ---------------------------------------------------------------------------
-# Generic parameter finder (with overloads for type safety)
+# Generic parameter finder
 # ---------------------------------------------------------------------------
-
-
-@overload
-def _find_param(
-    parameters: list[Parameter], param_type: type[FlameEffectParam]
-) -> FlameEffectParam | None: ...
-
-
-@overload
-def _find_param(
-    parameters: list[Parameter], param_type: type[HeatParam]
-) -> HeatParam | None: ...
-
-
-@overload
-def _find_param(
-    parameters: list[Parameter], param_type: type[TempUnitParam]
-) -> TempUnitParam | None: ...
 
 
 def _find_param[T](parameters: list[Parameter], param_type: type[T]) -> T | None:
@@ -195,7 +138,7 @@ def _display_mode(
     display_temp = convert_temp(param.target_temperature, unit)
     print("\n  [321] Mode")
     print(f"  {'─' * 40}")
-    mode = _enum_name(_FIRE_MODE_NAMES, param.mode)
+    mode = _FIRE_MODE_DISPLAY.get(param.mode, display_name(param.mode))
     print(f"    Mode:           {mode}")
     print(f"    Target Temp:    {display_temp}\u00b0{unit_suffix}")
 
@@ -204,22 +147,22 @@ def _display_flame_effect(param: FlameEffectParam) -> None:
     """Display FlameEffect parameter."""
     print("\n  [322] Flame Effect")
     print(f"  {'─' * 40}")
-    flame = _enum_name(_FLAME_EFFECT_NAMES, param.flame_effect)
+    flame = display_name(param.flame_effect)
     print(f"    Flame:          {flame}")
     print(f"    Flame Speed:    {param.flame_speed} / 5")
-    brightness = _enum_name(_BRIGHTNESS_NAMES, param.brightness)
-    pulsating = _enum_name(_PULSATING_NAMES, param.pulsating_effect)
+    brightness = display_name(param.brightness)
+    pulsating = display_name(param.pulsating_effect)
     print(f"    Brightness:     {brightness}")
     print(f"    Pulsating:      {pulsating}")
-    color = _enum_name(_FLAME_COLOR_NAMES, param.flame_color)
+    color = _FLAME_COLOR_DISPLAY.get(param.flame_color, display_name(param.flame_color))
     print(f"    Flame Color:    {color}")
-    theme = _enum_name(_MEDIA_THEME_NAMES, param.media_theme)
+    theme = display_name(param.media_theme)
     rgbw = _format_rgbw(param.media_color)
     print(f"    Media Light:    {theme} | {rgbw}")
-    light = _enum_name(_LIGHT_STATUS_NAMES, param.light_status)
+    light = display_name(param.light_status)
     print(f"    Overhead Light: {light}")
     print(f"    Overhead Color: {_format_rgbw(param.overhead_color)}")
-    ambient = _enum_name(_LIGHT_STATUS_NAMES, param.ambient_sensor)
+    ambient = display_name(param.ambient_sensor)
     print(f"    Ambient Sensor: {ambient}")
 
 
@@ -233,9 +176,9 @@ def _display_heat(
     display_temp = convert_temp(param.setpoint_temperature, unit)
     print("\n  [323] Heat Settings")
     print(f"  {'─' * 40}")
-    status = _enum_name(_HEAT_STATUS_NAMES, param.heat_status)
+    status = display_name(param.heat_status)
     print(f"    Heat:           {status}")
-    mode = _enum_name(_HEAT_MODE_NAMES, param.heat_mode)
+    mode = display_name(param.heat_mode)
     print(f"    Heat Mode:      {mode}")
     print(f"    Setpoint Temp:  {display_temp}\u00b0{unit_suffix}")
     print(f"    Boost Duration: {param.boost_duration}")
@@ -245,7 +188,7 @@ def _display_heat_mode(param: HeatModeParam) -> None:
     """Display HeatMode parameter."""
     print("\n  [325] Heat Mode")
     print(f"  {'─' * 40}")
-    ctrl = _enum_name(_HEAT_CONTROL_NAMES, param.heat_control)
+    ctrl = display_name(param.heat_control)
     print(f"    Heat Control:   {ctrl}")
 
 
@@ -256,7 +199,7 @@ def _display_timer(param: TimerParam) -> None:
     dur = param.duration
     print("\n  [326] Timer Mode")
     print(f"  {'─' * 40}")
-    ts = _enum_name(_TIMER_STATUS_NAMES, param.timer_status)
+    ts = display_name(param.timer_status)
     print(f"    Timer:          {ts}")
     print(f"    Duration:       {dur} min ({dur // 60}h {dur % 60}m)")
     if param.timer_status == 1 and dur > 0:
@@ -303,7 +246,7 @@ def _display_temp_unit(param: TempUnitParam) -> None:
     """Display TempUnit parameter."""
     print("\n  [236] Temperature Unit")
     print(f"  {'─' * 40}")
-    unit = _enum_name(_TEMP_UNIT_NAMES, param.unit)
+    unit = display_name(param.unit)
     print(f"    Unit:           {unit}")
 
 
@@ -319,7 +262,7 @@ def _display_log_effect(param: LogEffectParam) -> None:
     """Display LogEffect parameter."""
     print("\n  [370] Log Effect")
     print(f"  {'─' * 40}")
-    effect = _enum_name(_LOG_EFFECT_NAMES, param.log_effect)
+    effect = display_name(param.log_effect)
     print(f"    Log Effect:     {effect}")
     print(f"    Colors:         {_format_rgbw(param.color)}")
     print(f"    Pattern:        {param.pattern}")
@@ -407,7 +350,7 @@ async def cmd_list(client: FlameConnectClient) -> None:
         print(f"{'─' * 60}")
         print(f"  Name:        {fire.friendly_name}")
         print(f"  Fire ID:     {fire.fire_id}")
-        state = _enum_name(_CONNECTION_STATE_NAMES, fire.connection_state)
+        state = display_name(fire.connection_state)
         print(f"  Connection:  {state}")
 
 
@@ -416,7 +359,7 @@ async def cmd_status(client: FlameConnectClient, fire_id: str) -> None:
     overview = await client.get_fire_overview(fire_id)
     fire = overview.fire
     print(f"Fireplace: {fire.friendly_name} ({fire.fire_id})")
-    state = _enum_name(_CONNECTION_STATE_NAMES, fire.connection_state)
+    state = display_name(fire.connection_state)
     print(f"Connection: {state}")
     _display_features(fire.features)
 
@@ -429,6 +372,50 @@ async def cmd_status(client: FlameConnectClient, fire_id: str) -> None:
     print(f"\n{count} parameter(s) reported:")
     for param in overview.parameters:
         _display_parameter(param, temp_unit)
+
+
+_FLAME_EFFECT_SETTERS: dict[str, tuple[str, dict[str, object], str]] = {
+    "brightness": (
+        "brightness",
+        {"low": Brightness.LOW, "high": Brightness.HIGH},
+        "Brightness",
+    ),
+    "pulsating": (
+        "pulsating_effect",
+        dict[str, object](_PULSATING_LOOKUP),
+        "Pulsating effect",
+    ),
+    "flame-color": (
+        "flame_color",
+        dict[str, object](_FLAME_COLOR_LOOKUP),
+        "Flame color",
+    ),
+    "media-theme": (
+        "media_theme",
+        dict[str, object](_MEDIA_THEME_LOOKUP),
+        "Media theme",
+    ),
+    "flame-effect": (
+        "flame_effect",
+        {"on": FlameEffect.ON, "off": FlameEffect.OFF},
+        "Flame effect",
+    ),
+    "media-light": (
+        "media_light",
+        {"on": LightStatus.ON, "off": LightStatus.OFF},
+        "Media light",
+    ),
+    "overhead-light": (
+        "light_status",
+        {"on": LightStatus.ON, "off": LightStatus.OFF},
+        "Overhead light",
+    ),
+    "ambient-sensor": (
+        "ambient_sensor",
+        {"on": LightStatus.ON, "off": LightStatus.OFF},
+        "Ambient sensor",
+    ),
+}
 
 
 async def cmd_on(client: FlameConnectClient, fire_id: str) -> None:
@@ -450,61 +437,16 @@ async def cmd_set(
     value: str,
 ) -> None:
     """Set a specific parameter on a fireplace."""
-    if param == "mode":
-        await _set_mode(client, fire_id, value)
-        return
-    if param == "flame-speed":
-        await _set_flame_speed(client, fire_id, value)
-        return
-    if param == "brightness":
-        await _set_brightness(client, fire_id, value)
-        return
-    if param == "pulsating":
-        await _set_pulsating(client, fire_id, value)
-        return
-    if param == "flame-color":
-        await _set_flame_color(client, fire_id, value)
-        return
-    if param == "media-theme":
-        await _set_media_theme(client, fire_id, value)
-        return
-    if param == "heat-mode":
-        await _set_heat_mode(client, fire_id, value)
-        return
-    if param == "heat-temp":
-        await _set_heat_temp(client, fire_id, value)
-        return
-    if param == "timer":
-        await _set_timer(client, fire_id, value)
-        return
-    if param == "temp-unit":
-        await _set_temp_unit(client, fire_id, value)
-        return
-
-    if param == "flame-effect":
-        await _set_flame_effect(client, fire_id, value)
-        return
-    if param == "media-light":
-        await _set_media_light(client, fire_id, value)
-        return
-    if param == "media-color":
-        await _set_media_color(client, fire_id, value)
-        return
-    if param == "overhead-light":
-        await _set_overhead_light(client, fire_id, value)
-        return
-    if param == "overhead-color":
-        await _set_overhead_color(client, fire_id, value)
-        return
-    if param == "ambient-sensor":
-        await _set_ambient_sensor(client, fire_id, value)
-        return
-    if param == "heat-status":
-        await _set_heat_status(client, fire_id, value)
-        return
-
-    print(f"Error: unknown parameter '{param}'. Valid: {_SET_PARAM_NAMES}.")
-    sys.exit(1)
+    if param in _SET_HANDLERS:
+        await _SET_HANDLERS[param](client, fire_id, value)
+    elif param in _FLAME_EFFECT_SETTERS:
+        field, lookup, label = _FLAME_EFFECT_SETTERS[param]
+        await _set_flame_effect_field(
+            client, fire_id, value, field=field, lookup=lookup, label=label
+        )
+    else:
+        print(f"Error: unknown parameter '{param}'. Valid: {_SET_PARAM_NAMES}.")
+        sys.exit(1)
 
 
 def _parse_color(value: str) -> RGBWColor | None:
@@ -560,78 +502,28 @@ async def _set_flame_speed(
     print(f"Flame speed set to {speed}.")
 
 
-async def _set_brightness(client: FlameConnectClient, fire_id: str, value: str) -> None:
-    """Set brightness (low or high)."""
-    from flameconnect.models import Brightness
-
-    lookup = {"low": Brightness.LOW, "high": Brightness.HIGH}
+async def _set_flame_effect_field(
+    client: FlameConnectClient,
+    fire_id: str,
+    value: str,
+    *,
+    field: str,
+    lookup: dict[str, object],
+    label: str,
+) -> None:
+    """Validate, fetch, replace a single FlameEffectParam field, and write."""
     if value not in lookup:
-        print("Error: brightness must be 'low' or 'high'.")
+        valid = ", ".join(lookup)
+        print(f"Error: {label} must be one of: {valid}.")
         sys.exit(1)
-    brightness = lookup[value]
     overview = await client.get_fire_overview(fire_id)
     current = _find_param(overview.parameters, FlameEffectParam)
     if current is None:
         print("Error: no FlameEffect parameter found.")
         sys.exit(1)
-    new_param = replace(current, brightness=brightness)
+    new_param = replace(current, **{field: lookup[value]})  # type: ignore[arg-type]
     await client.write_parameters(fire_id, [new_param])
-    print(f"Brightness set to {value}.")
-
-
-async def _set_pulsating(client: FlameConnectClient, fire_id: str, value: str) -> None:
-    """Set pulsating effect on or off."""
-    if value not in _PULSATING_LOOKUP:
-        valid = ", ".join(_PULSATING_LOOKUP)
-        print(f"Error: pulsating must be one of: {valid}.")
-        sys.exit(1)
-    pulsating = _PULSATING_LOOKUP[value]
-    overview = await client.get_fire_overview(fire_id)
-    current = _find_param(overview.parameters, FlameEffectParam)
-    if current is None:
-        print("Error: no FlameEffect parameter found.")
-        sys.exit(1)
-    new_param = replace(current, pulsating_effect=pulsating)
-    await client.write_parameters(fire_id, [new_param])
-    print(f"Pulsating effect set to {value}.")
-
-
-async def _set_flame_color(
-    client: FlameConnectClient, fire_id: str, value: str
-) -> None:
-    """Set the flame color preset."""
-    if value not in _FLAME_COLOR_LOOKUP:
-        valid = ", ".join(_FLAME_COLOR_LOOKUP)
-        print(f"Error: flame-color must be one of: {valid}.")
-        sys.exit(1)
-    flame_color = _FLAME_COLOR_LOOKUP[value]
-    overview = await client.get_fire_overview(fire_id)
-    current = _find_param(overview.parameters, FlameEffectParam)
-    if current is None:
-        print("Error: no FlameEffect parameter found.")
-        sys.exit(1)
-    new_param = replace(current, flame_color=flame_color)
-    await client.write_parameters(fire_id, [new_param])
-    print(f"Flame color set to {value}.")
-
-
-async def _set_media_theme(
-    client: FlameConnectClient, fire_id: str, value: str
-) -> None:
-    """Set the media theme preset."""
-    if value not in _MEDIA_THEME_LOOKUP:
-        valid = ", ".join(_MEDIA_THEME_LOOKUP)
-        print(f"Error: media-theme must be one of: {valid}.")
-        sys.exit(1)
-    media_theme = _MEDIA_THEME_LOOKUP[value]
-    overview = await client.get_fire_overview(fire_id)
-    current = _find_param(overview.parameters, FlameEffectParam)
-    if current is None:
-        print("Error: no FlameEffect parameter found.")
-        sys.exit(1)
-    new_param = replace(current, media_theme=media_theme)
-    await client.write_parameters(fire_id, [new_param])
-    print(f"Media theme set to {value}.")
+    print(f"{label} set to {value}.")
 
 
 async def _set_heat_mode(client: FlameConnectClient, fire_id: str, value: str) -> None:
@@ -713,46 +605,6 @@ async def _set_temp_unit(client: FlameConnectClient, fire_id: str, value: str) -
     print(f"Temperature unit set to {value}.")
 
 
-async def _set_flame_effect(
-    client: FlameConnectClient, fire_id: str, value: str
-) -> None:
-    """Set the flame effect on or off."""
-    lookup: dict[str, FlameEffect] = {"on": FlameEffect.ON, "off": FlameEffect.OFF}
-    if value not in lookup:
-        valid = ", ".join(lookup)
-        print(f"Error: flame-effect must be one of: {valid}.")
-        sys.exit(1)
-    flame_effect = lookup[value]
-    overview = await client.get_fire_overview(fire_id)
-    current = _find_param(overview.parameters, FlameEffectParam)
-    if current is None:
-        print("Error: no FlameEffect parameter found.")
-        sys.exit(1)
-    new_param = replace(current, flame_effect=flame_effect)
-    await client.write_parameters(fire_id, [new_param])
-    print(f"Flame effect set to {value}.")
-
-
-async def _set_media_light(
-    client: FlameConnectClient, fire_id: str, value: str
-) -> None:
-    """Set the media light on or off."""
-    lookup: dict[str, LightStatus] = {"on": LightStatus.ON, "off": LightStatus.OFF}
-    if value not in lookup:
-        valid = ", ".join(lookup)
-        print(f"Error: media-light must be one of: {valid}.")
-        sys.exit(1)
-    media_light = lookup[value]
-    overview = await client.get_fire_overview(fire_id)
-    current = _find_param(overview.parameters, FlameEffectParam)
-    if current is None:
-        print("Error: no FlameEffect parameter found.")
-        sys.exit(1)
-    new_param = replace(current, media_light=media_light)
-    await client.write_parameters(fire_id, [new_param])
-    print(f"Media light set to {value}.")
-
-
 async def _set_media_color(
     client: FlameConnectClient, fire_id: str, value: str
 ) -> None:
@@ -770,26 +622,6 @@ async def _set_media_color(
     new_param = replace(current, media_color=color)
     await client.write_parameters(fire_id, [new_param])
     print(f"Media color set to {value}.")
-
-
-async def _set_overhead_light(
-    client: FlameConnectClient, fire_id: str, value: str
-) -> None:
-    """Set the overhead light on or off."""
-    lookup: dict[str, LightStatus] = {"on": LightStatus.ON, "off": LightStatus.OFF}
-    if value not in lookup:
-        valid = ", ".join(lookup)
-        print(f"Error: overhead-light must be one of: {valid}.")
-        sys.exit(1)
-    light_status = lookup[value]
-    overview = await client.get_fire_overview(fire_id)
-    current = _find_param(overview.parameters, FlameEffectParam)
-    if current is None:
-        print("Error: no FlameEffect parameter found.")
-        sys.exit(1)
-    new_param = replace(current, light_status=light_status)
-    await client.write_parameters(fire_id, [new_param])
-    print(f"Overhead light set to {value}.")
 
 
 async def _set_overhead_color(
@@ -811,32 +643,10 @@ async def _set_overhead_color(
     print(f"Overhead color set to {value}.")
 
 
-async def _set_ambient_sensor(
-    client: FlameConnectClient, fire_id: str, value: str
-) -> None:
-    """Set the ambient sensor on or off."""
-    lookup: dict[str, LightStatus] = {"on": LightStatus.ON, "off": LightStatus.OFF}
-    if value not in lookup:
-        valid = ", ".join(lookup)
-        print(f"Error: ambient-sensor must be one of: {valid}.")
-        sys.exit(1)
-    ambient_sensor = lookup[value]
-    overview = await client.get_fire_overview(fire_id)
-    current = _find_param(overview.parameters, FlameEffectParam)
-    if current is None:
-        print("Error: no FlameEffect parameter found.")
-        sys.exit(1)
-    new_param = replace(current, ambient_sensor=ambient_sensor)
-    await client.write_parameters(fire_id, [new_param])
-    print(f"Ambient sensor set to {value}.")
-
-
 async def _set_heat_status(
     client: FlameConnectClient, fire_id: str, value: str
 ) -> None:
     """Set the heater on or off."""
-    from flameconnect.models import HeatStatus
-
     lookup: dict[str, HeatStatus] = {"on": HeatStatus.ON, "off": HeatStatus.OFF}
     if value not in lookup:
         valid = ", ".join(lookup)
@@ -851,6 +661,19 @@ async def _set_heat_status(
     new_param = replace(current, heat_status=heat_status)
     await client.write_parameters(fire_id, [new_param])
     print(f"Heat status set to {value}.")
+
+
+_SET_HANDLERS: dict[str, Callable[..., Awaitable[None]]] = {
+    "mode": _set_mode,
+    "flame-speed": _set_flame_speed,
+    "heat-mode": _set_heat_mode,
+    "heat-temp": _set_heat_temp,
+    "heat-status": _set_heat_status,
+    "timer": _set_timer,
+    "temp-unit": _set_temp_unit,
+    "media-color": _set_media_color,
+    "overhead-color": _set_overhead_color,
+}
 
 
 async def cmd_tui(*, verbose: bool = False) -> None:
