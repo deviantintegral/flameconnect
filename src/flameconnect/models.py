@@ -297,6 +297,34 @@ class TempUnitParam:
     unit: TempUnit
 
 
+# ---------------------------------------------------------------------------
+# Display / conversion utilities
+# ---------------------------------------------------------------------------
+
+
+def convert_temp(celsius: float, unit: TempUnit) -> float:
+    """Convert a Celsius temperature for display.
+
+    Returns the value unchanged when *unit* is CELSIUS, or
+    converts to Fahrenheit (rounded to 1 decimal) when FAHRENHEIT.
+    """
+    if unit == TempUnit.CELSIUS:
+        return celsius
+    return round(celsius * 9 / 5 + 32, 1)
+
+
+def temp_suffix(temp_unit: TempUnitParam | None) -> str:
+    """Return the temperature unit suffix (``'C'`` or ``'F'``), or empty."""
+    if temp_unit is None:
+        return ""
+    return "C" if temp_unit.unit == TempUnit.CELSIUS else "F"
+
+
+def display_name(value: IntEnum) -> str:
+    """Convert an IntEnum member name to Title Case for display."""
+    return value.name.replace("_", " ").title()
+
+
 @dataclass(frozen=True, slots=True)
 class SoundParam:
     """Sound parameter (ParameterId 369)."""

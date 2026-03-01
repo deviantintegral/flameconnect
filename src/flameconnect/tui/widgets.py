@@ -14,11 +14,12 @@ from flameconnect.models import (
     FlameEffect,
     LightStatus,
     TempUnit,
+    convert_temp,
+    display_name,
+    temp_suffix,
 )
 
 if TYPE_CHECKING:
-    from enum import IntEnum
-
     from textual.app import ComposeResult
     from textual.timer import Timer
 
@@ -106,11 +107,6 @@ class ClickableParam(Horizontal):
         yield _ClickableValue(self._value, action=self._action)
 
 
-def _display_name(value: IntEnum) -> str:
-    """Convert an enum member name to Title Case for display."""
-    return value.name.replace("_", " ").title()
-
-
 def _format_rgbw(color: RGBWColor) -> str:
     """Format an RGBW color value for display."""
     return f"R:{color.red} G:{color.green} B:{color.blue} W:{color.white}"
@@ -122,22 +118,6 @@ _MODE_DISPLAY: dict[FireMode, str] = {
 }
 
 
-def _temp_suffix(temp_unit: TempUnitParam | None) -> str:
-    """Return the temperature unit suffix (e.g. 'C' or 'F'), or empty."""
-    if temp_unit is None:
-        return ""
-    return "C" if temp_unit.unit == TempUnit.CELSIUS else "F"
-
-
-def _convert_temp(celsius: float, unit: TempUnit) -> float:
-    """Convert a Celsius temperature for display.
-
-    Returns the value unchanged when *unit* is CELSIUS, or
-    converts to Fahrenheit (rounded to 1 decimal) when FAHRENHEIT.
-    """
-    if unit == TempUnit.CELSIUS:
-        return celsius
-    return round(celsius * 9 / 5 + 32, 1)
 
 
 def _format_mode(
@@ -148,10 +128,10 @@ def _format_mode(
 
     Returns a list of (label, value, action) tuples.
     """
-    mode_label = _MODE_DISPLAY.get(param.mode, _display_name(param.mode))
-    suffix = _temp_suffix(temp_unit)
+    mode_label = _MODE_DISPLAY.get(param.mode, display_name(param.mode))
+    suffix = temp_suffix(temp_unit)
     unit = temp_unit.unit if temp_unit else TempUnit.CELSIUS
-    display_temp = _convert_temp(param.target_temperature, unit)
+    display_temp = convert_temp(param.target_temperature, unit)
     return [
         (
             "[bold]Mode:[/bold] ",
@@ -176,12 +156,12 @@ def _format_flame_effect(
     return [
         (
             "[bold]Flame Effect:[/bold] ",
-            _display_name(param.flame_effect),
+            display_name(param.flame_effect),
             "toggle_flame_effect",
         ),
         (
             "  Flame Color: ",
-            _display_name(param.flame_color),
+            display_name(param.flame_color),
             "set_flame_color",
         ),
         (
@@ -191,22 +171,22 @@ def _format_flame_effect(
         ),
         (
             "  Brightness: ",
-            _display_name(param.brightness),
+            display_name(param.brightness),
             "toggle_brightness",
         ),
         (
             "  Pulsating: ",
-            _display_name(param.pulsating_effect),
+            display_name(param.pulsating_effect),
             "toggle_pulsating",
         ),
         (
             "  Media Theme: ",
-            _display_name(param.media_theme),
+            display_name(param.media_theme),
             "set_media_theme",
         ),
         (
             "  Media Light: ",
-            _display_name(param.media_light),
+            display_name(param.media_light),
             "toggle_media_light",
         ),
         (
@@ -216,7 +196,7 @@ def _format_flame_effect(
         ),
         (
             "  Overhead Light: ",
-            _display_name(param.light_status),
+            display_name(param.light_status),
             "toggle_overhead_light",
         ),
         (
@@ -226,7 +206,7 @@ def _format_flame_effect(
         ),
         (
             "  Ambient Sensor: ",
-            _display_name(param.ambient_sensor),
+            display_name(param.ambient_sensor),
             "toggle_ambient_sensor",
         ),
     ]
@@ -245,18 +225,18 @@ def _format_heat(
     boost_value = (
         f"{param.boost_duration}min" if param.heat_mode == HeatMode.BOOST else "Off"
     )
-    suffix = _temp_suffix(temp_unit)
+    suffix = temp_suffix(temp_unit)
     unit = temp_unit.unit if temp_unit else TempUnit.CELSIUS
-    display_temp = _convert_temp(param.setpoint_temperature, unit)
+    display_temp = convert_temp(param.setpoint_temperature, unit)
     return [
         (
             "[bold]Heat:[/bold] ",
-            _display_name(param.heat_status),
+            display_name(param.heat_status),
             "toggle_heat",
         ),
         (
             "  Mode: ",
-            _display_name(param.heat_mode),
+            display_name(param.heat_mode),
             "set_heat_mode",
         ),
         (
@@ -278,7 +258,7 @@ def _format_heat_mode(
     return [
         (
             "[bold]Heat Control:[/bold] ",
-            _display_name(param.heat_control),
+            display_name(param.heat_control),
             None,
         ),
     ]
@@ -295,7 +275,7 @@ def _format_timer(
 
     from flameconnect.models import TimerStatus
 
-    value = f"{_display_name(param.timer_status)}  Duration: {param.duration}min"
+    value = f"{display_name(param.timer_status)}  Duration: {param.duration}min"
     if param.timer_status == TimerStatus.ENABLED and param.duration > 0:
         off_time = datetime.now() + timedelta(minutes=param.duration)
         value += f"  Off at {off_time.strftime('%H:%M')}"
@@ -370,7 +350,7 @@ def _format_temp_unit(
     return [
         (
             "[bold]Temp Unit:[/bold] ",
-            _display_name(param.unit),
+            display_name(param.unit),
             "toggle_temp_unit",
         ),
     ]
@@ -402,7 +382,7 @@ def _format_log_effect(
     return [
         (
             "[bold]Log Effect:[/bold] ",
-            f"{_display_name(param.log_effect)}"
+            f"{display_name(param.log_effect)}"
             f"  Color: {_format_rgbw(param.color)}"
             f"  Pattern: {param.pattern}",
             None,
@@ -502,7 +482,7 @@ def _format_connection_state(
         CS.UNKNOWN: "dim",
     }
     color = color_map.get(state, "dim")
-    label = _display_name(state)
+    label = display_name(state)
     return f"[{color}]{label}[/{color}]"
 
 

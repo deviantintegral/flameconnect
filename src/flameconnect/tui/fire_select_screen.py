@@ -8,8 +8,7 @@ from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
-from flameconnect.models import Fire
-from flameconnect.tui.widgets import _display_name
+from flameconnect.models import Fire, display_name
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
@@ -79,7 +78,7 @@ class FireSelectScreen(ModalScreen[Fire | None]):
             yield Static("Switch Fireplace", id="fire-select-title")
             with Vertical(id="fire-select-list"):
                 for idx, fire in enumerate(self._fires):
-                    conn = _display_name(fire.connection_state)
+                    conn = display_name(fire.connection_state)
                     label = (
                         f"{idx + 1}. {fire.friendly_name}"
                         f" \u2014 {fire.brand} {fire.product_model}"

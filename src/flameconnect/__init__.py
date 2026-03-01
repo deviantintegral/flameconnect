@@ -43,6 +43,9 @@ from flameconnect.models import (
     TempUnitParam,
     TimerParam,
     TimerStatus,
+    convert_temp,
+    display_name,
+    temp_suffix,
 )
 
 __all__ = [
@@ -92,4 +95,8 @@ __all__ = [
     "NAMED_COLORS",
     # Type aliases
     "Parameter",
+    # Utilities
+    "convert_temp",
+    "display_name",
+    "temp_suffix",
 ]

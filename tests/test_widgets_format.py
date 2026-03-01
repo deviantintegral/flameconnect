@@ -51,10 +51,11 @@ from flameconnect.models import (
     TempUnitParam,
     TimerParam,
     TimerStatus,
+    convert_temp,
+    display_name,
+    temp_suffix,
 )
 from flameconnect.tui.widgets import (
-    _convert_temp,
-    _display_name,
     _format_connection_state,
     _format_error,
     _format_flame_effect,
@@ -68,7 +69,6 @@ from flameconnect.tui.widgets import (
     _format_temp_unit,
     _format_timer,
     _rotate_palette,
-    _temp_suffix,
     format_parameters,
 )
 
@@ -111,48 +111,48 @@ def _sample_flame_effect(**overrides) -> FlameEffectParam:
 
 
 class TestDisplayName:
-    """Tests for _display_name enum-to-title conversion."""
+    """Tests for display_name enum-to-title conversion."""
 
     def test_single_word(self):
-        assert _display_name(FireMode.STANDBY) == "Standby"
+        assert display_name(FireMode.STANDBY) == "Standby"
 
     def test_single_word_manual(self):
-        assert _display_name(FireMode.MANUAL) == "Manual"
+        assert display_name(FireMode.MANUAL) == "Manual"
 
     def test_multi_word_underscore(self):
-        assert _display_name(HeatMode.FAN_ONLY) == "Fan Only"
+        assert display_name(HeatMode.FAN_ONLY) == "Fan Only"
 
     def test_multi_word_software_disabled(self):
-        assert _display_name(HeatControl.SOFTWARE_DISABLED) == "Software Disabled"
+        assert display_name(HeatControl.SOFTWARE_DISABLED) == "Software Disabled"
 
     def test_multi_word_hardware_disabled(self):
-        assert _display_name(HeatControl.HARDWARE_DISABLED) == "Hardware Disabled"
+        assert display_name(HeatControl.HARDWARE_DISABLED) == "Hardware Disabled"
 
     def test_enum_on_off(self):
-        assert _display_name(FlameEffect.ON) == "On"
-        assert _display_name(FlameEffect.OFF) == "Off"
+        assert display_name(FlameEffect.ON) == "On"
+        assert display_name(FlameEffect.OFF) == "Off"
 
     def test_connection_states(self):
-        assert _display_name(ConnectionState.CONNECTED) == "Connected"
-        assert _display_name(ConnectionState.NOT_CONNECTED) == "Not Connected"
-        assert _display_name(ConnectionState.UPDATING_FIRMWARE) == "Updating Firmware"
-        assert _display_name(ConnectionState.UNKNOWN) == "Unknown"
+        assert display_name(ConnectionState.CONNECTED) == "Connected"
+        assert display_name(ConnectionState.NOT_CONNECTED) == "Not Connected"
+        assert display_name(ConnectionState.UPDATING_FIRMWARE) == "Updating Firmware"
+        assert display_name(ConnectionState.UNKNOWN) == "Unknown"
 
     def test_temp_unit(self):
-        assert _display_name(TempUnit.CELSIUS) == "Celsius"
-        assert _display_name(TempUnit.FAHRENHEIT) == "Fahrenheit"
+        assert display_name(TempUnit.CELSIUS) == "Celsius"
+        assert display_name(TempUnit.FAHRENHEIT) == "Fahrenheit"
 
     def test_media_theme_user_defined(self):
-        assert _display_name(MediaTheme.USER_DEFINED) == "User Defined"
+        assert display_name(MediaTheme.USER_DEFINED) == "User Defined"
 
     def test_yellow_red(self):
-        assert _display_name(FlameColor.YELLOW_RED) == "Yellow Red"
+        assert display_name(FlameColor.YELLOW_RED) == "Yellow Red"
 
     def test_yellow_blue(self):
-        assert _display_name(FlameColor.YELLOW_BLUE) == "Yellow Blue"
+        assert display_name(FlameColor.YELLOW_BLUE) == "Yellow Blue"
 
     def test_blue_red(self):
-        assert _display_name(FlameColor.BLUE_RED) == "Blue Red"
+        assert display_name(FlameColor.BLUE_RED) == "Blue Red"
 
 
 # ---------------------------------------------------------------------------
@@ -182,35 +182,35 @@ class TestFormatRGBW:
 
 
 class TestTempSuffix:
-    """Tests for _temp_suffix helper."""
+    """Tests for temp_suffix helper."""
 
     def test_none_returns_empty(self):
-        assert _temp_suffix(None) == ""
+        assert temp_suffix(None) == ""
 
     def test_celsius(self):
-        assert _temp_suffix(TempUnitParam(unit=TempUnit.CELSIUS)) == "C"
+        assert temp_suffix(TempUnitParam(unit=TempUnit.CELSIUS)) == "C"
 
     def test_fahrenheit(self):
-        assert _temp_suffix(TempUnitParam(unit=TempUnit.FAHRENHEIT)) == "F"
+        assert temp_suffix(TempUnitParam(unit=TempUnit.FAHRENHEIT)) == "F"
 
 
 class TestConvertTemp:
-    """Tests for _convert_temp helper."""
+    """Tests for convert_temp helper."""
 
     def test_celsius_passthrough(self):
-        assert _convert_temp(22.0, TempUnit.CELSIUS) == 22.0
+        assert convert_temp(22.0, TempUnit.CELSIUS) == 22.0
 
     def test_fahrenheit_conversion(self):
         # 22 C => 71.6 F
-        assert _convert_temp(22.0, TempUnit.FAHRENHEIT) == 71.6
+        assert convert_temp(22.0, TempUnit.FAHRENHEIT) == 71.6
 
     def test_zero_celsius_to_fahrenheit(self):
         # 0 C => 32 F
-        assert _convert_temp(0.0, TempUnit.FAHRENHEIT) == 32.0
+        assert convert_temp(0.0, TempUnit.FAHRENHEIT) == 32.0
 
     def test_100_celsius_to_fahrenheit(self):
         # 100 C => 212.0 F
-        assert _convert_temp(100.0, TempUnit.FAHRENHEIT) == 212.0
+        assert convert_temp(100.0, TempUnit.FAHRENHEIT) == 212.0
 
 
 # ---------------------------------------------------------------------------

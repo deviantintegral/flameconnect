@@ -22,7 +22,11 @@ from flameconnect.models import (
     ModeParam,
     RGBWColor,
     TempUnit,
+    TempUnitParam,
     TimerStatus,
+    convert_temp,
+    display_name,
+    temp_suffix,
 )
 
 # ---------------------------------------------------------------------------
@@ -211,3 +215,71 @@ class TestEnumValues:
         assert ConnectionState.NOT_CONNECTED == 1
         assert ConnectionState.CONNECTED == 2
         assert ConnectionState.UPDATING_FIRMWARE == 3
+
+
+# ---------------------------------------------------------------------------
+# Display / conversion utilities
+# ---------------------------------------------------------------------------
+
+
+class TestConvertTemp:
+    """Tests for convert_temp()."""
+
+    def test_celsius_passthrough(self):
+        assert convert_temp(22.0, TempUnit.CELSIUS) == 22.0
+
+    def test_fahrenheit_conversion(self):
+        assert convert_temp(0.0, TempUnit.FAHRENHEIT) == 32.0
+
+    def test_fahrenheit_100(self):
+        assert convert_temp(100.0, TempUnit.FAHRENHEIT) == 212.0
+
+    def test_fahrenheit_negative(self):
+        assert convert_temp(-40.0, TempUnit.FAHRENHEIT) == -40.0
+
+    def test_fahrenheit_rounding(self):
+        assert convert_temp(22.0, TempUnit.FAHRENHEIT) == 71.6
+
+
+class TestTempSuffix:
+    """Tests for temp_suffix()."""
+
+    def test_none_returns_empty(self):
+        assert temp_suffix(None) == ""
+
+    def test_celsius(self):
+        assert temp_suffix(TempUnitParam(unit=TempUnit.CELSIUS)) == "C"
+
+    def test_fahrenheit(self):
+        assert temp_suffix(TempUnitParam(unit=TempUnit.FAHRENHEIT)) == "F"
+
+
+class TestDisplayName:
+    """Tests for display_name()."""
+
+    def test_single_word(self):
+        assert display_name(FireMode.STANDBY) == "Standby"
+
+    def test_single_word_manual(self):
+        assert display_name(FireMode.MANUAL) == "Manual"
+
+    def test_multi_word_underscore(self):
+        assert display_name(HeatMode.FAN_ONLY) == "Fan Only"
+
+    def test_multi_word_compound(self):
+        assert display_name(HeatControl.SOFTWARE_DISABLED) == "Software Disabled"
+
+    def test_on_off(self):
+        assert display_name(FlameEffect.ON) == "On"
+        assert display_name(FlameEffect.OFF) == "Off"
+
+    def test_connection_states(self):
+        assert display_name(ConnectionState.CONNECTED) == "Connected"
+        assert display_name(ConnectionState.NOT_CONNECTED) == "Not Connected"
+
+    def test_temp_unit(self):
+        assert display_name(TempUnit.CELSIUS) == "Celsius"
+        assert display_name(TempUnit.FAHRENHEIT) == "Fahrenheit"
+
+    def test_flame_color(self):
+        assert display_name(FlameColor.YELLOW_RED) == "Yellow Red"

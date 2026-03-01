@@ -17,9 +17,9 @@ from textual.widgets import Footer, Header, OptionList, Static
 from textual.widgets.option_list import Option
 
 from flameconnect import __version__
+from flameconnect.models import display_name
 from flameconnect.tui.auth_screen import AuthScreen
 from flameconnect.tui.screens import DashboardScreen
-from flameconnect.tui.widgets import _display_name
 
 if TYPE_CHECKING:
     import asyncio
@@ -216,7 +216,7 @@ class FlameConnectApp(App[None]):
         loading.update("[bold]Select a fireplace:[/bold]")
         options = [
             Option(
-                f"{fire.friendly_name} ({_display_name(fire.connection_state)})",
+                f"{fire.friendly_name} ({display_name(fire.connection_state)})",
                 id=fire.fire_id,
             )
             for fire in self.fires
@@ -598,7 +598,7 @@ class FlameConnectApp(App[None]):
         if not isinstance(current, FlameEffectParam):
             return
         new_param = replace(current, flame_color=color)
-        label = _display_name(color)
+        label = display_name(color)
         self._run_command(
             self.client.write_parameters(self.fire_id, [new_param]),
             f"Setting flame color to {label}...",
@@ -650,7 +650,7 @@ class FlameConnectApp(App[None]):
 
         _LOGGER.debug("Media theme change: sending=%s", new_param)
 
-        label = _display_name(theme)
+        label = display_name(theme)
         fire_id = self.fire_id
         self._write_in_progress = True
         screen.log_message(f"Setting media theme to {label}...")
@@ -842,7 +842,7 @@ class FlameConnectApp(App[None]):
             new_param = replace(current, heat_mode=mode, boost_duration=boost_minutes)
         else:
             new_param = replace(current, heat_mode=mode)
-        mode_label = _display_name(mode)
+        mode_label = display_name(mode)
         self._run_command(
             self.client.write_parameters(self.fire_id, [new_param]),
             f"Setting heat mode to {mode_label}...",

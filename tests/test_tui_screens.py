@@ -735,20 +735,20 @@ class TestTemperatureHelpers:
     """Tests for temperature conversion helper functions."""
 
     def test_convert_temp_celsius_returns_same(self):
-        from flameconnect.tui.temperature_screen import _convert_temp
+        from flameconnect.models import convert_temp
 
-        assert _convert_temp(22.0, TempUnit.CELSIUS) == 22.0
+        assert convert_temp(22.0, TempUnit.CELSIUS) == 22.0
 
     def test_convert_temp_fahrenheit(self):
-        from flameconnect.tui.temperature_screen import _convert_temp
+        from flameconnect.models import convert_temp
 
-        result = _convert_temp(0.0, TempUnit.FAHRENHEIT)
+        result = convert_temp(0.0, TempUnit.FAHRENHEIT)
         assert result == 32.0
 
     def test_convert_temp_fahrenheit_100(self):
-        from flameconnect.tui.temperature_screen import _convert_temp
+        from flameconnect.models import convert_temp
 
-        result = _convert_temp(100.0, TempUnit.FAHRENHEIT)
+        result = convert_temp(100.0, TempUnit.FAHRENHEIT)
         assert result == 212.0
 
     def test_convert_to_celsius(self):
