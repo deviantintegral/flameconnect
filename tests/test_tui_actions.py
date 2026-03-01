@@ -145,6 +145,68 @@ async def _run_workers(app):
 
 
 # ---------------------------------------------------------------------------
+# _get_current_param helper
+# ---------------------------------------------------------------------------
+
+
+class TestGetCurrentParam:
+    """Tests for FlameConnectApp._get_current_param."""
+
+    def test_happy_path(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            result = app._get_current_param(FlameEffectParam)
+
+        assert result is not None
+        screen, fire_id, param = result
+        assert screen is mock_dashboard
+        assert fire_id == "test-fire-001"
+        assert isinstance(param, FlameEffectParam)
+
+    def test_not_dashboard_screen(self, mock_client):
+        non_dashboard = MagicMock(spec=[])
+        app = _make_app(mock_client, non_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = non_dashboard
+            result = app._get_current_param(FlameEffectParam)
+
+        assert result is None
+
+    def test_no_fire_id(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+        app.fire_id = None
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            result = app._get_current_param(FlameEffectParam)
+
+        assert result is None
+
+    def test_write_in_progress(self, mock_client, mock_dashboard):
+        app = _make_app(mock_client, mock_dashboard)
+        app._write_in_progress = True
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            result = app._get_current_param(FlameEffectParam)
+
+        assert result is None
+
+    def test_param_not_found(self, mock_client, mock_dashboard):
+        del mock_dashboard.current_parameters[FlameEffectParam]
+        app = _make_app(mock_client, mock_dashboard)
+
+        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
+            prop.return_value = mock_dashboard
+            result = app._get_current_param(FlameEffectParam)
+
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
 # _apply_flame_speed (called via FlameSpeedScreen dialog)
 # ---------------------------------------------------------------------------
 
@@ -753,26 +815,27 @@ class TestApplyMediaTheme:
 
     async def test_sets_media_theme(self, mock_client, mock_dashboard):
         app = _make_app(mock_client, mock_dashboard)
+        app._run_command = MagicMock()
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
             app._apply_media_theme(MediaTheme.BLUE)
-            await _run_workers(app)
 
-        written_param = mock_client.write_parameters.call_args[0][1][0]
-        assert isinstance(written_param, FlameEffectParam)
-        assert written_param.media_theme == MediaTheme.BLUE
+        app._run_command.assert_called_once()
+        call_args = app._run_command.call_args
+        assert call_args[0][1] == "Setting media theme to Blue..."
+        assert call_args[0][2] == "Media theme change failed"
 
     async def test_no_op_when_write_in_progress(self, mock_client, mock_dashboard):
         app = _make_app(mock_client, mock_dashboard)
         app._write_in_progress = True
+        app._run_command = MagicMock()
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
             app._apply_media_theme(MediaTheme.BLUE)
-            await _run_workers(app)
 
-        mock_client.write_parameters.assert_not_awaited()
+        app._run_command.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -2607,62 +2670,6 @@ class TestSwitchFireCallback:
             await app.action_switch_fire()
 
         app.push_screen.assert_not_called()
-
-
-# ---------------------------------------------------------------------------
-# _apply_media_theme error handling (custom worker)
-# ---------------------------------------------------------------------------
-
-
-class TestApplyMediaThemeWorker:
-    """Tests for _apply_media_theme's custom worker logic."""
-
-    async def test_worker_error_logs_and_clears_flag(self, mock_client, mock_dashboard):
-        """_apply_media_theme worker logs error and clears write flag on failure."""
-        mock_client.write_parameters = AsyncMock(side_effect=Exception("API failure"))
-        app = _make_app(mock_client, mock_dashboard)
-
-        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
-            prop.return_value = mock_dashboard
-            app._apply_media_theme(MediaTheme.BLUE)
-            await _run_workers(app)
-
-        assert app._write_in_progress is False
-        log_calls = [c.args[0] for c in mock_dashboard.log_message.call_args_list]
-        assert any("failed" in msg.lower() for msg in log_calls)
-
-    async def test_no_op_when_no_flame_param(self, mock_client, mock_dashboard):
-        del mock_dashboard.current_parameters[FlameEffectParam]
-        app = _make_app(mock_client, mock_dashboard)
-
-        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
-            prop.return_value = mock_dashboard
-            app._apply_media_theme(MediaTheme.BLUE)
-            await _run_workers(app)
-
-        mock_client.write_parameters.assert_not_awaited()
-
-    async def test_no_op_when_no_fire_id(self, mock_client, mock_dashboard):
-        app = _make_app(mock_client, mock_dashboard)
-        app.fire_id = None
-
-        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
-            prop.return_value = mock_dashboard
-            app._apply_media_theme(MediaTheme.BLUE)
-            await _run_workers(app)
-
-        mock_client.write_parameters.assert_not_awaited()
-
-    async def test_no_op_when_not_dashboard(self, mock_client):
-        non_dashboard = MagicMock(spec=[])
-        app = _make_app(mock_client, non_dashboard)
-
-        with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
-            prop.return_value = non_dashboard
-            app._apply_media_theme(MediaTheme.BLUE)
-            await _run_workers(app)
-
-        mock_client.write_parameters.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------

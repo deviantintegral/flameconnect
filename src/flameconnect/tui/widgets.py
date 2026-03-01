@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from rich.text import Text as _Text
 from textual.containers import Horizontal, Vertical
@@ -18,6 +18,8 @@ from flameconnect.models import (
     display_name,
     temp_suffix,
 )
+
+ButtonVariant = Literal["default", "primary", "success", "warning", "error"]
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
@@ -967,15 +969,3 @@ class ParameterPanel(Vertical):
             widgets.append(ClickableParam(label, value, action=action))
         self.query("*").remove()
         self.mount(*widgets)
-
-
-class FireplaceSelector(Vertical):
-    """Widget for selecting a fireplace from a list."""
-
-    def compose(self) -> ComposeResult:
-        """Compose the fireplace selector layout."""
-        yield Static(
-            "[bold]Select a fireplace:[/bold]",
-            id="selector-title",
-        )
-        yield Vertical(id="fire-list")

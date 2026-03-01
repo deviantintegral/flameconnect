@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
 from flameconnect.models import FlameColor
-from flameconnect.tui.widgets import ArrowNavMixin
+from flameconnect.tui.widgets import ArrowNavMixin, ButtonVariant
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
-
-_ButtonVariant = Literal["default", "primary", "success", "warning", "error"]
 
 _COLOR_LABELS: dict[FlameColor, tuple[str, str]] = {
     FlameColor.ALL: ("All", "a"),
@@ -86,7 +84,7 @@ class FlameColorScreen(ArrowNavMixin, ModalScreen[FlameColor | None]):
             )
             with Horizontal(id="flame-color-buttons"):
                 for color, (label, key) in _COLOR_LABELS.items():
-                    variant: _ButtonVariant = (
+                    variant: ButtonVariant = (
                         "primary" if color == self._current_color else "default"
                     )
                     yield Button(
