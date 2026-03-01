@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.1](https://github.com/deviantintegral/flameconnect/compare/v0.4.0...v0.4.1) (2026-02-28)
+
+
+### Bug Fixes
+
+* **security:** apply fixes for URL injection and redirect URI validation ([#49](https://github.com/deviantintegral/flameconnect/issues/49)) ([caba34c](https://github.com/deviantintegral/flameconnect/commit/caba34c8713a8f928d52e66585979af94421484c))
+
+
+### Documentation
+
+* link Home Assistant custom component from README ([#46](https://github.com/deviantintegral/flameconnect/issues/46)) ([f44f88f](https://github.com/deviantintegral/flameconnect/commit/f44f88f3a04a1a2452ae274c78f2f7eb027fa0a3))
+
 ## [0.4.0](https://github.com/deviantintegral/flameconnect/compare/v0.3.0...v0.4.0) (2026-02-27)
 
 
