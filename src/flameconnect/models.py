@@ -32,7 +32,7 @@ class Brightness(IntEnum):
 
 
 class PulsatingEffect(IntEnum):
-    """Pulsating flame effect."""
+    """Pulsating overhead light effect."""
 
     OFF = 0
     ON = 1

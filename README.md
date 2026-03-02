@@ -205,7 +205,7 @@ seconds. Key bindings:
 | `e` | Toggle flame effect |
 | `c` | Set flame color |
 | `b` | Toggle brightness (high/low) |
-| `g` | Toggle pulsating effect |
+| `g` | Toggle pulsating overhead light effect |
 | `m` | Set media theme |
 | `l` | Toggle media light |
 | `d` | Set media color (RGBW) |

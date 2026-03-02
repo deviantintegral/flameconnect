@@ -136,16 +136,16 @@ def _display_flame_effect(param: FlameEffectParam) -> None:
     print(f"    Flame:          {flame}")
     print(f"    Flame Speed:    {param.flame_speed} / {MAX_FLAME_SPEED}")
     brightness = display_name(param.brightness)
-    pulsating = display_name(param.pulsating_effect)
     print(f"    Brightness:     {brightness}")
-    print(f"    Pulsating:      {pulsating}")
     color = display_name(param.flame_color)
     print(f"    Flame Color:    {color}")
     theme = display_name(param.media_theme)
     rgbw = _format_rgbw(param.media_color)
     print(f"    Media Light:    {theme} | {rgbw}")
     light = display_name(param.light_status)
+    pulsating = display_name(param.pulsating_effect)
     print(f"    Overhead Light: {light}")
+    print(f"    Overhead Pulsating: {pulsating}")
     print(f"    Overhead Color: {_format_rgbw(param.overhead_color)}")
     ambient = display_name(param.ambient_sensor)
     print(f"    Ambient Sensor: {ambient}")
@@ -372,7 +372,7 @@ _FLAME_EFFECT_SETTERS: dict[str, _FlameEffectSetter] = {
     "pulsating": _FlameEffectSetter(
         "pulsating_effect",
         dict[str, object](_PULSATING_LOOKUP),
-        "Pulsating effect",
+        "Pulsating overhead light effect",
     ),
     "flame-color": _FlameEffectSetter(
         "flame_color",

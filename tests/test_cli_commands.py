@@ -255,7 +255,7 @@ class TestDisplayFlameEffect:
         assert "Flame:          On" in out
         assert "4 / 5" in out
         assert "Low" in out
-        assert "Pulsating:      On" in out
+        assert "Overhead Pulsating: On" in out
         assert "Blue" in out
         assert "Prism" in out
         assert "RGBW(10, 20, 30, 40)" in out
@@ -778,7 +778,7 @@ class TestCmdSet:
         client.get_fire_overview.return_value = overview
         await cmd_set(client, FIRE_ID, "pulsating", "on")
         out = capsys.readouterr().out
-        assert "Pulsating effect set to on" in out
+        assert "Pulsating overhead light effect set to on" in out
 
     async def test_dispatch_flame_color(self, capsys):
         client = AsyncMock()
