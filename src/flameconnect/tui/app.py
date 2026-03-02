@@ -109,7 +109,9 @@ _CONTROL_COMMANDS: list[_ControlCommand] = [
     _ControlCommand("Flame Color", "Set flame color", "set_flame_color"),
     _ControlCommand("Flame Speed", "Set flame speed", "set_flame_speed"),
     _ControlCommand("Brightness", "Toggle brightness high/low", "toggle_brightness"),
-    _ControlCommand("Pulsating", "Toggle pulsating effect", "toggle_pulsating"),
+    _ControlCommand(
+        "Pulsating", "Toggle pulsating overhead light effect", "toggle_pulsating"
+    ),
     _ControlCommand("Media Theme", "Set media theme", "set_media_theme"),
     _ControlCommand("Media Light", "Toggle media light on/off", "toggle_media_light"),
     _ControlCommand("Media Color", "Set media color", "set_media_color"),
@@ -472,7 +474,7 @@ class FlameConnectApp(App[None]):
         )
 
     def action_toggle_pulsating(self) -> None:
-        """Handle the 'g' key binding to toggle pulsating on/off."""
+        """Handle the 'g' key binding to toggle pulsating overhead light on/off."""
         from flameconnect.models import PulsatingEffect
 
         result = self._get_current_param(FlameEffectParam)

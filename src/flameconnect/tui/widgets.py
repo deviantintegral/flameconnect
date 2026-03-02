@@ -177,11 +177,6 @@ def _format_flame_effect(
             "toggle_brightness",
         ),
         FormattedParam(
-            "  Pulsating: ",
-            display_name(param.pulsating_effect),
-            "toggle_pulsating",
-        ),
-        FormattedParam(
             "  Media Theme: ",
             display_name(param.media_theme),
             "set_media_theme",
@@ -200,6 +195,11 @@ def _format_flame_effect(
             "  Overhead Light: ",
             display_name(param.light_status),
             "toggle_overhead_light",
+        ),
+        FormattedParam(
+            "  Overhead Pulsating: ",
+            display_name(param.pulsating_effect),
+            "toggle_pulsating",
         ),
         FormattedParam(
             "  Overhead Color: ",

@@ -265,8 +265,8 @@ class TestFormatFlameEffect:
         param = _sample_flame_effect()
         result = _format_flame_effect(param)
         # Should have 11 tuples (flame_effect + color + speed + brightness
-        #   + pulsating + media_theme + media_light + media_color
-        #   + overhead_light + overhead_color + ambient_sensor)
+        #   + media_theme + media_light + media_color
+        #   + overhead_light + pulsating + overhead_color + ambient_sensor)
         assert len(result) == 11
 
     def test_flame_effect_labels_and_actions(self):
@@ -278,11 +278,11 @@ class TestFormatFlameEffect:
         assert labels_and_actions[1][1] == "set_flame_color"
         assert labels_and_actions[2][1] == "set_flame_speed"
         assert labels_and_actions[3][1] == "toggle_brightness"
-        assert labels_and_actions[4][1] == "toggle_pulsating"
-        assert labels_and_actions[5][1] == "set_media_theme"
-        assert labels_and_actions[6][1] == "toggle_media_light"
-        assert labels_and_actions[7][1] == "set_media_color"
-        assert labels_and_actions[8][1] == "toggle_overhead_light"
+        assert labels_and_actions[4][1] == "set_media_theme"
+        assert labels_and_actions[5][1] == "toggle_media_light"
+        assert labels_and_actions[6][1] == "set_media_color"
+        assert labels_and_actions[7][1] == "toggle_overhead_light"
+        assert labels_and_actions[8][1] == "toggle_pulsating"
         assert labels_and_actions[9][1] == "set_overhead_color"
         assert labels_and_actions[10][1] == "toggle_ambient_sensor"
 
@@ -302,16 +302,16 @@ class TestFormatFlameEffect:
         assert result[1][1] == "Blue"  # FlameColor.BLUE
         assert result[2][1] == "5/5"  # flame_speed
         assert result[3][1] == "Low"  # Brightness.LOW
-        assert result[4][1] == "On"  # PulsatingEffect.ON
-        assert result[5][1] == "Prism"  # MediaTheme.PRISM
-        assert result[6][1] == "Off"  # media_light OFF
+        assert result[4][1] == "Prism"  # MediaTheme.PRISM
+        assert result[5][1] == "Off"  # media_light OFF
+        assert result[8][1] == "On"  # PulsatingEffect.ON
         assert result[10][1] == "On"  # ambient_sensor ON
 
     def test_flame_effect_media_color_format(self):
         color = RGBWColor(red=10, green=20, blue=30, white=40)
         param = _sample_flame_effect(media_color=color)
         result = _format_flame_effect(param)
-        assert result[7][1] == "R:10 G:20 B:30 W:40"
+        assert result[6][1] == "R:10 G:20 B:30 W:40"
 
     def test_flame_effect_overhead_color_format(self):
         color = RGBWColor(red=50, green=60, blue=70, white=80)
@@ -322,7 +322,7 @@ class TestFormatFlameEffect:
     def test_overhead_light_status_display(self):
         param = _sample_flame_effect(light_status=LightStatus.OFF)
         result = _format_flame_effect(param)
-        assert result[8][1] == "Off"  # Overhead Light uses light_status
+        assert result[7][1] == "Off"  # Overhead Light uses light_status
 
 
 # ---------------------------------------------------------------------------
