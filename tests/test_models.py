@@ -240,6 +240,10 @@ class TestConvertTemp:
     def test_fahrenheit_rounding(self):
         assert convert_temp(22.0, TempUnit.FAHRENHEIT) == 71.6
 
+    def test_fahrenheit_rounding_precision(self):
+        """22.3°C -> 72.14°F: round to 1 decimal gives 72.1, not 72.14."""
+        assert convert_temp(22.3, TempUnit.FAHRENHEIT) == 72.1
+
 
 class TestTempSuffix:
     """Tests for temp_suffix()."""
