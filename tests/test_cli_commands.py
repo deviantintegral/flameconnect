@@ -1219,9 +1219,9 @@ class TestSetHeatTempSuffix:
             ],
         )
         client.get_fire_overview.return_value = overview
-        await cmd_set(client, FIRE_ID, "heat-temp", "25.0")
+        await cmd_set(client, FIRE_ID, "heat-temp", "72.0")
         out = capsys.readouterr().out
-        assert "25.0\u00b0F" in out
+        assert "72.0\u00b0F" in out
 
 
 # ===================================================================

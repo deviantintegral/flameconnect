@@ -23,7 +23,12 @@ from flameconnect.cli import (
     cmd_set,
 )
 from flameconnect.client import FlameConnectClient
-from flameconnect.const import API_BASE
+from flameconnect.const import (
+    API_BASE,
+    MAX_TEMP_CELSIUS,
+    MAX_TIMER_DURATION,
+    MIN_TEMP_CELSIUS,
+)
 from flameconnect.models import RGBWColor
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -481,6 +486,37 @@ class TestSetHeatTemp:
         body = calls[0].kwargs["json"]
         assert body["Parameters"][0]["ParameterId"] == 323
 
+    async def test_set_heat_temp_too_low(
+        self, mock_api, token_auth, overview_payload, capsys
+    ):
+        mock_api.get(OVERVIEW_URL, payload=overview_payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(SystemExit):
+                await _set_heat_temp(client, FIRE_ID, str(MIN_TEMP_CELSIUS - 1))
+        captured = capsys.readouterr()
+        assert "Error" in captured.out
+        assert str(MIN_TEMP_CELSIUS) in captured.out
+
+    async def test_set_heat_temp_too_high(
+        self, mock_api, token_auth, overview_payload, capsys
+    ):
+        mock_api.get(OVERVIEW_URL, payload=overview_payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(SystemExit):
+                await _set_heat_temp(client, FIRE_ID, str(MAX_TEMP_CELSIUS + 1))
+        captured = capsys.readouterr()
+        assert "Error" in captured.out
+        assert str(MAX_TEMP_CELSIUS) in captured.out
+
+    async def test_set_heat_temp_not_a_number(self, mock_api, token_auth, capsys):
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(SystemExit):
+                await _set_heat_temp(client, FIRE_ID, "hot")
+        captured = capsys.readouterr()
+        assert "Error" in captured.out
+
 
 # ---------------------------------------------------------------------------
 # _set_timer
@@ -517,6 +553,14 @@ class TestSetTimer:
                 await _set_timer(client, FIRE_ID, "-1")
         captured = capsys.readouterr()
         assert "Error" in captured.out
+
+    async def test_set_timer_exceeds_max(self, mock_api, token_auth, capsys):
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(SystemExit):
+                await _set_timer(client, FIRE_ID, str(MAX_TIMER_DURATION + 1))
+        captured = capsys.readouterr()
+        assert "Error" in captured.out
+        assert str(MAX_TIMER_DURATION) in captured.out
 
 
 # ---------------------------------------------------------------------------
