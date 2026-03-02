@@ -20,8 +20,13 @@ from flameconnect.const import (
     DEFAULT_TARGET_TEMPERATURE,
     MAX_BOOST_DURATION,
     MAX_FLAME_SPEED,
+    MAX_TEMP_CELSIUS,
+    MAX_TEMP_FAHRENHEIT,
+    MAX_TIMER_DURATION,
     MIN_BOOST_DURATION,
     MIN_FLAME_SPEED,
+    MIN_TEMP_CELSIUS,
+    MIN_TEMP_FAHRENHEIT,
 )
 from flameconnect.models import (
     NAMED_COLORS,
@@ -566,11 +571,24 @@ async def _set_heat_temp(client: FlameConnectClient, fire_id: str, value: str) -
     """Set the heater setpoint temperature."""
     temp = float(value)
     overview = await client.get_fire_overview(fire_id)
+    temp_unit_param = _find_param(overview.parameters, TempUnitParam)
+    unit = temp_unit_param.unit if temp_unit_param else TempUnit.CELSIUS
+    if unit == TempUnit.FAHRENHEIT:
+        min_temp, max_temp = MIN_TEMP_FAHRENHEIT, MAX_TEMP_FAHRENHEIT
+    else:
+        min_temp, max_temp = MIN_TEMP_CELSIUS, MAX_TEMP_CELSIUS
+    if not (min_temp <= temp <= max_temp):
+        unit_suffix = temp_suffix(temp_unit_param)
+        print(
+            f"Error: heat-temp must be between"
+            f" {min_temp} and {max_temp}\u00b0{unit_suffix}."
+        )
+        sys.exit(1)
     current = _find_param(overview.parameters, HeatParam)
     if current is None:
         print("Error: no HeatSettings parameter found.")
         sys.exit(1)
-    unit_suffix = temp_suffix(_find_param(overview.parameters, TempUnitParam))
+    unit_suffix = temp_suffix(temp_unit_param)
     new_param = replace(current, setpoint_temperature=temp)
     await client.write_parameters(fire_id, [new_param])
     print(f"Heat temperature set to {temp}\u00b0{unit_suffix}.")
@@ -581,6 +599,9 @@ async def _set_timer(client: FlameConnectClient, fire_id: str, value: str) -> No
     minutes = int(value)
     if minutes < 0:
         print("Error: timer must be non-negative (0 to disable).")
+        sys.exit(1)
+    if minutes > MAX_TIMER_DURATION:
+        print(f"Error: timer must not exceed {MAX_TIMER_DURATION} minutes.")
         sys.exit(1)
     timer_status = TimerStatus.ENABLED if minutes > 0 else TimerStatus.DISABLED
     timer_param = TimerParam(timer_status=timer_status, duration=minutes)
