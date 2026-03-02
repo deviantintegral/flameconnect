@@ -24,6 +24,6 @@ jobs:
       - name: Type check
         run: uv run mypy src/
       - name: Test
-        run: uv run pytest --cov=flameconnect --cov-report=term-missing --tb=short
+        run: uv run pytest --cov=flameconnect --cov-report=term-missing --tb=short --cov-fail-under=95
       - name: Mutation test
         run: uv run mutmut run --max-children 4
