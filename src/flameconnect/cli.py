@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import dataclasses
 import logging
 import sys
 import webbrowser
@@ -53,18 +54,6 @@ from flameconnect.models import (
     kebab_name,
     temp_suffix,
 )
-
-# ---------------------------------------------------------------------------
-# Enum display-name overrides (only where display_name() is insufficient)
-# ---------------------------------------------------------------------------
-
-_FIRE_MODE_DISPLAY: dict[FireMode, str] = {FireMode.MANUAL: "On"}
-
-_FLAME_COLOR_DISPLAY: dict[FlameColor, str] = {
-    FlameColor.YELLOW_RED: "Yellow/Red",
-    FlameColor.YELLOW_BLUE: "Yellow/Blue",
-    FlameColor.BLUE_RED: "Blue/Red",
-}
 
 # Mapping from CLI heat-mode string to HeatMode enum value
 _HEAT_MODE_LOOKUP: dict[str, HeatMode] = {
@@ -129,7 +118,7 @@ def _display_mode(
     display_temp = convert_temp(param.target_temperature, unit)
     print("\n  [321] Mode")
     print(f"  {'─' * 40}")
-    mode = _FIRE_MODE_DISPLAY.get(param.mode, display_name(param.mode))
+    mode = display_name(param.mode)
     print(f"    Mode:           {mode}")
     print(f"    Target Temp:    {display_temp}\u00b0{unit_suffix}")
 
@@ -145,7 +134,7 @@ def _display_flame_effect(param: FlameEffectParam) -> None:
     pulsating = display_name(param.pulsating_effect)
     print(f"    Brightness:     {brightness}")
     print(f"    Pulsating:      {pulsating}")
-    color = _FLAME_COLOR_DISPLAY.get(param.flame_color, display_name(param.flame_color))
+    color = display_name(param.flame_color)
     print(f"    Flame Color:    {color}")
     theme = display_name(param.media_theme)
     rgbw = _format_rgbw(param.media_color)
@@ -286,6 +275,10 @@ _FEATURE_LABELS: list[tuple[str, str]] = [
     ("rgb_log_effect", "RGB Log Effect"),
 ]
 
+assert {fn for fn, _ in _FEATURE_LABELS} == {
+    f.name for f in dataclasses.fields(FireFeatures)
+}, "_FEATURE_LABELS field names do not match FireFeatures fields"
+
 
 def _display_features(features: FireFeatures) -> None:
     """Display supported feature flags."""
@@ -407,6 +400,11 @@ _FLAME_EFFECT_SETTERS: dict[str, _FlameEffectSetter] = {
         "Ambient sensor",
     ),
 }
+
+assert all(
+    setter.field in {f.name for f in dataclasses.fields(FlameEffectParam)}
+    for setter in _FLAME_EFFECT_SETTERS.values()
+), "_FLAME_EFFECT_SETTERS contains invalid FlameEffectParam field names"
 
 
 async def cmd_on(client: FlameConnectClient, fire_id: str) -> None:
