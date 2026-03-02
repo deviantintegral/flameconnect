@@ -122,12 +122,6 @@ def _format_rgbw(color: RGBWColor) -> str:
     return f"R:{color.red} G:{color.green} B:{color.blue} W:{color.white}"
 
 
-_MODE_DISPLAY: dict[FireMode, str] = {
-    FireMode.STANDBY: "Standby",
-    FireMode.MANUAL: "On",
-}
-
-
 def _format_mode(
     param: ModeParam,
     temp_unit: TempUnitParam | None = None,
@@ -136,7 +130,7 @@ def _format_mode(
 
     Returns a list of FormattedParam tuples.
     """
-    mode_label = _MODE_DISPLAY.get(param.mode, display_name(param.mode))
+    mode_label = display_name(param.mode)
     suffix = temp_suffix(temp_unit)
     unit = temp_unit.unit if temp_unit else TempUnit.CELSIUS
     display_temp = convert_temp(param.target_temperature, unit)
