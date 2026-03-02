@@ -23,7 +23,7 @@ repos:
         always_run: true
       - id: pytest
         name: pytest
-        entry: uv run pytest --tb=short -q
+        entry: uv run pytest -n auto --tb=short -q
         language: system
         types: [python]
         pass_filenames: false
