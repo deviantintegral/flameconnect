@@ -2308,7 +2308,10 @@ class TestRunCommand:
         non_dashboard = MagicMock(spec=[])
         app = _make_app(mock_client, non_dashboard)
 
-        coro = AsyncMock()()
+        async def _noop():
+            pass
+
+        coro = _noop()
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = non_dashboard
@@ -2316,10 +2319,15 @@ class TestRunCommand:
 
         # run_worker should not have been called
         assert len(app._captured_workers) == 0
+        coro.close()
 
     async def test_sets_write_in_progress(self, mock_client, mock_dashboard):
         app = _make_app(mock_client, mock_dashboard)
-        coro = AsyncMock()()
+
+        async def _noop():
+            pass
+
+        coro = _noop()
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard
@@ -2327,10 +2335,17 @@ class TestRunCommand:
 
         assert app._write_in_progress is True
         mock_dashboard.log_message.assert_any_call("test...")
+        coro.close()
+        for w in app._captured_workers:
+            w.close()
 
     async def test_worker_clears_flag_on_success(self, mock_client, mock_dashboard):
         app = _make_app(mock_client, mock_dashboard)
-        coro = AsyncMock()()
+
+        async def _noop():
+            pass
+
+        coro = _noop()
 
         with patch.object(type(app), "screen", new_callable=PropertyMock) as prop:
             prop.return_value = mock_dashboard

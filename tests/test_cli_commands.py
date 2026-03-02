@@ -1422,6 +1422,7 @@ class TestMain:
         with (
             patch("flameconnect.cli.build_parser") as mock_parser_fn,
             patch("flameconnect.cli.asyncio") as mock_asyncio,
+            patch("flameconnect.cli.async_main", new=MagicMock()),
         ):
             mock_parser = MagicMock()
             mock_args = argparse.Namespace(command="list", verbose=False)
@@ -1436,6 +1437,7 @@ class TestMain:
         with (
             patch("flameconnect.cli.build_parser") as mock_parser_fn,
             patch("flameconnect.cli.asyncio"),
+            patch("flameconnect.cli.async_main", new=MagicMock()),
             patch("flameconnect.cli.logging") as mock_logging,
         ):
             import logging as real_logging
@@ -1455,6 +1457,7 @@ class TestMain:
         with (
             patch("flameconnect.cli.build_parser") as mock_parser_fn,
             patch("flameconnect.cli.asyncio"),
+            patch("flameconnect.cli.async_main", new=MagicMock()),
             patch("flameconnect.cli.logging") as mock_logging,
         ):
             import logging as real_logging

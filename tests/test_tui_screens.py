@@ -1246,6 +1246,7 @@ class TestAuthScreen:
                 app.screen.query_one("#sign-in-btn", Button).press()
                 await pilot.pause()
                 mock_worker.assert_called_once()
+                mock_worker.call_args[0][0].close()
 
     async def test_credential_login_success_dismisses(self):
         """Successful credential login dismisses with the redirect URL."""
@@ -1311,10 +1312,11 @@ class TestAuthScreen:
         async with app.run_test(size=(80, 25)) as pilot:
             app.screen.query_one("#email-input", Input).value = "user@test.com"
             app.screen.query_one("#password-input", Input).value = "secret"
-            with patch.object(app.screen, "run_worker"):
+            with patch.object(app.screen, "run_worker") as mock_worker:
                 pw_input = app.screen.query_one("#password-input", Input)
                 await pw_input.action_submit()
                 await pilot.pause()
+                mock_worker.call_args[0][0].close()
 
     async def test_button_pressed_non_sign_in_ignored(self):
         """Button press on non sign-in button should be ignored."""
