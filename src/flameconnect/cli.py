@@ -50,6 +50,7 @@ from flameconnect.models import (
     TimerStatus,
     convert_temp,
     display_name,
+    kebab_name,
     temp_suffix,
 )
 
@@ -67,42 +68,18 @@ _FLAME_COLOR_DISPLAY: dict[FlameColor, str] = {
 
 # Mapping from CLI heat-mode string to HeatMode enum value
 _HEAT_MODE_LOOKUP: dict[str, HeatMode] = {
-    "normal": HeatMode.NORMAL,
-    "boost": HeatMode.BOOST,
-    "eco": HeatMode.ECO,
+    kebab_name(m): m for m in (HeatMode.NORMAL, HeatMode.BOOST, HeatMode.ECO)
 }
 
 _PULSATING_LOOKUP: dict[str, PulsatingEffect] = {
-    "on": PulsatingEffect.ON,
-    "off": PulsatingEffect.OFF,
+    kebab_name(m): m for m in PulsatingEffect
 }
 
-_FLAME_COLOR_LOOKUP: dict[str, FlameColor] = {
-    "all": FlameColor.ALL,
-    "yellow-red": FlameColor.YELLOW_RED,
-    "yellow-blue": FlameColor.YELLOW_BLUE,
-    "blue": FlameColor.BLUE,
-    "red": FlameColor.RED,
-    "yellow": FlameColor.YELLOW,
-    "blue-red": FlameColor.BLUE_RED,
-}
+_FLAME_COLOR_LOOKUP: dict[str, FlameColor] = {kebab_name(m): m for m in FlameColor}
 
-_MEDIA_THEME_LOOKUP: dict[str, MediaTheme] = {
-    "user-defined": MediaTheme.USER_DEFINED,
-    "white": MediaTheme.WHITE,
-    "blue": MediaTheme.BLUE,
-    "purple": MediaTheme.PURPLE,
-    "red": MediaTheme.RED,
-    "green": MediaTheme.GREEN,
-    "prism": MediaTheme.PRISM,
-    "kaleidoscope": MediaTheme.KALEIDOSCOPE,
-    "midnight": MediaTheme.MIDNIGHT,
-}
+_MEDIA_THEME_LOOKUP: dict[str, MediaTheme] = {kebab_name(m): m for m in MediaTheme}
 
-_TEMP_UNIT_LOOKUP: dict[str, TempUnit] = {
-    "fahrenheit": TempUnit.FAHRENHEIT,
-    "celsius": TempUnit.CELSIUS,
-}
+_TEMP_UNIT_LOOKUP: dict[str, TempUnit] = {kebab_name(m): m for m in TempUnit}
 
 
 class _FlameEffectSetter(NamedTuple):

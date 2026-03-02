@@ -6,6 +6,7 @@ the user to manually copy/paste redirect URLs from a browser.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from typing import NamedTuple
@@ -246,9 +247,13 @@ async def b2c_login_with_credentials(auth_uri: str, email: str, password: str) -
                         raise AuthenticationError(
                             f"Credential submission returned HTTP {resp.status}"
                         )
-                    # Check for error in the JSON-like response
-                    if '"status":"400"' in body or '"status": "400"' in body:
-                        raise AuthenticationError("Invalid email or password")
+                    # Check for error in the JSON response
+                    try:
+                        resp_data = json.loads(body)
+                        if str(resp_data.get("status")) == "400":
+                            raise AuthenticationError("Invalid email or password")
+                    except (json.JSONDecodeError, KeyError, TypeError):
+                        pass
                     # Merge cookies set by the POST response (e.g.
                     # updated x-ms-cpim-cache and x-ms-cpim-trans)
                     # into the cookie header for the confirmed GET.
