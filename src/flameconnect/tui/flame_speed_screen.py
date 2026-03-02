@@ -8,6 +8,7 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
+from flameconnect.const import MAX_FLAME_SPEED, MIN_FLAME_SPEED
 from flameconnect.tui.widgets import ArrowNavMixin
 
 if TYPE_CHECKING:
@@ -70,7 +71,7 @@ class FlameSpeedScreen(ArrowNavMixin, ModalScreen[int | None]):
                 id="flame-speed-title",
             )
             with Horizontal(id="flame-speed-buttons"):
-                for i in range(1, 6):
+                for i in range(MIN_FLAME_SPEED, MAX_FLAME_SPEED + 1):
                     variant: ButtonVariant = (
                         "primary" if i == self._current_speed else "default"
                     )

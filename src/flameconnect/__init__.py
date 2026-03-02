@@ -6,6 +6,19 @@ __version__ = "0.4.1"
 
 from flameconnect.auth import AbstractAuth, MsalAuth, TokenAuth
 from flameconnect.client import FlameConnectClient
+from flameconnect.const import (
+    DEFAULT_TARGET_TEMPERATURE,
+    DEFAULT_TIMER_DURATION,
+    MAX_BOOST_DURATION,
+    MAX_FLAME_SPEED,
+    MAX_TEMP_CELSIUS,
+    MAX_TEMP_FAHRENHEIT,
+    MAX_TIMER_DURATION,
+    MIN_BOOST_DURATION,
+    MIN_FLAME_SPEED,
+    MIN_TEMP_CELSIUS,
+    MIN_TEMP_FAHRENHEIT,
+)
 from flameconnect.exceptions import (
     ApiError,
     AuthenticationError,
@@ -45,6 +58,7 @@ from flameconnect.models import (
     TimerStatus,
     convert_temp,
     display_name,
+    kebab_name,
     temp_suffix,
 )
 
@@ -92,11 +106,23 @@ __all__ = [
     "TempUnitParam",
     "TimerParam",
     # Constants
+    "DEFAULT_TARGET_TEMPERATURE",
+    "DEFAULT_TIMER_DURATION",
+    "MAX_BOOST_DURATION",
+    "MAX_FLAME_SPEED",
+    "MAX_TEMP_CELSIUS",
+    "MAX_TEMP_FAHRENHEIT",
+    "MAX_TIMER_DURATION",
+    "MIN_BOOST_DURATION",
+    "MIN_FLAME_SPEED",
+    "MIN_TEMP_CELSIUS",
+    "MIN_TEMP_FAHRENHEIT",
     "NAMED_COLORS",
     # Type aliases
     "Parameter",
     # Utilities
     "convert_temp",
     "display_name",
+    "kebab_name",
     "temp_suffix",
 ]

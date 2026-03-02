@@ -122,28 +122,28 @@ class TestParseLoginPage:
 
     def test_extracts_csrf_token(self):
         result = _parse_login_page(SAMPLE_B2C_HTML, SAMPLE_PAGE_URL)
-        assert result["csrf"] == "dGVzdC1jc3JmLXRva2Vu"
+        assert result.csrf == "dGVzdC1jc3JmLXRva2Vu"
 
     def test_extracts_transaction_id(self):
         result = _parse_login_page(SAMPLE_B2C_HTML, SAMPLE_PAGE_URL)
         tx = "StateProperties=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9"
-        assert result["tx"] == tx
+        assert result.tx == tx
 
     def test_uses_hardcoded_policy(self):
         result = _parse_login_page(SAMPLE_B2C_HTML, SAMPLE_PAGE_URL)
-        assert result["p"] == _POLICY
+        assert result.p == _POLICY
 
     def test_builds_post_url(self):
         result = _parse_login_page(SAMPLE_B2C_HTML, SAMPLE_PAGE_URL)
         expected_prefix = f"{_HOST}/{_TENANT}/{_POLICY}/SelfAsserted?"
-        assert result["post_url"].startswith(expected_prefix)
-        assert "tx=StateProperties" in result["post_url"]
-        assert f"p={_POLICY}" in result["post_url"]
+        assert result.post_url.startswith(expected_prefix)
+        assert "tx=StateProperties" in result.post_url
+        assert f"p={_POLICY}" in result.post_url
 
     def test_builds_confirmed_url(self):
         result = _parse_login_page(SAMPLE_B2C_HTML, SAMPLE_PAGE_URL)
         expected = f"{_HOST}/{_TENANT}/{_POLICY}/api/CombinedSigninAndSignup/confirmed"
-        assert result["confirmed_url"] == expected
+        assert result.confirmed_url == expected
 
     def test_missing_csrf_raises_exact_msg(self):
         html = "<html><body>No settings here</body></html>"

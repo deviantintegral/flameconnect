@@ -320,8 +320,24 @@ def temp_suffix(temp_unit: TempUnitParam | None) -> str:
     return "C" if temp_unit.unit == TempUnit.CELSIUS else "F"
 
 
+def kebab_name(value: IntEnum) -> str:
+    """Convert an IntEnum member name to kebab-case for CLI use."""
+    return value.name.lower().replace("_", "-")
+
+
+_DISPLAY_OVERRIDES: dict[tuple[type[IntEnum], int], str] = {
+    (FireMode, FireMode.MANUAL): "On",
+    (FlameColor, FlameColor.YELLOW_RED): "Yellow/Red",
+    (FlameColor, FlameColor.YELLOW_BLUE): "Yellow/Blue",
+    (FlameColor, FlameColor.BLUE_RED): "Blue/Red",
+}
+
+
 def display_name(value: IntEnum) -> str:
-    """Convert an IntEnum member name to Title Case for display."""
+    """Convert an IntEnum member name to display-friendly text."""
+    override = _DISPLAY_OVERRIDES.get((type(value), int(value)))
+    if override is not None:
+        return override
     return value.name.replace("_", " ").title()
 
 

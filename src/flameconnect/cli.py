@@ -8,13 +8,20 @@ import logging
 import sys
 import webbrowser
 from dataclasses import replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
 from flameconnect.auth import MsalAuth
 from flameconnect.client import FlameConnectClient
+from flameconnect.const import (
+    DEFAULT_TARGET_TEMPERATURE,
+    MAX_BOOST_DURATION,
+    MAX_FLAME_SPEED,
+    MIN_BOOST_DURATION,
+    MIN_FLAME_SPEED,
+)
 from flameconnect.models import (
     NAMED_COLORS,
     Brightness,
@@ -97,6 +104,13 @@ _TEMP_UNIT_LOOKUP: dict[str, TempUnit] = {
     "celsius": TempUnit.CELSIUS,
 }
 
+
+class _FlameEffectSetter(NamedTuple):
+    field: str
+    lookup: dict[str, object]
+    label: str
+
+
 _SET_PARAM_NAMES = (
     "mode, flame-speed, brightness, pulsating, flame-color,"
     " media-theme, heat-status, heat-mode, heat-temp, timer,"
@@ -149,7 +163,7 @@ def _display_flame_effect(param: FlameEffectParam) -> None:
     print(f"  {'─' * 40}")
     flame = display_name(param.flame_effect)
     print(f"    Flame:          {flame}")
-    print(f"    Flame Speed:    {param.flame_speed} / 5")
+    print(f"    Flame Speed:    {param.flame_speed} / {MAX_FLAME_SPEED}")
     brightness = display_name(param.brightness)
     pulsating = display_name(param.pulsating_effect)
     print(f"    Brightness:     {brightness}")
@@ -374,43 +388,43 @@ async def cmd_status(client: FlameConnectClient, fire_id: str) -> None:
         _display_parameter(param, temp_unit)
 
 
-_FLAME_EFFECT_SETTERS: dict[str, tuple[str, dict[str, object], str]] = {
-    "brightness": (
+_FLAME_EFFECT_SETTERS: dict[str, _FlameEffectSetter] = {
+    "brightness": _FlameEffectSetter(
         "brightness",
         {"low": Brightness.LOW, "high": Brightness.HIGH},
         "Brightness",
     ),
-    "pulsating": (
+    "pulsating": _FlameEffectSetter(
         "pulsating_effect",
         dict[str, object](_PULSATING_LOOKUP),
         "Pulsating effect",
     ),
-    "flame-color": (
+    "flame-color": _FlameEffectSetter(
         "flame_color",
         dict[str, object](_FLAME_COLOR_LOOKUP),
         "Flame color",
     ),
-    "media-theme": (
+    "media-theme": _FlameEffectSetter(
         "media_theme",
         dict[str, object](_MEDIA_THEME_LOOKUP),
         "Media theme",
     ),
-    "flame-effect": (
+    "flame-effect": _FlameEffectSetter(
         "flame_effect",
         {"on": FlameEffect.ON, "off": FlameEffect.OFF},
         "Flame effect",
     ),
-    "media-light": (
+    "media-light": _FlameEffectSetter(
         "media_light",
         {"on": LightStatus.ON, "off": LightStatus.OFF},
         "Media light",
     ),
-    "overhead-light": (
+    "overhead-light": _FlameEffectSetter(
         "light_status",
         {"on": LightStatus.ON, "off": LightStatus.OFF},
         "Overhead light",
     ),
-    "ambient-sensor": (
+    "ambient-sensor": _FlameEffectSetter(
         "ambient_sensor",
         {"on": LightStatus.ON, "off": LightStatus.OFF},
         "Ambient sensor",
@@ -477,7 +491,9 @@ async def _set_mode(client: FlameConnectClient, fire_id: str, value: str) -> Non
             current_mode = param
             break
 
-    temperature = current_mode.target_temperature if current_mode else 22.0
+    temperature = (
+        current_mode.target_temperature if current_mode else DEFAULT_TARGET_TEMPERATURE
+    )
     mode = FireMode.STANDBY if value == "standby" else FireMode.MANUAL
     mode_param = ModeParam(mode=mode, target_temperature=temperature)
     await client.write_parameters(fire_id, [mode_param])
@@ -489,8 +505,11 @@ async def _set_flame_speed(
 ) -> None:
     """Set flame speed (1-5)."""
     speed = int(value)
-    if speed < 1 or speed > 5:
-        print("Error: flame-speed must be between 1 and 5.")
+    if speed < MIN_FLAME_SPEED or speed > MAX_FLAME_SPEED:
+        print(
+            f"Error: flame-speed must be between"
+            f" {MIN_FLAME_SPEED} and {MAX_FLAME_SPEED}."
+        )
         sys.exit(1)
     overview = await client.get_fire_overview(fire_id)
     current = _find_param(overview.parameters, FlameEffectParam)
@@ -540,8 +559,12 @@ async def _set_heat_mode(client: FlameConnectClient, fire_id: str, value: str) -
         except (ValueError, IndexError):
             print("Error: boost format is boost:<minutes> (e.g., boost:15).")
             sys.exit(1)
-        if not 1 <= boost_minutes <= 20:
-            print("Error: boost duration must be 1-20 minutes.")
+        if not MIN_BOOST_DURATION <= boost_minutes <= MAX_BOOST_DURATION:
+            print(
+                f"Error: boost duration must be"
+                f" {MIN_BOOST_DURATION}-{MAX_BOOST_DURATION}"
+                " minutes."
+            )
             sys.exit(1)
         heat_mode = HeatMode.BOOST
     elif value in _HEAT_MODE_LOOKUP:

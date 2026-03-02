@@ -8,6 +8,7 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Static
 
+from flameconnect.const import MAX_BOOST_DURATION, MIN_BOOST_DURATION
 from flameconnect.models import HeatMode
 from flameconnect.tui.widgets import ArrowNavMixin
 
@@ -98,7 +99,10 @@ class HeatModeScreen(ArrowNavMixin, ModalScreen[tuple[HeatMode, int | None] | No
                     )
                     yield Button(label, id=f"mode-{mode.name.lower()}", variant=variant)
             with Vertical(id="boost-input-container"):
-                yield Static("Boost duration (1-20 min):", id="boost-label")
+                yield Static(
+                    f"Boost duration ({MIN_BOOST_DURATION}-{MAX_BOOST_DURATION} min):",
+                    id="boost-label",
+                )
                 yield Input(
                     placeholder="minutes",
                     id="boost-duration",
@@ -133,10 +137,19 @@ class HeatModeScreen(ArrowNavMixin, ModalScreen[tuple[HeatMode, int | None] | No
         try:
             minutes = int(raw)
         except ValueError:
-            self.notify("Please enter a number between 1 and 20", severity="error")
+            self.notify(
+                f"Please enter a number between"
+                f" {MIN_BOOST_DURATION} and {MAX_BOOST_DURATION}",
+                severity="error",
+            )
             return
-        if not 1 <= minutes <= 20:
-            self.notify("Duration must be between 1 and 20 minutes", severity="error")
+        if not MIN_BOOST_DURATION <= minutes <= MAX_BOOST_DURATION:
+            self.notify(
+                f"Duration must be between"
+                f" {MIN_BOOST_DURATION} and"
+                f" {MAX_BOOST_DURATION} minutes",
+                severity="error",
+            )
             return
         self.dismiss((HeatMode.BOOST, minutes))
 

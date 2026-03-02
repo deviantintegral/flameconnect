@@ -5,12 +5,17 @@ from __future__ import annotations
 import base64
 import logging
 from dataclasses import replace
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal, TypedDict
 from urllib.parse import quote
 
 import aiohttp
 
-from flameconnect.const import API_BASE, DEFAULT_HEADERS, ParameterId
+from flameconnect.const import (
+    API_BASE,
+    DEFAULT_HEADERS,
+    DEFAULT_TARGET_TEMPERATURE,
+    ParameterId,
+)
 
 if TYPE_CHECKING:
     from flameconnect.auth import AbstractAuth
@@ -35,6 +40,11 @@ from flameconnect.models import (
 from flameconnect.protocol import decode_parameter, encode_parameter
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class _WireParam(TypedDict):
+    ParameterId: int
+    Value: str
 
 
 def _parse_fire_features(data: dict[str, Any]) -> FireFeatures:
@@ -124,7 +134,7 @@ class FlameConnectClient:
 
     async def _request(
         self,
-        method: str,
+        method: Literal["GET", "POST"],
         url: str,
         json: dict[str, Any] | None = None,
     ) -> Any:
@@ -259,11 +269,11 @@ class FlameConnectClient:
         """
         url = f"{API_BASE}/api/Fires/WriteWifiParameters"
 
-        wire_params: list[dict[str, Any]] = []
+        wire_params: list[_WireParam] = []
         for param in params:
             param_id = _get_parameter_id(param)
             value = encode_parameter(param)
-            wire_params.append({"ParameterId": param_id, "Value": value})
+            wire_params.append(_WireParam(ParameterId=param_id, Value=value))
 
         payload: dict[str, Any] = {
             "FireId": fire_id,
@@ -293,7 +303,11 @@ class FlameConnectClient:
             elif isinstance(param, FlameEffectParam):
                 current_flame = param
 
-        temperature = current_mode.target_temperature if current_mode else 22.0
+        temperature = (
+            current_mode.target_temperature
+            if current_mode
+            else DEFAULT_TARGET_TEMPERATURE
+        )
 
         new_mode = ModeParam(mode=FireMode.MANUAL, target_temperature=temperature)
 
@@ -322,7 +336,11 @@ class FlameConnectClient:
                 current_mode = param
                 break
 
-        temperature = current_mode.target_temperature if current_mode else 22.0
+        temperature = (
+            current_mode.target_temperature
+            if current_mode
+            else DEFAULT_TARGET_TEMPERATURE
+        )
 
         mode_param = ModeParam(mode=FireMode.STANDBY, target_temperature=temperature)
         await self.write_parameters(fire_id, [mode_param])

@@ -117,7 +117,7 @@ class TestDisplayName:
         assert display_name(FireMode.STANDBY) == "Standby"
 
     def test_single_word_manual(self):
-        assert display_name(FireMode.MANUAL) == "Manual"
+        assert display_name(FireMode.MANUAL) == "On"
 
     def test_multi_word_underscore(self):
         assert display_name(HeatMode.FAN_ONLY) == "Fan Only"
@@ -146,13 +146,13 @@ class TestDisplayName:
         assert display_name(MediaTheme.USER_DEFINED) == "User Defined"
 
     def test_yellow_red(self):
-        assert display_name(FlameColor.YELLOW_RED) == "Yellow Red"
+        assert display_name(FlameColor.YELLOW_RED) == "Yellow/Red"
 
     def test_yellow_blue(self):
-        assert display_name(FlameColor.YELLOW_BLUE) == "Yellow Blue"
+        assert display_name(FlameColor.YELLOW_BLUE) == "Yellow/Blue"
 
     def test_blue_red(self):
-        assert display_name(FlameColor.BLUE_RED) == "Blue Red"
+        assert display_name(FlameColor.BLUE_RED) == "Blue/Red"
 
 
 # ---------------------------------------------------------------------------
