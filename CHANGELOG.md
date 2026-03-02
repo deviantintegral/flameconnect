@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/deviantintegral/flameconnect/compare/v0.4.1...v0.5.0) (2026-03-02)
+
+
+### Features
+
+* validate temperature range and timer duration in CLI set commands ([#56](https://github.com/deviantintegral/flameconnect/issues/56)) ([a609bc5](https://github.com/deviantintegral/flameconnect/commit/a609bc5c6366ca18d64ab351ef30b60a2206ff6e))
+
 ## [0.4.1](https://github.com/deviantintegral/flameconnect/compare/v0.4.0...v0.4.1) (2026-02-28)
 
 
