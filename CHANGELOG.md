@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/deviantintegral/flameconnect/compare/v0.5.0...v0.5.1) (2026-03-02)
+
+
+### Bug Fixes
+
+* pulsating effect belongs to overhead light, not flames ([#67](https://github.com/deviantintegral/flameconnect/issues/67)) ([0791f00](https://github.com/deviantintegral/flameconnect/commit/0791f000f62fa6da55e402daa2148bb5c7b2bbad))
+
 ## [0.5.0](https://github.com/deviantintegral/flameconnect/compare/v0.4.1...v0.5.0) (2026-03-02)
 
 
