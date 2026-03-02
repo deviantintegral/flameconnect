@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
@@ -14,15 +14,23 @@ from flameconnect.tui.widgets import ArrowNavMixin
 if TYPE_CHECKING:
     from textual.app import ComposeResult
 
+
+class _PresetCol(NamedTuple):
+    key: str
+    label: str
+    dark_name: str
+    light_name: str
+
+
 # Preset layout: (key letter, display label, dark name, light name)
-_PRESET_COLS: list[tuple[str, str, str, str]] = [
-    ("R", "Red", "dark-red", "light-red"),
-    ("Y", "Yellow", "dark-yellow", "light-yellow"),
-    ("G", "Green", "dark-green", "light-green"),
-    ("C", "Cyan", "dark-cyan", "light-cyan"),
-    ("B", "Blue", "dark-blue", "light-blue"),
-    ("P", "Purple", "dark-purple", "light-purple"),
-    ("K", "Pink", "dark-pink", "light-pink"),
+_PRESET_COLS: list[_PresetCol] = [
+    _PresetCol("R", "Red", "dark-red", "light-red"),
+    _PresetCol("Y", "Yellow", "dark-yellow", "light-yellow"),
+    _PresetCol("G", "Green", "dark-green", "light-green"),
+    _PresetCol("C", "Cyan", "dark-cyan", "light-cyan"),
+    _PresetCol("B", "Blue", "dark-blue", "light-blue"),
+    _PresetCol("P", "Purple", "dark-purple", "light-purple"),
+    _PresetCol("K", "Pink", "dark-pink", "light-pink"),
 ]
 
 _CSS = """

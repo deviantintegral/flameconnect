@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
@@ -14,16 +14,22 @@ from flameconnect.tui.widgets import ArrowNavMixin, ButtonVariant
 if TYPE_CHECKING:
     from textual.app import ComposeResult
 
-_THEME_LABELS: dict[MediaTheme, tuple[str, str]] = {
-    MediaTheme.USER_DEFINED: ("User Defined", "u"),
-    MediaTheme.WHITE: ("White", "w"),
-    MediaTheme.BLUE: ("Blue", "b"),
-    MediaTheme.PURPLE: ("Purple", "p"),
-    MediaTheme.RED: ("Red", "r"),
-    MediaTheme.GREEN: ("Green", "g"),
-    MediaTheme.PRISM: ("Prism", "i"),
-    MediaTheme.KALEIDOSCOPE: ("Kaleidoscope", "k"),
-    MediaTheme.MIDNIGHT: ("Midnight", "m"),
+
+class _ThemeLabel(NamedTuple):
+    label: str
+    hotkey: str
+
+
+_THEME_LABELS: dict[MediaTheme, _ThemeLabel] = {
+    MediaTheme.USER_DEFINED: _ThemeLabel("User Defined", "u"),
+    MediaTheme.WHITE: _ThemeLabel("White", "w"),
+    MediaTheme.BLUE: _ThemeLabel("Blue", "b"),
+    MediaTheme.PURPLE: _ThemeLabel("Purple", "p"),
+    MediaTheme.RED: _ThemeLabel("Red", "r"),
+    MediaTheme.GREEN: _ThemeLabel("Green", "g"),
+    MediaTheme.PRISM: _ThemeLabel("Prism", "i"),
+    MediaTheme.KALEIDOSCOPE: _ThemeLabel("Kaleidoscope", "k"),
+    MediaTheme.MIDNIGHT: _ThemeLabel("Midnight", "m"),
 }
 
 _CSS = """

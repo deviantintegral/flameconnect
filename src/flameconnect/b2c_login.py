@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import NamedTuple
 from urllib.parse import urljoin, urlparse
 
 import aiohttp
@@ -46,14 +47,21 @@ def _extract_base_path(page_url: str) -> str:
     return "/"
 
 
-def _parse_login_page(html: str, page_url: str) -> dict[str, str]:
+class _B2CLoginFields(NamedTuple):
+    csrf: str
+    tx: str
+    p: str
+    post_url: str
+    confirmed_url: str
+
+
+def _parse_login_page(html: str, page_url: str) -> _B2CLoginFields:
     """Extract B2C form fields from the login page HTML.
 
     Looks for the SETTINGS JavaScript object which contains transId and
     csrf, plus derives the SelfAsserted POST URL from the page URL.
 
-    Returns a dict with keys: csrf, tx, p, base_url, post_url,
-    confirmed_url.
+    Returns a _B2CLoginFields named tuple.
 
     Raises:
         AuthenticationError: If required fields cannot be found.
@@ -81,13 +89,13 @@ def _parse_login_page(html: str, page_url: str) -> dict[str, str]:
     post_url = f"{origin}{base}SelfAsserted?{qs}"
     confirmed_url = f"{origin}{base}api/CombinedSigninAndSignup/confirmed"
 
-    return {
-        "csrf": csrf,
-        "tx": tx,
-        "p": p,
-        "post_url": post_url,
-        "confirmed_url": confirmed_url,
-    }
+    return _B2CLoginFields(
+        csrf=csrf,
+        tx=tx,
+        p=p,
+        post_url=post_url,
+        confirmed_url=confirmed_url,
+    )
 
 
 def _build_cookie_header(
@@ -184,9 +192,9 @@ async def b2c_login_with_credentials(auth_uri: str, email: str, password: str) -
             fields = _parse_login_page(login_html, page_url)
             _LOGGER.debug(
                 "Parsed login page: csrf=%s, tx=%s, p=%s",
-                fields["csrf"][:16] + "...",
-                fields["tx"][:40] + "...",
-                fields["p"],
+                fields.csrf[:16] + "...",
+                fields.tx[:40] + "...",
+                fields.p,
             )
 
             # Step 3: POST credentials to SelfAsserted endpoint
@@ -198,7 +206,7 @@ async def b2c_login_with_credentials(auth_uri: str, email: str, password: str) -
             parsed_page = urlparse(page_url)
             origin = f"{parsed_page.scheme}://{parsed_page.netloc}"
             post_headers = {
-                "X-CSRF-TOKEN": fields["csrf"],
+                "X-CSRF-TOKEN": fields.csrf,
                 "X-Requested-With": "XMLHttpRequest",
                 "Referer": auth_uri,
                 "Origin": origin,
@@ -209,12 +217,12 @@ async def b2c_login_with_credentials(auth_uri: str, email: str, password: str) -
             # Build an unquoted Cookie header — aiohttp's cookie jar
             # wraps values containing +/= in double-quotes, but B2C
             # requires plain unquoted values.
-            cookie_header = _build_cookie_header(jar, fields["post_url"])
+            cookie_header = _build_cookie_header(jar, fields.post_url)
             post_headers["Cookie"] = cookie_header
             _LOGGER.debug(">>>   cookies: %s", cookie_header[:200])
             _log_request(
                 "POST",
-                fields["post_url"],
+                fields.post_url,
                 headers=post_headers,
                 data=post_data,
             )
@@ -227,7 +235,7 @@ async def b2c_login_with_credentials(auth_uri: str, email: str, password: str) -
                 cookie_jar=aiohttp.DummyCookieJar(),
             ) as raw_session:
                 async with raw_session.post(
-                    yarl.URL(fields["post_url"], encoded=True),
+                    yarl.URL(fields.post_url, encoded=True),
                     data=post_data,
                     headers=post_headers,
                     allow_redirects=False,
@@ -265,13 +273,13 @@ async def b2c_login_with_credentials(auth_uri: str, email: str, password: str) -
                 # (csrf_token, tx) as browsers send them.
                 confirmed_qs = (
                     f"rememberMe=false"
-                    f"&csrf_token={fields['csrf']}"
-                    f"&tx={fields['tx']}"
-                    f"&p={fields['p']}"
+                    f"&csrf_token={fields.csrf}"
+                    f"&tx={fields.tx}"
+                    f"&p={fields.p}"
                 )
 
                 # Follow redirects manually to catch custom-scheme one
-                next_url: str = fields["confirmed_url"] + "?" + confirmed_qs
+                next_url: str = fields.confirmed_url + "?" + confirmed_qs
                 confirmed_headers = {
                     "Cookie": cookie_header,
                 }

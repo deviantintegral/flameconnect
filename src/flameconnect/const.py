@@ -4,6 +4,19 @@ from __future__ import annotations
 
 from enum import IntEnum
 
+# Domain-specific limits and defaults
+DEFAULT_TARGET_TEMPERATURE: float = 22.0
+MAX_FLAME_SPEED: int = 5
+MIN_FLAME_SPEED: int = 1
+MAX_TIMER_DURATION: int = 480
+MAX_BOOST_DURATION: int = 20
+MIN_BOOST_DURATION: int = 1
+MIN_TEMP_CELSIUS: float = 5.0
+MAX_TEMP_CELSIUS: float = 35.0
+MIN_TEMP_FAHRENHEIT: float = 40.0
+MAX_TEMP_FAHRENHEIT: float = 95.0
+DEFAULT_TIMER_DURATION: int = 60
+
 API_BASE: str = "https://mobileapi.gdhv-iot.com"
 
 CLIENT_ID: str = "1af761dc-085a-411f-9cb9-53e5e2115bd2"

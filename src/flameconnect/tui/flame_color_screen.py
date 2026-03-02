@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
@@ -14,14 +14,20 @@ from flameconnect.tui.widgets import ArrowNavMixin, ButtonVariant
 if TYPE_CHECKING:
     from textual.app import ComposeResult
 
-_COLOR_LABELS: dict[FlameColor, tuple[str, str]] = {
-    FlameColor.ALL: ("All", "a"),
-    FlameColor.YELLOW_RED: ("Yellow/Red", "y"),
-    FlameColor.YELLOW_BLUE: ("Yellow/Blue", "w"),
-    FlameColor.BLUE: ("Blue", "b"),
-    FlameColor.RED: ("Red", "r"),
-    FlameColor.YELLOW: ("Yellow", "e"),
-    FlameColor.BLUE_RED: ("Blue/Red", "d"),
+
+class _ColorLabel(NamedTuple):
+    label: str
+    hotkey: str
+
+
+_COLOR_LABELS: dict[FlameColor, _ColorLabel] = {
+    FlameColor.ALL: _ColorLabel("All", "a"),
+    FlameColor.YELLOW_RED: _ColorLabel("Yellow/Red", "y"),
+    FlameColor.YELLOW_BLUE: _ColorLabel("Yellow/Blue", "w"),
+    FlameColor.BLUE: _ColorLabel("Blue", "b"),
+    FlameColor.RED: _ColorLabel("Red", "r"),
+    FlameColor.YELLOW: _ColorLabel("Yellow", "e"),
+    FlameColor.BLUE_RED: _ColorLabel("Blue/Red", "d"),
 }
 
 _CSS = """

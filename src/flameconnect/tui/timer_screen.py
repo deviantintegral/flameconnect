@@ -8,6 +8,7 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Static
 
+from flameconnect.const import MAX_TIMER_DURATION
 from flameconnect.tui.widgets import ArrowNavMixin
 
 if TYPE_CHECKING:
@@ -77,12 +78,12 @@ class TimerScreen(ArrowNavMixin, ModalScreen[int | None]):
             yield Static("Set Timer Duration", id="timer-title")
             yield Input(
                 value=str(self._current_duration),
-                placeholder="Enter duration (1 \u2013 480 minutes)",
+                placeholder=f"Enter duration (1 \u2013 {MAX_TIMER_DURATION} minutes)",
                 type="integer",
                 id="timer-input",
             )
             yield Static(
-                "Valid range: 1 \u2013 480 minutes",
+                f"Valid range: 1 \u2013 {MAX_TIMER_DURATION} minutes",
                 id="timer-range",
             )
             with Horizontal(id="timer-buttons"):
@@ -97,9 +98,9 @@ class TimerScreen(ArrowNavMixin, ModalScreen[int | None]):
         except ValueError:
             self.notify("Please enter a valid number", severity="error")
             return
-        if not (1 <= duration <= 480):
+        if not (1 <= duration <= MAX_TIMER_DURATION):
             self.notify(
-                "Duration must be between 1 and 480 minutes",
+                f"Duration must be between 1 and {MAX_TIMER_DURATION} minutes",
                 severity="error",
             )
             return

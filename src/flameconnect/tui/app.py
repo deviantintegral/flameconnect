@@ -8,7 +8,7 @@ import sys
 from dataclasses import replace
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -17,6 +17,7 @@ from textual.widgets import Footer, Header, OptionList, Static
 from textual.widgets.option_list import Option
 
 from flameconnect import __version__
+from flameconnect.const import DEFAULT_TIMER_DURATION
 from flameconnect.models import (
     FlameEffectParam,
     HeatParam,
@@ -93,25 +94,40 @@ def _resolve_version() -> str:
 
 _resolved_version: str = _resolve_version()
 
-_CONTROL_COMMANDS: list[tuple[str, str, str]] = [
-    ("Power On/Off", "Toggle fireplace power", "toggle_power"),
-    ("Flame Effect", "Toggle flame effect on/off", "toggle_flame_effect"),
-    ("Flame Color", "Set flame color", "set_flame_color"),
-    ("Flame Speed", "Set flame speed", "set_flame_speed"),
-    ("Brightness", "Toggle brightness high/low", "toggle_brightness"),
-    ("Pulsating", "Toggle pulsating effect", "toggle_pulsating"),
-    ("Media Theme", "Set media theme", "set_media_theme"),
-    ("Media Light", "Toggle media light on/off", "toggle_media_light"),
-    ("Media Color", "Set media color", "set_media_color"),
-    ("Overhead Light", "Toggle overhead light on/off", "toggle_overhead_light"),
-    ("Overhead Color", "Set overhead color", "set_overhead_color"),
-    ("Ambient Sensor", "Toggle ambient sensor", "toggle_ambient_sensor"),
-    ("Heat On/Off", "Toggle heater on/off", "toggle_heat"),
-    ("Heat Mode", "Set heat mode", "set_heat_mode"),
-    ("Switch Fire", "Switch between fireplaces", "switch_fire"),
-    ("Timer", "Toggle timer on/off", "toggle_timer"),
-    ("Temp Unit", "Toggle temperature unit (°C/°F)", "toggle_temp_unit"),
-    ("Set Temperature", "Adjust heater setpoint temperature", "set_temperature"),
+
+class _ControlCommand(NamedTuple):
+    name: str
+    help_text: str
+    action: str
+
+
+_CONTROL_COMMANDS: list[_ControlCommand] = [
+    _ControlCommand("Power On/Off", "Toggle fireplace power", "toggle_power"),
+    _ControlCommand(
+        "Flame Effect", "Toggle flame effect on/off", "toggle_flame_effect"
+    ),
+    _ControlCommand("Flame Color", "Set flame color", "set_flame_color"),
+    _ControlCommand("Flame Speed", "Set flame speed", "set_flame_speed"),
+    _ControlCommand("Brightness", "Toggle brightness high/low", "toggle_brightness"),
+    _ControlCommand("Pulsating", "Toggle pulsating effect", "toggle_pulsating"),
+    _ControlCommand("Media Theme", "Set media theme", "set_media_theme"),
+    _ControlCommand("Media Light", "Toggle media light on/off", "toggle_media_light"),
+    _ControlCommand("Media Color", "Set media color", "set_media_color"),
+    _ControlCommand(
+        "Overhead Light", "Toggle overhead light on/off", "toggle_overhead_light"
+    ),
+    _ControlCommand("Overhead Color", "Set overhead color", "set_overhead_color"),
+    _ControlCommand("Ambient Sensor", "Toggle ambient sensor", "toggle_ambient_sensor"),
+    _ControlCommand("Heat On/Off", "Toggle heater on/off", "toggle_heat"),
+    _ControlCommand("Heat Mode", "Set heat mode", "set_heat_mode"),
+    _ControlCommand("Switch Fire", "Switch between fireplaces", "switch_fire"),
+    _ControlCommand("Timer", "Toggle timer on/off", "toggle_timer"),
+    _ControlCommand(
+        "Temp Unit", "Toggle temperature unit (\u00b0C/\u00b0F)", "toggle_temp_unit"
+    ),
+    _ControlCommand(
+        "Set Temperature", "Adjust heater setpoint temperature", "set_temperature"
+    ),
 ]
 
 
@@ -847,7 +863,7 @@ class FlameConnectApp(App[None]):
                     self.call_later(self._apply_timer, duration)
 
             self.push_screen(
-                TimerScreen(current.duration or 60),
+                TimerScreen(current.duration or DEFAULT_TIMER_DURATION),
                 callback=_on_timer_dismiss,
             )
 

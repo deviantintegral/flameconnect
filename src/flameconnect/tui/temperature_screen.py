@@ -8,6 +8,12 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Static
 
+from flameconnect.const import (
+    MAX_TEMP_CELSIUS,
+    MAX_TEMP_FAHRENHEIT,
+    MIN_TEMP_CELSIUS,
+    MIN_TEMP_FAHRENHEIT,
+)
 from flameconnect.models import TempUnit, convert_temp
 from flameconnect.tui.widgets import ArrowNavMixin
 
@@ -86,7 +92,11 @@ class TemperatureScreen(ArrowNavMixin, ModalScreen[float | None]):
     def compose(self) -> ComposeResult:
         unit_str = "\u00b0C" if self._unit == TempUnit.CELSIUS else "\u00b0F"
         celsius = self._unit == TempUnit.CELSIUS
-        range_str = "5.0 \u2013 35.0" if celsius else "40.0 \u2013 95.0"
+        range_str = (
+            f"{MIN_TEMP_CELSIUS} \u2013 {MAX_TEMP_CELSIUS}"
+            if celsius
+            else f"{MIN_TEMP_FAHRENHEIT} \u2013 {MAX_TEMP_FAHRENHEIT}"
+        )
         display_temp = convert_temp(self._current_temp, self._unit)
         with Vertical(id="temp-dialog"):
             yield Static(
@@ -116,9 +126,9 @@ class TemperatureScreen(ArrowNavMixin, ModalScreen[float | None]):
             self.notify("Please enter a valid number", severity="error")
             return
         if self._unit == TempUnit.CELSIUS:
-            min_t, max_t = 5.0, 35.0
+            min_t, max_t = MIN_TEMP_CELSIUS, MAX_TEMP_CELSIUS
         else:
-            min_t, max_t = 40.0, 95.0
+            min_t, max_t = MIN_TEMP_FAHRENHEIT, MAX_TEMP_FAHRENHEIT
         if not (min_t <= temp <= max_t):
             self.notify(
                 f"Temperature must be between {min_t} and {max_t}",

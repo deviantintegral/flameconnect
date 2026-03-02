@@ -261,7 +261,7 @@ class TestDisplayName:
         assert display_name(FireMode.STANDBY) == "Standby"
 
     def test_single_word_manual(self):
-        assert display_name(FireMode.MANUAL) == "Manual"
+        assert display_name(FireMode.MANUAL) == "On"
 
     def test_multi_word_underscore(self):
         assert display_name(HeatMode.FAN_ONLY) == "Fan Only"
@@ -282,4 +282,4 @@ class TestDisplayName:
         assert display_name(TempUnit.FAHRENHEIT) == "Fahrenheit"
 
     def test_flame_color(self):
-        assert display_name(FlameColor.YELLOW_RED) == "Yellow Red"
+        assert display_name(FlameColor.YELLOW_RED) == "Yellow/Red"

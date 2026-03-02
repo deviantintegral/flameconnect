@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple
 
 from rich.text import Text as _Text
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Static
 
+from flameconnect.const import MAX_FLAME_SPEED
 from flameconnect.models import (
     FireMode,
     FlameColor,
@@ -20,6 +21,13 @@ from flameconnect.models import (
 )
 
 ButtonVariant = Literal["default", "primary", "success", "warning", "error"]
+
+
+class FormattedParam(NamedTuple):
+    label: str
+    value: str
+    action: str | None
+
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
@@ -123,22 +131,22 @@ _MODE_DISPLAY: dict[FireMode, str] = {
 def _format_mode(
     param: ModeParam,
     temp_unit: TempUnitParam | None = None,
-) -> list[tuple[str, str, str | None]]:
+) -> list[FormattedParam]:
     """Format the mode parameter for display.
 
-    Returns a list of (label, value, action) tuples.
+    Returns a list of FormattedParam tuples.
     """
     mode_label = _MODE_DISPLAY.get(param.mode, display_name(param.mode))
     suffix = temp_suffix(temp_unit)
     unit = temp_unit.unit if temp_unit else TempUnit.CELSIUS
     display_temp = convert_temp(param.target_temperature, unit)
     return [
-        (
+        FormattedParam(
             "[bold]Mode:[/bold] ",
             mode_label,
             "toggle_power",
         ),
-        (
+        FormattedParam(
             "[bold]Target Temp:[/bold] ",
             f"{display_temp}\u00b0{suffix}",
             "set_temperature",
@@ -148,63 +156,63 @@ def _format_mode(
 
 def _format_flame_effect(
     param: FlameEffectParam,
-) -> list[tuple[str, str, str | None]]:
+) -> list[FormattedParam]:
     """Format the flame effect parameter for display.
 
-    Returns a list of (label, value, action) tuples.
+    Returns a list of FormattedParam tuples.
     """
     return [
-        (
+        FormattedParam(
             "[bold]Flame Effect:[/bold] ",
             display_name(param.flame_effect),
             "toggle_flame_effect",
         ),
-        (
+        FormattedParam(
             "  Flame Color: ",
             display_name(param.flame_color),
             "set_flame_color",
         ),
-        (
+        FormattedParam(
             "  Speed: ",
-            f"{param.flame_speed}/5",
+            f"{param.flame_speed}/{MAX_FLAME_SPEED}",
             "set_flame_speed",
         ),
-        (
+        FormattedParam(
             "  Brightness: ",
             display_name(param.brightness),
             "toggle_brightness",
         ),
-        (
+        FormattedParam(
             "  Pulsating: ",
             display_name(param.pulsating_effect),
             "toggle_pulsating",
         ),
-        (
+        FormattedParam(
             "  Media Theme: ",
             display_name(param.media_theme),
             "set_media_theme",
         ),
-        (
+        FormattedParam(
             "  Media Light: ",
             display_name(param.media_light),
             "toggle_media_light",
         ),
-        (
+        FormattedParam(
             "  Media Color: ",
             _format_rgbw(param.media_color),
             "set_media_color",
         ),
-        (
+        FormattedParam(
             "  Overhead Light: ",
             display_name(param.light_status),
             "toggle_overhead_light",
         ),
-        (
+        FormattedParam(
             "  Overhead Color: ",
             _format_rgbw(param.overhead_color),
             "set_overhead_color",
         ),
-        (
+        FormattedParam(
             "  Ambient Sensor: ",
             display_name(param.ambient_sensor),
             "toggle_ambient_sensor",
@@ -215,10 +223,10 @@ def _format_flame_effect(
 def _format_heat(
     param: HeatParam,
     temp_unit: TempUnitParam | None = None,
-) -> list[tuple[str, str, str | None]]:
+) -> list[FormattedParam]:
     """Format the heat settings parameter for display.
 
-    Returns a list of (label, value, action) tuples.
+    Returns a list of FormattedParam tuples.
     """
     from flameconnect.models import HeatMode
 
@@ -229,34 +237,34 @@ def _format_heat(
     unit = temp_unit.unit if temp_unit else TempUnit.CELSIUS
     display_temp = convert_temp(param.setpoint_temperature, unit)
     return [
-        (
+        FormattedParam(
             "[bold]Heat:[/bold] ",
             display_name(param.heat_status),
             "toggle_heat",
         ),
-        (
+        FormattedParam(
             "  Mode: ",
             display_name(param.heat_mode),
             "set_heat_mode",
         ),
-        (
+        FormattedParam(
             "  Setpoint: ",
             f"{display_temp}\u00b0{suffix}",
             "set_heat_mode",
         ),
-        ("  Boost: ", boost_value, "set_heat_mode"),
+        FormattedParam("  Boost: ", boost_value, "set_heat_mode"),
     ]
 
 
 def _format_heat_mode(
     param: HeatModeParam,
-) -> list[tuple[str, str, str | None]]:
+) -> list[FormattedParam]:
     """Format the heat mode/control parameter for display.
 
-    Returns a list of (label, value, action) tuples.
+    Returns a list of FormattedParam tuples.
     """
     return [
-        (
+        FormattedParam(
             "[bold]Heat Control:[/bold] ",
             display_name(param.heat_control),
             None,
@@ -266,10 +274,10 @@ def _format_heat_mode(
 
 def _format_timer(
     param: TimerParam,
-) -> list[tuple[str, str, str | None]]:
+) -> list[FormattedParam]:
     """Format the timer parameter for display.
 
-    Returns a list of (label, value, action) tuples.
+    Returns a list of FormattedParam tuples.
     """
     from datetime import datetime, timedelta
 
@@ -279,18 +287,18 @@ def _format_timer(
     if param.timer_status == TimerStatus.ENABLED and param.duration > 0:
         off_time = datetime.now() + timedelta(minutes=param.duration)
         value += f"  Off at {off_time.strftime('%H:%M')}"
-    return [("[bold]Timer:[/bold] ", value, "toggle_timer")]
+    return [FormattedParam("[bold]Timer:[/bold] ", value, "toggle_timer")]
 
 
 def _format_software_version(
     param: SoftwareVersionParam,
-) -> list[tuple[str, str, str | None]]:
+) -> list[FormattedParam]:
     """Format the software version parameter for display.
 
-    Returns a list of (label, value, action) tuples.
+    Returns a list of FormattedParam tuples.
     """
     return [
-        (
+        FormattedParam(
             "[bold]Software:[/bold] ",
             f"UI {param.ui_major}.{param.ui_minor}"
             f".{param.ui_test}"
@@ -306,10 +314,10 @@ def _format_software_version(
 
 def _format_error(
     param: ErrorParam,
-) -> list[tuple[str, str, str | None]]:
+) -> list[FormattedParam]:
     """Format the error parameter for display.
 
-    Returns a list of (label, value, action) tuples.
+    Returns a list of FormattedParam tuples.
     """
     has_error = any(
         b != 0
@@ -322,7 +330,7 @@ def _format_error(
     )
     if has_error:
         return [
-            (
+            FormattedParam(
                 "[bold red]Error:[/bold red] ",
                 f"0x{param.error_byte1:02X} "
                 f"0x{param.error_byte2:02X} "
@@ -332,7 +340,7 @@ def _format_error(
             ),
         ]
     return [
-        (
+        FormattedParam(
             "[bold]Errors:[/bold] ",
             "No Errors Recorded",
             None,
@@ -342,13 +350,13 @@ def _format_error(
 
 def _format_temp_unit(
     param: TempUnitParam,
-) -> list[tuple[str, str, str | None]]:
+) -> list[FormattedParam]:
     """Format the temperature unit parameter for display.
 
-    Returns a list of (label, value, action) tuples.
+    Returns a list of FormattedParam tuples.
     """
     return [
-        (
+        FormattedParam(
             "[bold]Temp Unit:[/bold] ",
             display_name(param.unit),
             "toggle_temp_unit",
@@ -358,13 +366,13 @@ def _format_temp_unit(
 
 def _format_sound(
     param: SoundParam,
-) -> list[tuple[str, str, str | None]]:
+) -> list[FormattedParam]:
     """Format the sound parameter for display.
 
-    Returns a list of (label, value, action) tuples.
+    Returns a list of FormattedParam tuples.
     """
     return [
-        (
+        FormattedParam(
             "[bold]Sound:[/bold] ",
             f"Volume {param.volume}  File: {param.sound_file}",
             None,
@@ -374,13 +382,13 @@ def _format_sound(
 
 def _format_log_effect(
     param: LogEffectParam,
-) -> list[tuple[str, str, str | None]]:
+) -> list[FormattedParam]:
     """Format the log effect parameter for display.
 
-    Returns a list of (label, value, action) tuples.
+    Returns a list of FormattedParam tuples.
     """
     return [
-        (
+        FormattedParam(
             "[bold]Log Effect:[/bold] ",
             f"{display_name(param.log_effect)}"
             f"  Color: {_format_rgbw(param.color)}"
@@ -392,14 +400,14 @@ def _format_log_effect(
 
 def format_parameters(
     params: list[Parameter],
-) -> list[tuple[str, str, str | None]]:
+) -> list[FormattedParam]:
     """Format a list of parameters for display.
 
     Args:
         params: A list of parameter dataclass instances.
 
     Returns:
-        A list of (label, value, action_name | None) tuples.
+        A list of FormattedParam tuples.
     """
     from flameconnect.models import (
         ErrorParam,
@@ -422,7 +430,7 @@ def format_parameters(
             break
 
     # Collect formatted tuples keyed by type.
-    formatted: dict[type, list[tuple[str, str, str | None]]] = {}
+    formatted: dict[type, list[FormattedParam]] = {}
     for param in params:
         if isinstance(param, ModeParam):
             formatted[ModeParam] = _format_mode(param, temp_unit)
@@ -458,13 +466,13 @@ def format_parameters(
         LogEffectParam,
         ErrorParam,
     ]
-    result: list[tuple[str, str, str | None]] = []
+    result: list[FormattedParam] = []
     for t in display_order:
         if t in formatted:
             result.extend(formatted[t])
 
     if not result:
-        result.append(("[dim]No parameters available[/dim]", "", None))
+        result.append(FormattedParam("[dim]No parameters available[/dim]", "", None))
 
     return result
 
