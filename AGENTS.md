@@ -22,6 +22,10 @@ Add packages with:
 uv add <package>
 ```
 
+## Pull Requests
+
+Use [conventional commit](https://www.conventionalcommits.org/) formatting for pull request titles and descriptions. The pull request title and description should typically match the message and description of the first commit.
+
 ## Development
 
 ```bash
