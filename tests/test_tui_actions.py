@@ -825,6 +825,7 @@ class TestApplyMediaTheme:
         call_args = app._run_command.call_args
         assert call_args[0][1] == "Setting media theme to Blue..."
         assert call_args[0][2] == "Media theme change failed"
+        call_args[0][0].close()
 
     async def test_no_op_when_write_in_progress(self, mock_client, mock_dashboard):
         app = _make_app(mock_client, mock_dashboard)
