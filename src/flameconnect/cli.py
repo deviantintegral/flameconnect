@@ -569,11 +569,7 @@ async def _set_heat_mode(client: FlameConnectClient, fire_id: str, value: str) -
 
 async def _set_heat_temp(client: FlameConnectClient, fire_id: str, value: str) -> None:
     """Set the heater setpoint temperature."""
-    try:
-        temp = float(value)
-    except ValueError:
-        print("Error: heat-temp must be a number.")
-        sys.exit(1)
+    temp = float(value)
     overview = await client.get_fire_overview(fire_id)
     temp_unit_param = _find_param(overview.parameters, TempUnitParam)
     unit = temp_unit_param.unit if temp_unit_param else TempUnit.CELSIUS

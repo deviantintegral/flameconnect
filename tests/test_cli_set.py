@@ -510,12 +510,10 @@ class TestSetHeatTemp:
         assert "Error" in captured.out
         assert str(MAX_TEMP_CELSIUS) in captured.out
 
-    async def test_set_heat_temp_not_a_number(self, mock_api, token_auth, capsys):
+    async def test_set_heat_temp_not_a_number(self, mock_api, token_auth):
         async with FlameConnectClient(token_auth) as client:
-            with pytest.raises(SystemExit):
+            with pytest.raises(ValueError):
                 await _set_heat_temp(client, FIRE_ID, "hot")
-        captured = capsys.readouterr()
-        assert "Error" in captured.out
 
 
 # ---------------------------------------------------------------------------
