@@ -75,7 +75,7 @@ The archive system provides several benefits:
 - **Historical Reference**: Completed plans and their tasks remain available for future reference or learning
 - **Automatic Management**: No manual intervention required - archival happens automatically upon successful completion
 
-When starting to execute a plan, always create a commit prefixed with 'docs(plan): ' and commit the plan in the .ai directory. Likewise, when completing and archiving a commit the archived plan with a commit prefixed with 'docs(archive): '.
+When starting to execute a plan, always create a commit prefixed with 'chore(plan): ' and commit the plan in the .ai directory. Likewise, when completing and archiving a commit the archived plan with a commit prefixed with 'chore(plan): '.
 
 ## Technology Choices
 
