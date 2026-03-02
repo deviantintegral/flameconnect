@@ -12,3 +12,5 @@ dist/
 mutants/
 .coverage
 node_modules/
+
+.claude/worktrees
