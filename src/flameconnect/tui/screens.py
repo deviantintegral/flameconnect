@@ -124,7 +124,7 @@ class DashboardScreen(Screen[None]):
     """Main dashboard screen showing fireplace status and parameters.
 
     Displays the currently selected fireplace with all its decoded
-    parameters, auto-refreshing every 10 seconds.
+    parameters. Refresh is triggered manually via the 'r' key binding.
     """
 
     CSS = _DASHBOARD_CSS
