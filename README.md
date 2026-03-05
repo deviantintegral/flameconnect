@@ -195,8 +195,8 @@ Or run it directly without installing:
 uv tool run flameconnect[tui]
 ```
 
-The dashboard displays real-time fireplace status and auto-refreshes every 10
-seconds. Key bindings:
+The dashboard displays the current fireplace status. Refresh is manual — press
+`r` to poll the latest state. Key bindings:
 
 | Key | Action |
 |-----|--------|
@@ -216,7 +216,7 @@ seconds. Key bindings:
 | `h` | Set heat mode |
 | `n` | Set temperature |
 | `u` | Toggle temp unit (°C/°F) |
-| `t` | Set timer |
+| `t` | Toggle timer on/off |
 | `w` | Switch fireplace |
 | `?` | Toggle help overlay |
 | `r` | Manual refresh |
