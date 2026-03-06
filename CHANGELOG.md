@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/deviantintegral/flameconnect/compare/v0.5.1...v0.5.2) (2026-03-06)
+
+
+### Documentation
+
+* fix two README inaccuracies in the TUI section ([#69](https://github.com/deviantintegral/flameconnect/issues/69)) ([c8ffcfd](https://github.com/deviantintegral/flameconnect/commit/c8ffcfdf92c14dc19a36f4f8b1966569454056ba))
+
 ## [0.5.1](https://github.com/deviantintegral/flameconnect/compare/v0.5.0...v0.5.1) (2026-03-02)
 
 
