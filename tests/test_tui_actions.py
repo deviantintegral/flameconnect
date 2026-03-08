@@ -3317,3 +3317,140 @@ class TestApplyOverheadColorGuards:
             await _run_workers(app)
 
         mock_client.write_parameters.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# _resolve_version mutant-killing tests
+# ---------------------------------------------------------------------------
+
+
+class TestResolveVersionMutants:
+    """Kill survived mutants in _resolve_version by verifying subprocess args."""
+
+    @patch("flameconnect.tui.app.subprocess.run")
+    def test_tag_match_returns_versioned(self, mock_run):
+        from flameconnect import __version__
+
+        mock_run.return_value = MagicMock(returncode=0, stdout=f"v{__version__}\n")
+        result = _resolve_version()
+        assert result == f"v{__version__}"
+
+    @patch("flameconnect.tui.app.subprocess.run")
+    def test_tag_cmd_args(self, mock_run):
+        """Verify exact args for the git describe call."""
+        from flameconnect import __version__
+
+        mock_run.return_value = MagicMock(returncode=0, stdout=f"v{__version__}\n")
+        _resolve_version()
+        call_args = mock_run.call_args_list[0]
+        assert call_args[0][0] == ["git", "describe", "--tags", "--exact-match", "HEAD"]
+        assert call_args[1]["capture_output"] is True
+        assert call_args[1]["text"] is True
+        assert call_args[1]["timeout"] == 2
+
+    @patch("flameconnect.tui.app.subprocess.run")
+    def test_hash_only_clean(self, mock_run):
+        """No tag match, hash succeeds, clean tree -> short hash."""
+        tag = MagicMock(returncode=1, stdout="")
+        hashcmd = MagicMock(returncode=0, stdout="abc1234\n")
+        status = MagicMock(returncode=0, stdout="")
+        mock_run.side_effect = [tag, hashcmd, status]
+        result = _resolve_version()
+        assert result == "abc1234"
+
+    @patch("flameconnect.tui.app.subprocess.run")
+    def test_hash_dirty(self, mock_run):
+        """Dirty tree appends -dirty."""
+        tag = MagicMock(returncode=1, stdout="")
+        hashcmd = MagicMock(returncode=0, stdout="abc1234\n")
+        status = MagicMock(returncode=0, stdout=" M file.py\n")
+        mock_run.side_effect = [tag, hashcmd, status]
+        result = _resolve_version()
+        assert result == "abc1234-dirty"
+        assert result.endswith("-dirty")
+
+    @patch("flameconnect.tui.app.subprocess.run")
+    def test_hash_failure_fallback(self, mock_run):
+        from flameconnect import __version__
+
+        tag = MagicMock(returncode=1, stdout="")
+        hashcmd = MagicMock(returncode=128, stdout="")
+        mock_run.side_effect = [tag, hashcmd]
+        result = _resolve_version()
+        assert result == f"v{__version__}"
+
+    @patch("flameconnect.tui.app.subprocess.run")
+    def test_exception_fallback(self, mock_run):
+        from flameconnect import __version__
+
+        mock_run.side_effect = FileNotFoundError("git not found")
+        result = _resolve_version()
+        assert result == f"v{__version__}"
+
+    @patch("flameconnect.tui.app.subprocess.run")
+    def test_hash_cmd_args(self, mock_run):
+        """Verify args for git rev-parse call."""
+        tag = MagicMock(returncode=1, stdout="")
+        hashcmd = MagicMock(returncode=0, stdout="abc1234\n")
+        status = MagicMock(returncode=0, stdout="")
+        mock_run.side_effect = [tag, hashcmd, status]
+        _resolve_version()
+        call_args = mock_run.call_args_list[1]
+        assert call_args[0][0] == ["git", "rev-parse", "--short", "HEAD"]
+        assert call_args[1]["capture_output"] is True
+        assert call_args[1]["text"] is True
+        assert call_args[1]["timeout"] == 2
+
+    @patch("flameconnect.tui.app.subprocess.run")
+    def test_status_cmd_args(self, mock_run):
+        """Verify args for git status call."""
+        tag = MagicMock(returncode=1, stdout="")
+        hashcmd = MagicMock(returncode=0, stdout="abc1234\n")
+        status = MagicMock(returncode=0, stdout="")
+        mock_run.side_effect = [tag, hashcmd, status]
+        _resolve_version()
+        call_args = mock_run.call_args_list[2]
+        assert call_args[0][0] == ["git", "status", "--porcelain"]
+        assert call_args[1]["capture_output"] is True
+        assert call_args[1]["text"] is True
+        assert call_args[1]["timeout"] == 2
+
+    @patch("flameconnect.tui.app.subprocess.run")
+    def test_tag_no_match_falls_through(self, mock_run):
+        """Tag succeeds but version not in output -> continues to hash."""
+        tag = MagicMock(returncode=0, stdout="v99.99.99\n")
+        hashcmd = MagicMock(returncode=0, stdout="def5678\n")
+        status = MagicMock(returncode=0, stdout="")
+        mock_run.side_effect = [tag, hashcmd, status]
+        result = _resolve_version()
+        assert result == "def5678"
+
+    @patch("flameconnect.tui.app.subprocess.run")
+    def test_status_failure_returns_clean_hash(self, mock_run):
+        """Status command fails -> no -dirty suffix."""
+        tag = MagicMock(returncode=1, stdout="")
+        hashcmd = MagicMock(returncode=0, stdout="abc1234\n")
+        status = MagicMock(returncode=1, stdout="")
+        mock_run.side_effect = [tag, hashcmd, status]
+        result = _resolve_version()
+        assert result == "abc1234"
+        assert "-dirty" not in result
+
+    @patch("flameconnect.tui.app.subprocess.run")
+    def test_strip_applied_to_hash(self, mock_run):
+        """Verify strip() is applied to hash output."""
+        tag = MagicMock(returncode=1, stdout="")
+        hashcmd = MagicMock(returncode=0, stdout="  abc1234  \n")
+        status = MagicMock(returncode=0, stdout="")
+        mock_run.side_effect = [tag, hashcmd, status]
+        result = _resolve_version()
+        assert result == "abc1234"
+
+    @patch("flameconnect.tui.app.subprocess.run")
+    def test_strip_applied_to_tag(self, mock_run):
+        """Verify strip() is applied to tag output."""
+        from flameconnect import __version__
+
+        mock_run.return_value = MagicMock(returncode=0, stdout=f"  v{__version__}  \n")
+        result = _resolve_version()
+        assert result == f"v{__version__}"
