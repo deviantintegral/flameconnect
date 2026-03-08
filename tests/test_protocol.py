@@ -1615,6 +1615,175 @@ class TestMakeHeaderSignedUnsigned:
         assert result == struct.pack("<HB", 100, 255)
 
 
+# ---------------------------------------------------------------------------
+# Direct tests for _decode_temperature
+# ---------------------------------------------------------------------------
+
+
+class TestDecodeTemperature:
+    """Tests for _decode_temperature to kill no-test mutants."""
+
+    def test_decode_integer_temp(self):
+        """22.0 => byte 22 + byte 0/10."""
+        raw = bytes([22, 0])
+        result = _protocol_module._decode_temperature(raw, 0)
+        assert result == 22.0
+
+    def test_decode_fractional_temp(self):
+        """22.5 => byte 22 + byte 5/10."""
+        raw = bytes([22, 5])
+        result = _protocol_module._decode_temperature(raw, 0)
+        assert result == 22.5
+
+    def test_decode_uses_correct_offset(self):
+        """Ensure offset is used correctly (not offset-1 or offset+2)."""
+        raw = bytes([99, 25, 3])
+        result = _protocol_module._decode_temperature(raw, 1)
+        assert result == 25.3
+
+    def test_decode_addition_not_subtraction(self):
+        """Verify integer + fraction, not integer - fraction."""
+        raw = bytes([10, 5])
+        result = _protocol_module._decode_temperature(raw, 0)
+        assert result == 10.5  # not 9.5
+
+    def test_decode_division_by_10(self):
+        """Verify division by 10, not multiplication or division by 11."""
+        raw = bytes([20, 9])
+        result = _protocol_module._decode_temperature(raw, 0)
+        assert result == 20.9  # 20 + 9/10.0
+
+
+# ---------------------------------------------------------------------------
+# Direct tests for _check_length
+# ---------------------------------------------------------------------------
+
+
+class TestCheckLength:
+    """Tests for _check_length to kill no-test mutants."""
+
+    def test_exact_length_does_not_raise(self):
+        """Exact length should pass (< not <=)."""
+        _protocol_module._check_length(bytes(4), 4, "Test")
+
+    def test_short_length_raises(self):
+        """Shorter than expected should raise ProtocolError."""
+        with pytest.raises(ProtocolError, match="Insufficient data for Test"):
+            _protocol_module._check_length(bytes(3), 4, "Test")
+
+    def test_longer_length_does_not_raise(self):
+        """Longer than expected should pass."""
+        _protocol_module._check_length(bytes(5), 4, "Test")
+
+    def test_error_message_contains_name(self):
+        """Error message should include the parameter name."""
+        with pytest.raises(ProtocolError, match="FlameEffect"):
+            _protocol_module._check_length(bytes(0), 23, "FlameEffect")
+
+    def test_error_message_contains_expected_bytes(self):
+        """Error message should include expected byte count."""
+        with pytest.raises(ProtocolError, match="expected 7 bytes"):
+            _protocol_module._check_length(bytes(3), 7, "HeatSettings")
+
+
+# ---------------------------------------------------------------------------
+# Tests to kill survived protocol mutants
+# ---------------------------------------------------------------------------
+
+
+class TestEncodeTemperatureModulus:
+    """Kill _encode_temperature__mutmut_6: temp % 1 vs temp % 2."""
+
+    def test_fractional_part_with_temp_above_1(self):
+        """For 22.5: fraction is 0.5, so second byte should be 5."""
+        result = _encode_temperature(22.5)
+        assert result == bytes([22, 5])
+
+    def test_fractional_part_with_1_point_5(self):
+        """1.5 % 1 = 0.5 but 1.5 % 2 = 1.5 — kills the mutant."""
+        result = _encode_temperature(1.5)
+        assert result == bytes([1, 5])
+
+
+class TestDecodeTempUnitReturnsUnit:
+    """Kill _decode_temp_unit__mutmut_21: unit=None."""
+
+    def test_decoded_temp_unit_has_correct_value(self):
+        """Verify decoded TempUnit carries the actual unit, not None."""
+        raw = _make_header(ParameterId.TEMPERATURE_UNIT, 1) + bytes([1])
+        result = decode_parameter(ParameterId.TEMPERATURE_UNIT, raw)
+        assert isinstance(result, TempUnitParam)
+        assert result.unit == TempUnit.CELSIUS
+        assert result.unit is not None
+
+    def test_fahrenheit_temp_unit(self):
+        raw = _make_header(ParameterId.TEMPERATURE_UNIT, 1) + bytes([0])
+        result = decode_parameter(ParameterId.TEMPERATURE_UNIT, raw)
+        assert isinstance(result, TempUnitParam)
+        assert result.unit == TempUnit.FAHRENHEIT
+
+
+class TestDecodeFlameEffectPulsating:
+    """Kill _decode_flame_effect__mutmut_26: & vs |."""
+
+    def test_pulsating_off_when_brightness_bit_only(self):
+        """When brightness byte is 0b01, pulsating should be OFF.
+
+        With &1: (0b01 >> 1) & 1 = 0 & 1 = 0 -> OFF
+        With |1: (0b01 >> 1) | 1 = 0 | 1 = 1 -> ON (wrong!)
+        """
+        header = _make_header(ParameterId.FLAME_EFFECT, 20)
+        payload = bytes(
+            [
+                1,  # flame_effect (ON)
+                2,  # flame_speed (wire 0-indexed) -> model 3
+                0b01,  # brightness=HIGH, pulsating=OFF
+                0,  # media_theme
+                0,  # media_light
+                0,
+                0,
+                0,
+                0,  # media_color (RBGW)
+                0,  # padding
+                0,  # overhead_light
+                0,
+                0,
+                0,
+                0,  # overhead_color (RBGW)
+                0,  # light_status
+                0,  # flame_color
+                0,
+                0,  # padding
+                0,  # ambient_sensor
+            ]
+        )
+        raw = header + payload
+        result = decode_parameter(ParameterId.FLAME_EFFECT, raw)
+        assert isinstance(result, FlameEffectParam)
+        assert result.pulsating_effect == PulsatingEffect.OFF
+
+
+class TestEncodeHeatSettingsBoostFloor:
+    """Kill _encode_heat_settings__mutmut_19: max(0,...) vs max(1,...)."""
+
+    def test_boost_duration_1_encodes_to_zero_wire(self):
+        """boost_duration=1 -> wire_boost = max(0, 1-1) = 0.
+
+        With max(1, 1-1) = max(1, 0) = 1 (wrong!)
+        """
+        param = HeatParam(
+            heat_status=HeatStatus.ON,
+            heat_mode=HeatMode.BOOST,
+            setpoint_temperature=22.0,
+            boost_duration=1,
+        )
+        b64 = encode_parameter(param)
+        raw = base64.b64decode(b64)
+        # Header(3) + [status, mode, temp_hi, temp_lo, boost]
+        wire_boost = raw[7]  # offset 3+4 = 7
+        assert wire_boost == 0
+
+
 class TestEncodeParameterAsciiCasing:
     """Document encode_parameter__mutmut_33 as equivalent mutant.
 
