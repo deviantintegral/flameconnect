@@ -1,5 +1,7 @@
 # Agents
 
+Flame Connect is an async Python library for controlling Dimplex, Faber, and Real Flame fireplaces via the Flame Connect cloud API. It includes a CLI and an optional TUI dashboard.
+
 ## Package Management
 
 This project uses [`uv`](https://docs.astral.sh/uv/) for package management. Do **not** use `pip` directly.
@@ -29,7 +31,6 @@ Use [conventional commit](https://www.conventionalcommits.org/) formatting for p
 ## Development
 
 ```bash
-
 # Lint and type-check
 uv run ruff check .
 uv run mypy src/
@@ -37,3 +38,13 @@ uv run mypy src/
 # Run tests
 uv run pytest
 ```
+
+## Architecture
+
+- The library is async-first, using `aiohttp` for HTTP communication.
+- Authentication is handled via `msal` against Azure AD B2C.
+- The optional TUI is built with the `textual` framework (installed via the `tui` extra).
+- Strict `mypy` type checking is enforced across the entire `src/` directory.
+- Test coverage must remain at or above 95%.
+- New code must include corresponding tests.
+
