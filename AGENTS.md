@@ -1,6 +1,6 @@
 # Agents
 
-FlameConnect is an async Python library for controlling Dimplex, Faber, and Real Flame fireplaces via the Flame Connect cloud API. It includes a CLI and an optional TUI dashboard.
+Flame Connect is an async Python library for controlling Dimplex, Faber, and Real Flame fireplaces via the Flame Connect cloud API. It includes a CLI and an optional TUI dashboard.
 
 ## Package Management
 
