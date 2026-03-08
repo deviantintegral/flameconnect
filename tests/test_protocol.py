@@ -38,6 +38,8 @@ from flameconnect.models import (
     TimerStatus,
 )
 from flameconnect.protocol import (
+    _check_length,
+    _decode_temperature,
     _encode_temperature,
     decode_parameter,
     encode_parameter,
@@ -1631,3 +1633,123 @@ class TestEncodeParameterAsciiCasing:
         # Verify it's valid base64 by round-tripping
         raw = base64.b64decode(result)
         assert len(raw) > 0
+
+
+# ---------------------------------------------------------------------------
+# _decode_temperature / _check_length / _encode_temperature private helpers
+# ---------------------------------------------------------------------------
+
+
+class TestDecodeTemperature:
+    """Tests for _decode_temperature private helper."""
+
+    def test_fractional_at_offset_zero(self):
+        assert _decode_temperature(bytes([22, 5, 0, 0, 0]), 0) == 22.5
+
+    def test_fractional_at_offset_two(self):
+        assert _decode_temperature(bytes([0, 0, 22, 5, 0]), 2) == 22.5
+
+    def test_non_zero_decimal(self):
+        assert _decode_temperature(bytes([18, 3, 0]), 0) == 18.3
+
+
+class TestCheckLength:
+    """Tests for _check_length private helper."""
+
+    def test_exact_match_does_not_raise(self):
+        _check_length(bytes([1, 2, 3, 4]), 4, "Test")
+
+    def test_shorter_raises(self):
+        with pytest.raises(ProtocolError, match="Test"):
+            _check_length(bytes([1, 2, 3]), 4, "Test")
+
+    def test_error_message_contains_counts(self):
+        with pytest.raises(ProtocolError, match="expected 4 bytes, got 3"):
+            _check_length(bytes([1, 2, 3]), 4, "Test")
+
+
+class TestEncodeTemperatureModTwo:
+    """Kill mutant that changes temp % 1 to temp % 2."""
+
+    def test_small_integer_plus_half(self):
+        # 1.5 % 1 = 0.5 → int(0.5*10) = 5; 1.5 % 2 = 1.5 → int(1.5*10) = 15
+        assert _encode_temperature(1.5) == bytes([1, 5])
+
+    def test_fractional_three(self):
+        assert _encode_temperature(21.3) == bytes([21, 3])
+
+
+# ---------------------------------------------------------------------------
+# Decoder mutant-killing tests
+# ---------------------------------------------------------------------------
+
+
+class TestDecodeTempUnitValue:
+    """Kill mutant that returns TempUnitParam(unit=None)."""
+
+    def test_decoded_unit_is_celsius(self):
+        header = struct.pack("<HB", ParameterId.TEMPERATURE_UNIT, 1)
+        raw = header + bytes([TempUnit.CELSIUS])
+        result = decode_parameter(ParameterId.TEMPERATURE_UNIT, raw)
+        assert isinstance(result, TempUnitParam)
+        assert result.unit is TempUnit.CELSIUS
+
+    def test_decoded_unit_is_fahrenheit(self):
+        header = struct.pack("<HB", ParameterId.TEMPERATURE_UNIT, 1)
+        raw = header + bytes([TempUnit.FAHRENHEIT])
+        result = decode_parameter(ParameterId.TEMPERATURE_UNIT, raw)
+        assert isinstance(result, TempUnitParam)
+        assert result.unit is TempUnit.FAHRENHEIT
+
+
+class TestFlameEffectPulsatingOff:
+    """Kill mutant that changes (brightness_byte >> 1) & 1 to | 1."""
+
+    def test_pulsating_off_when_bit1_clear(self):
+        # brightness_byte = 0 → brightness=HIGH(0), pulsating=(0>>1)&1=0=OFF
+        header = struct.pack("<HB", ParameterId.FLAME_EFFECT, 20)
+        payload = bytes(
+            [
+                FlameEffect.ON,  # raw[3]
+                0,  # flame_speed wire (0-indexed → speed 1)
+                0,  # brightness_byte: brightness=HIGH, pulsating=OFF
+                0,  # media_theme
+                0,  # media_light
+                0,
+                0,
+                0,
+                0,  # media RGBW
+                0,  # padding
+                0,  # overhead_light
+                0,
+                0,
+                0,
+                0,  # overhead RGBW
+                0,  # light_status
+                0,  # flame_color
+                0,
+                0,  # padding
+                0,  # ambient_sensor
+            ]
+        )
+        raw = header + payload
+        result = decode_parameter(ParameterId.FLAME_EFFECT, raw)
+        assert isinstance(result, FlameEffectParam)
+        assert result.pulsating_effect is PulsatingEffect.OFF
+
+
+class TestEncodeHeatSettingsBoostOne:
+    """Kill mutant that changes max(0, ...) to max(1, ...)."""
+
+    def test_boost_duration_one_encodes_zero(self):
+        param = HeatParam(
+            heat_status=HeatStatus.ON,
+            heat_mode=HeatMode.NORMAL,
+            setpoint_temperature=22.0,
+            boost_duration=1,
+        )
+        b64 = encode_parameter(param)
+        raw = base64.b64decode(b64)
+        # Header is 3 bytes, payload: [status, mode, temp_int, temp_dec, boost]
+        wire_boost = raw[3 + 4]  # 5th payload byte
+        assert wire_boost == 0

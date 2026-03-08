@@ -26,6 +26,7 @@ from flameconnect.models import (
     TimerStatus,
     convert_temp,
     display_name,
+    kebab_name,
     temp_suffix,
 )
 
@@ -287,3 +288,23 @@ class TestDisplayName:
 
     def test_flame_color(self):
         assert display_name(FlameColor.YELLOW_RED) == "Yellow/Red"
+
+
+# ---------------------------------------------------------------------------
+# kebab_name utility
+# ---------------------------------------------------------------------------
+
+
+class TestKebabName:
+    """Tests for kebab_name()."""
+
+    def test_multi_word(self):
+        assert kebab_name(HeatMode.FAN_ONLY) == "fan-only"
+
+    def test_single_word(self):
+        assert kebab_name(HeatMode.NORMAL) == "normal"
+
+    def test_contains_hyphen_not_underscore(self):
+        result = kebab_name(HeatMode.FAN_ONLY)
+        assert "-" in result
+        assert "_" not in result
