@@ -1,4 +1,4 @@
-"""Main Textual application for the FlameConnect TUI."""
+"""Main Textual application for the Flame Connect TUI."""
 
 from __future__ import annotations
 
@@ -168,7 +168,7 @@ _APP_CSS = """
 class FlameConnectApp(App[None]):
     """Textual TUI application for monitoring and controlling fireplaces."""
 
-    TITLE = f"FlameConnect {_resolved_version}"
+    TITLE = f"Flame Connect {_resolved_version}"
     CSS = _APP_CSS
     COMMANDS = App.COMMANDS | {_get_fireplace_commands}
 
@@ -907,7 +907,7 @@ class FlameConnectApp(App[None]):
 
 
 async def run_tui(*, verbose: bool = False) -> None:
-    """Launch the FlameConnect TUI dashboard.
+    """Launch the Flame Connect TUI dashboard.
 
     Creates an authenticated client and runs the Textual application.
     The client session is managed via an async context manager.

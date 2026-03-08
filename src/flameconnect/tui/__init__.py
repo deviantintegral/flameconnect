@@ -1,4 +1,4 @@
-"""Textual TUI for FlameConnect."""
+"""Textual TUI for Flame Connect."""
 
 from __future__ import annotations
 

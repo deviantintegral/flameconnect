@@ -1,4 +1,4 @@
-# 🔥 FlameConnect
+# 🔥 Flame Connect for Python
 
 [![CI](https://github.com/deviantintegral/flameconnect/actions/workflows/ci.yml/badge.svg)](https://github.com/deviantintegral/flameconnect/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/flameconnect)](https://pypi.org/project/flameconnect/)
@@ -6,7 +6,7 @@
 
 Async Python library for controlling Dimplex, Faber, and Real Flame fireplaces via the Flame Connect cloud API.
 
-![FlameConnect TUI](images/flameconnect-0.1.0.png)
+![Flame Connect TUI](images/flameconnect-0.1.0.png)
 
 > 🏠 Looking for a Home Assistant integration? Try the [flame_connect_ha custom component](https://github.com/deviantintegral/flame_connect_ha).
 
@@ -63,7 +63,7 @@ asyncio.run(main())
 
 ## Authentication
 
-FlameConnect supports two authentication modes depending on your use case.
+Flame Connect supports two authentication modes depending on your use case.
 
 ### Standalone (CLI / TUI)
 

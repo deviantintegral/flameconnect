@@ -1,4 +1,4 @@
-"""Authentication modal screen for the FlameConnect TUI."""
+"""Authentication modal screen for the Flame Connect TUI."""
 
 from __future__ import annotations
 

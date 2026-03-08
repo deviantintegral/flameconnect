@@ -1,4 +1,4 @@
-"""Flame speed selection modal for the FlameConnect TUI."""
+"""Flame speed selection modal for the Flame Connect TUI."""
 
 from __future__ import annotations
 
