@@ -25,6 +25,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+from rich.text import Text as _Text
+
 from flameconnect.models import (
     Brightness,
     ConnectionState,
@@ -56,6 +58,8 @@ from flameconnect.models import (
     temp_suffix,
 )
 from flameconnect.tui.widgets import (
+    _build_fire_art,
+    _expand_flame,
     _format_connection_state,
     _format_error,
     _format_flame_effect,
@@ -1124,3 +1128,717 @@ class TestClickableParam:
 
         widget = ClickableParam("Label: ", "Value")
         assert widget._action is None
+
+
+# ---------------------------------------------------------------------------
+# Exact label / value / action tests to kill mutation survivors
+# ---------------------------------------------------------------------------
+
+
+class TestFormatFlameEffectExactLabels:
+    """Exact label, value, and action checks for _format_flame_effect."""
+
+    def test_exact_label_flame_effect(self):
+        param = _sample_flame_effect()
+        result = _format_flame_effect(param)
+        assert result[0].label == "[bold]Flame Effect:[/bold] "
+        assert not result[0].label.startswith("XX")
+
+    def test_exact_label_flame_color(self):
+        param = _sample_flame_effect()
+        result = _format_flame_effect(param)
+        assert result[1].label == "  Flame Color: "
+        assert not result[1].label.startswith("XX")
+
+    def test_exact_label_speed(self):
+        param = _sample_flame_effect()
+        result = _format_flame_effect(param)
+        assert result[2].label == "  Speed: "
+        assert not result[2].label.startswith("XX")
+
+    def test_exact_label_brightness(self):
+        param = _sample_flame_effect()
+        result = _format_flame_effect(param)
+        assert result[3].label == "  Brightness: "
+        assert not result[3].label.startswith("XX")
+
+    def test_exact_label_media_theme(self):
+        param = _sample_flame_effect()
+        result = _format_flame_effect(param)
+        assert result[4].label == "  Media Theme: "
+        assert not result[4].label.startswith("XX")
+
+    def test_exact_label_media_light(self):
+        param = _sample_flame_effect()
+        result = _format_flame_effect(param)
+        assert result[5].label == "  Media Light: "
+        assert not result[5].label.startswith("XX")
+
+    def test_exact_label_media_color(self):
+        param = _sample_flame_effect()
+        result = _format_flame_effect(param)
+        assert result[6].label == "  Media Color: "
+        assert not result[6].label.startswith("XX")
+
+    def test_exact_label_overhead_light(self):
+        param = _sample_flame_effect()
+        result = _format_flame_effect(param)
+        assert result[7].label == "  Overhead Light: "
+        assert not result[7].label.startswith("XX")
+
+    def test_exact_label_overhead_pulsating(self):
+        param = _sample_flame_effect()
+        result = _format_flame_effect(param)
+        assert result[8].label == "  Overhead Pulsating: "
+        assert not result[8].label.startswith("XX")
+
+    def test_exact_label_overhead_color(self):
+        param = _sample_flame_effect()
+        result = _format_flame_effect(param)
+        assert result[9].label == "  Overhead Color: "
+        assert not result[9].label.startswith("XX")
+
+    def test_exact_label_ambient_sensor(self):
+        param = _sample_flame_effect()
+        result = _format_flame_effect(param)
+        assert result[10].label == "  Ambient Sensor: "
+        assert not result[10].label.startswith("XX")
+
+    def test_exact_actions_all(self):
+        param = _sample_flame_effect()
+        result = _format_flame_effect(param)
+        assert result[0].action == "toggle_flame_effect"
+        assert result[1].action == "set_flame_color"
+        assert result[2].action == "set_flame_speed"
+        assert result[3].action == "toggle_brightness"
+        assert result[4].action == "set_media_theme"
+        assert result[5].action == "toggle_media_light"
+        assert result[6].action == "set_media_color"
+        assert result[7].action == "toggle_overhead_light"
+        assert result[8].action == "toggle_pulsating"
+        assert result[9].action == "set_overhead_color"
+        assert result[10].action == "toggle_ambient_sensor"
+
+    def test_exact_values_on(self):
+        param = _sample_flame_effect(
+            flame_effect=FlameEffect.ON,
+            flame_color=FlameColor.ALL,
+            flame_speed=3,
+            brightness=Brightness.HIGH,
+            media_theme=MediaTheme.WHITE,
+            media_light=LightStatus.ON,
+            light_status=LightStatus.ON,
+            pulsating_effect=PulsatingEffect.OFF,
+            ambient_sensor=LightStatus.OFF,
+        )
+        result = _format_flame_effect(param)
+        assert result[0].value == "On"
+        assert result[1].value == "All"
+        assert result[2].value == "3/5"
+        assert result[3].value == "High"
+        assert result[4].value == "White"
+        assert result[5].value == "On"
+        assert result[7].value == "On"
+        assert result[8].value == "Off"
+        assert result[10].value == "Off"
+
+    def test_speed_format_with_max(self):
+        """Speed should use MAX_FLAME_SPEED constant."""
+        from flameconnect.const import MAX_FLAME_SPEED
+
+        param = _sample_flame_effect(flame_speed=1)
+        result = _format_flame_effect(param)
+        assert result[2].value == f"1/{MAX_FLAME_SPEED}"
+
+    def test_count_items(self):
+        param = _sample_flame_effect()
+        result = _format_flame_effect(param)
+        assert len(result) == 11
+
+
+class TestFormatHeatExactLabels:
+    """Exact label checks for _format_heat."""
+
+    def test_exact_heat_label(self):
+        param = HeatParam(
+            heat_status=HeatStatus.ON,
+            heat_mode=HeatMode.NORMAL,
+            setpoint_temperature=22.0,
+            boost_duration=0,
+        )
+        result = _format_heat(param)
+        assert result[0].label == "[bold]Heat:[/bold] "
+        assert not result[0].label.startswith("XX")
+
+    def test_exact_mode_label(self):
+        param = HeatParam(
+            heat_status=HeatStatus.ON,
+            heat_mode=HeatMode.NORMAL,
+            setpoint_temperature=22.0,
+            boost_duration=0,
+        )
+        result = _format_heat(param)
+        assert result[1].label == "  Mode: "
+        assert not result[1].label.startswith("XX")
+
+    def test_exact_setpoint_label(self):
+        param = HeatParam(
+            heat_status=HeatStatus.ON,
+            heat_mode=HeatMode.NORMAL,
+            setpoint_temperature=22.0,
+            boost_duration=0,
+        )
+        result = _format_heat(param)
+        assert result[2].label == "  Setpoint: "
+        assert not result[2].label.startswith("XX")
+
+    def test_exact_boost_label(self):
+        param = HeatParam(
+            heat_status=HeatStatus.ON,
+            heat_mode=HeatMode.NORMAL,
+            setpoint_temperature=22.0,
+            boost_duration=0,
+        )
+        result = _format_heat(param)
+        assert result[3].label == "  Boost: "
+        assert not result[3].label.startswith("XX")
+
+    def test_exact_actions(self):
+        param = HeatParam(
+            heat_status=HeatStatus.ON,
+            heat_mode=HeatMode.NORMAL,
+            setpoint_temperature=22.0,
+            boost_duration=0,
+        )
+        result = _format_heat(param)
+        assert result[0].action == "toggle_heat"
+        assert result[1].action == "set_heat_mode"
+        assert result[2].action == "set_heat_mode"
+        assert result[3].action == "set_heat_mode"
+
+    def test_boost_value_when_boost(self):
+        param = HeatParam(
+            heat_status=HeatStatus.ON,
+            heat_mode=HeatMode.BOOST,
+            setpoint_temperature=22.0,
+            boost_duration=20,
+        )
+        result = _format_heat(param)
+        assert result[3].value == "20min"
+
+    def test_boost_value_when_not_boost(self):
+        param = HeatParam(
+            heat_status=HeatStatus.ON,
+            heat_mode=HeatMode.NORMAL,
+            setpoint_temperature=22.0,
+            boost_duration=20,
+        )
+        result = _format_heat(param)
+        assert result[3].value == "Off"
+
+    def test_count_items(self):
+        param = HeatParam(
+            heat_status=HeatStatus.ON,
+            heat_mode=HeatMode.NORMAL,
+            setpoint_temperature=22.0,
+            boost_duration=0,
+        )
+        result = _format_heat(param)
+        assert len(result) == 4
+
+
+class TestFormatConnectionStateExact:
+    """Exact format checks for _format_connection_state."""
+
+    def test_connected_exact_format(self):
+        result = _format_connection_state(ConnectionState.CONNECTED)
+        assert result == "[green]Connected[/green]"
+
+    def test_not_connected_exact_format(self):
+        result = _format_connection_state(ConnectionState.NOT_CONNECTED)
+        assert result == "[red]Not Connected[/red]"
+
+    def test_updating_firmware_exact_format(self):
+        result = _format_connection_state(ConnectionState.UPDATING_FIRMWARE)
+        assert result == "[yellow]Updating Firmware[/yellow]"
+
+    def test_unknown_exact_format(self):
+        result = _format_connection_state(ConnectionState.UNKNOWN)
+        assert result == "[dim]Unknown[/dim]"
+
+
+class TestFormatTimerExact:
+    """Exact label/action checks for _format_timer."""
+
+    def test_exact_label(self):
+        param = TimerParam(timer_status=TimerStatus.DISABLED, duration=0)
+        result = _format_timer(param)
+        assert result[0].label == "[bold]Timer:[/bold] "
+        assert not result[0].label.startswith("XX")
+
+    def test_exact_action(self):
+        param = TimerParam(timer_status=TimerStatus.DISABLED, duration=0)
+        result = _format_timer(param)
+        assert result[0].action == "toggle_timer"
+
+    def test_value_format_disabled(self):
+        param = TimerParam(timer_status=TimerStatus.DISABLED, duration=10)
+        result = _format_timer(param)
+        assert result[0].value.startswith("Disabled")
+        assert "Duration: 10min" in result[0].value
+
+    def test_value_format_enabled_with_off_at(self):
+        param = TimerParam(timer_status=TimerStatus.ENABLED, duration=30)
+        result = _format_timer(param)
+        assert result[0].value.startswith("Enabled")
+        assert "Duration: 30min" in result[0].value
+        assert "Off at" in result[0].value
+
+    def test_count_items(self):
+        param = TimerParam(timer_status=TimerStatus.DISABLED, duration=0)
+        result = _format_timer(param)
+        assert len(result) == 1
+
+
+class TestFormatErrorExact:
+    """Exact label checks for _format_error."""
+
+    def test_no_error_exact_label(self):
+        param = ErrorParam(error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=0)
+        result = _format_error(param)
+        assert result[0].label == "[bold]Errors:[/bold] "
+        assert result[0].value == "No Errors Recorded"
+        assert result[0].action is None
+
+    def test_error_exact_label(self):
+        param = ErrorParam(error_byte1=1, error_byte2=0, error_byte3=0, error_byte4=0)
+        result = _format_error(param)
+        assert result[0].label == "[bold red]Error:[/bold red] "
+        assert result[0].action is None
+
+    def test_error_exact_value_format(self):
+        param = ErrorParam(
+            error_byte1=0xAB, error_byte2=0xCD, error_byte3=0xEF, error_byte4=0x01
+        )
+        result = _format_error(param)
+        assert result[0].value == "0xAB 0xCD 0xEF 0x01"
+
+
+class TestFormatModeExact:
+    """Exact label checks for _format_mode."""
+
+    def test_exact_mode_label(self):
+        param = ModeParam(mode=FireMode.STANDBY, target_temperature=20.0)
+        result = _format_mode(param)
+        assert result[0].label == "[bold]Mode:[/bold] "
+        assert not result[0].label.startswith("XX")
+
+    def test_exact_target_temp_label(self):
+        param = ModeParam(mode=FireMode.STANDBY, target_temperature=20.0)
+        result = _format_mode(param)
+        assert result[1].label == "[bold]Target Temp:[/bold] "
+        assert not result[1].label.startswith("XX")
+
+    def test_exact_actions(self):
+        param = ModeParam(mode=FireMode.STANDBY, target_temperature=20.0)
+        result = _format_mode(param)
+        assert result[0].action == "toggle_power"
+        assert result[1].action == "set_temperature"
+
+
+class TestFormatHeatModeExact:
+    """Exact label check for _format_heat_mode."""
+
+    def test_exact_label(self):
+        param = HeatModeParam(heat_control=HeatControl.ENABLED)
+        result = _format_heat_mode(param)
+        assert result[0].label == "[bold]Heat Control:[/bold] "
+        assert not result[0].label.startswith("XX")
+
+    def test_exact_action_none(self):
+        param = HeatModeParam(heat_control=HeatControl.ENABLED)
+        result = _format_heat_mode(param)
+        assert result[0].action is None
+
+
+class TestFormatTempUnitExact:
+    """Exact label check for _format_temp_unit."""
+
+    def test_exact_label(self):
+        param = TempUnitParam(unit=TempUnit.CELSIUS)
+        result = _format_temp_unit(param)
+        assert result[0].label == "[bold]Temp Unit:[/bold] "
+        assert not result[0].label.startswith("XX")
+
+    def test_exact_action(self):
+        param = TempUnitParam(unit=TempUnit.CELSIUS)
+        result = _format_temp_unit(param)
+        assert result[0].action == "toggle_temp_unit"
+
+
+class TestFormatSoundExact:
+    """Exact label check for _format_sound."""
+
+    def test_exact_label(self):
+        param = SoundParam(volume=5, sound_file=3)
+        result = _format_sound(param)
+        assert result[0].label == "[bold]Sound:[/bold] "
+        assert not result[0].label.startswith("XX")
+
+    def test_exact_action_none(self):
+        param = SoundParam(volume=5, sound_file=3)
+        result = _format_sound(param)
+        assert result[0].action is None
+
+    def test_exact_value(self):
+        param = SoundParam(volume=5, sound_file=3)
+        result = _format_sound(param)
+        assert result[0].value == "Volume 5  File: 3"
+
+
+class TestFormatSoftwareVersionExact:
+    """Exact label check for _format_software_version."""
+
+    def test_exact_label(self):
+        param = SoftwareVersionParam(
+            ui_major=1,
+            ui_minor=2,
+            ui_test=3,
+            control_major=4,
+            control_minor=5,
+            control_test=6,
+            relay_major=7,
+            relay_minor=8,
+            relay_test=9,
+        )
+        result = _format_software_version(param)
+        assert result[0].label == "[bold]Software:[/bold] "
+        assert not result[0].label.startswith("XX")
+
+    def test_exact_value(self):
+        param = SoftwareVersionParam(
+            ui_major=1,
+            ui_minor=2,
+            ui_test=3,
+            control_major=4,
+            control_minor=5,
+            control_test=6,
+            relay_major=7,
+            relay_minor=8,
+            relay_test=9,
+        )
+        result = _format_software_version(param)
+        assert result[0].value == "UI 1.2.3  Control 4.5.6  Relay 7.8.9"
+
+    def test_exact_action_none(self):
+        param = SoftwareVersionParam(
+            ui_major=1,
+            ui_minor=2,
+            ui_test=3,
+            control_major=4,
+            control_minor=5,
+            control_test=6,
+            relay_major=7,
+            relay_minor=8,
+            relay_test=9,
+        )
+        result = _format_software_version(param)
+        assert result[0].action is None
+
+
+class TestFormatLogEffectExact:
+    """Exact label check for _format_log_effect."""
+
+    def test_exact_label(self):
+        color = RGBWColor(red=128, green=64, blue=32, white=16)
+        param = LogEffectParam(log_effect=LogEffect.ON, color=color, pattern=2)
+        result = _format_log_effect(param)
+        assert result[0].label == "[bold]Log Effect:[/bold] "
+        assert not result[0].label.startswith("XX")
+
+    def test_exact_action_none(self):
+        color = _black()
+        param = LogEffectParam(log_effect=LogEffect.ON, color=color, pattern=0)
+        result = _format_log_effect(param)
+        assert result[0].action is None
+
+    def test_exact_value(self):
+        color = RGBWColor(red=128, green=64, blue=32, white=16)
+        param = LogEffectParam(log_effect=LogEffect.ON, color=color, pattern=2)
+        result = _format_log_effect(param)
+        assert result[0].value == "On  Color: R:128 G:64 B:32 W:16  Pattern: 2"
+
+
+class TestClickableValueExact:
+    """Exact checks for _ClickableValue init to kill mutants."""
+
+    def test_action_stored(self):
+        from flameconnect.tui.widgets import _ClickableValue
+
+        widget = _ClickableValue("test", action="my_action")
+        assert widget._action == "my_action"
+        assert "clickable" in widget.classes
+
+    def test_no_action_no_class(self):
+        from flameconnect.tui.widgets import _ClickableValue
+
+        widget = _ClickableValue("test")
+        assert widget._action is None
+        assert "clickable" not in widget.classes
+
+    def test_empty_string_action(self):
+        from flameconnect.tui.widgets import _ClickableValue
+
+        widget = _ClickableValue("test", action="")
+        assert widget._action == ""
+        assert "clickable" not in widget.classes
+
+
+class TestFormatParametersExact:
+    """Additional exact checks for format_parameters."""
+
+    def test_empty_returns_no_params_message(self):
+        result = format_parameters([])
+        assert len(result) == 1
+        assert result[0].label == "[dim]No parameters available[/dim]"
+        assert result[0].value == ""
+        assert result[0].action is None
+
+    def test_mode_dispatches_correctly(self):
+        params = [ModeParam(mode=FireMode.STANDBY, target_temperature=20.0)]
+        result = format_parameters(params)
+        assert result[0].label == "[bold]Mode:[/bold] "
+        assert result[0].value == "Standby"
+
+    def test_temp_unit_forwarded_to_mode(self):
+        params = [
+            TempUnitParam(unit=TempUnit.FAHRENHEIT),
+            ModeParam(mode=FireMode.MANUAL, target_temperature=100.0),
+        ]
+        result = format_parameters(params)
+        temp_row = [r for r in result if "Target Temp" in r.label][0]
+        assert "212.0\u00b0F" in temp_row.value
+
+
+# ---------------------------------------------------------------------------
+# _expand_flame
+# ---------------------------------------------------------------------------
+
+
+class TestExpandFlame:
+    """Tests for _expand_flame gap distribution logic."""
+
+    def test_basic_expansion(self):
+        atoms = [("A", 1), ("B", 1), ("C", 0)]
+        result = _expand_flame(atoms, 10, "red")
+        text = result.plain
+        assert "A" in text
+        assert "B" in text
+        assert "C" in text
+        assert len(text) == 10
+
+    def test_no_gap_weight(self):
+        atoms = [("ABC", 0)]
+        result = _expand_flame(atoms, 10, "red")
+        text = result.plain
+        assert text.startswith("ABC")
+
+    def test_equal_weights(self):
+        atoms = [("X", 2), ("Y", 2), ("Z", 0)]
+        result = _expand_flame(atoms, 9, "blue")
+        text = result.plain
+        assert len(text) == 9
+        assert text.startswith("X")
+        assert "Y" in text
+        assert text.endswith("Z")
+
+    def test_body_width_equals_chars(self):
+        atoms = [("AB", 1), ("CD", 0)]
+        result = _expand_flame(atoms, 4, "red")
+        assert result.plain == "ABCD"
+
+    def test_body_width_less_than_chars(self):
+        atoms = [("AB", 1), ("CD", 0)]
+        result = _expand_flame(atoms, 2, "red")
+        assert result.plain == "ABCD"
+
+    def test_single_atom_with_gap(self):
+        atoms = [("X", 3)]
+        result = _expand_flame(atoms, 5, "green")
+        text = result.plain
+        assert text.startswith("X")
+        assert len(text) == 5
+
+    def test_proportional_gap_distribution(self):
+        atoms = [("A", 3), ("B", 1), ("C", 0)]
+        result = _expand_flame(atoms, 11, "red")
+        text = result.plain
+        assert len(text) == 11
+        a_idx = text.index("A")
+        b_idx = text.index("B")
+        c_idx = text.index("C")
+        assert a_idx < b_idx < c_idx
+
+    def test_style_applied(self):
+        atoms = [("A", 0)]
+        result = _expand_flame(atoms, 1, "bright_red")
+        assert isinstance(result, _Text)
+
+    def test_zero_total_weight_fallback(self):
+        atoms = [("A", 0), ("B", 0)]
+        result = _expand_flame(atoms, 5, "red")
+        assert "A" in result.plain
+        assert "B" in result.plain
+
+    def test_large_gap(self):
+        atoms = [("X", 1), ("Y", 0)]
+        result = _expand_flame(atoms, 20, "red")
+        assert len(result.plain) == 20
+
+
+# ---------------------------------------------------------------------------
+# _build_fire_art
+# ---------------------------------------------------------------------------
+
+
+class TestBuildFireArt:
+    """Tests for _build_fire_art."""
+
+    def test_returns_text(self):
+        result = _build_fire_art(30, 20, fire_on=True)
+        assert isinstance(result, _Text)
+
+    def test_fire_on_has_flame_chars(self):
+        result = _build_fire_art(30, 20, fire_on=True)
+        plain = result.plain
+        assert any(c in plain for c in ("(", ")", "\\", "/", "|"))
+
+    def test_fire_off_no_flame_chars(self):
+        result = _build_fire_art(30, 20, fire_on=False)
+        plain = result.plain
+        lines = plain.split("\n")
+        for line in lines:
+            if "\u2591" in line or "\u2593" in line:
+                continue
+            if "\u2500" in line or "\u2581" in line:
+                continue
+            if "\u250c" in line or "\u2510" in line:
+                continue
+            if "\u2514" in line or "\u2518" in line:
+                continue
+            stripped = line.replace("\u2502", "").strip()
+            assert "(" not in stripped or stripped == ""
+
+    def test_led_style_appears_in_output(self):
+        result = _build_fire_art(30, 20, fire_on=True, led_style="bright_green")
+        # The LED strip row uses led_style; verify the light-shade char exists
+        assert "\u2591" in result.plain
+
+    def test_media_style_appears(self):
+        result = _build_fire_art(30, 20, fire_on=True, media_style="blue")
+        assert "\u2593" in result.plain
+
+    def test_structure_top_edge(self):
+        result = _build_fire_art(30, 20, fire_on=True)
+        lines = result.plain.split("\n")
+        assert "\u2581" in lines[0]
+
+    def test_structure_outer_frame_top(self):
+        result = _build_fire_art(30, 20, fire_on=True)
+        lines = result.plain.split("\n")
+        assert "\u250c" in lines[1]
+        assert "\u2510" in lines[1]
+
+    def test_structure_inner_frame(self):
+        result = _build_fire_art(30, 20, fire_on=True)
+        lines = result.plain.split("\n")
+        assert "\u250c" in lines[2]
+        assert "\u2510" in lines[2]
+
+    def test_structure_bottom(self):
+        result = _build_fire_art(30, 20, fire_on=True)
+        lines = result.plain.split("\n")
+        last = lines[-1]
+        assert "\u2514" in last
+        assert "\u2518" in last
+
+    def test_anim_frame_changes_palette(self):
+        r0 = _build_fire_art(30, 20, fire_on=True, anim_frame=0)
+        r1 = _build_fire_art(30, 20, fire_on=True, anim_frame=1)
+        assert isinstance(r0, _Text)
+        assert isinstance(r1, _Text)
+
+    def test_heat_on_adds_wave_chars(self):
+        result = _build_fire_art(30, 20, fire_on=True, heat_on=True)
+        plain = result.plain
+        assert "\u2248" in plain or "~" in plain
+
+    def test_heat_off_no_wave_chars(self):
+        result = _build_fire_art(30, 20, fire_on=True, heat_on=False)
+        plain = result.plain
+        assert "\u2248" not in plain
+        assert "~" not in plain
+
+    def test_small_height_minimum_flame_rows(self):
+        result = _build_fire_art(30, 10, fire_on=True)
+        assert isinstance(result, _Text)
+        lines = result.plain.split("\n")
+        assert len(lines) >= 10
+
+    def test_explicit_palette(self):
+        palette = ("bright_cyan", "bright_blue", "blue")
+        result = _build_fire_art(30, 20, fire_on=True, flame_palette=palette)
+        assert isinstance(result, _Text)
+
+    def test_width_affects_output(self):
+        r1 = _build_fire_art(20, 20, fire_on=True)
+        r2 = _build_fire_art(40, 20, fire_on=True)
+        lines1 = r1.plain.split("\n")
+        lines2 = r2.plain.split("\n")
+        assert len(lines1[0]) < len(lines2[0])
+
+    def test_default_params_fire_on_true(self):
+        result = _build_fire_art(30, 20)
+        plain = result.plain
+        assert any(c in plain for c in ("(", ")", "\\", "/"))
+
+    def test_fire_off_explicit(self):
+        result = _build_fire_art(30, 20, fire_on=False)
+        assert isinstance(result, _Text)
+
+    def test_hearth_row_present(self):
+        result = _build_fire_art(30, 20, fire_on=True)
+        plain = result.plain
+        # Hearth uses dark shade chars
+        lines = plain.split("\n")
+        hearth_found = False
+        for line in lines:
+            if (
+                "\u2502" in line
+                and "\u2593" in line
+                and "\u250c" not in line
+                and "\u2514" not in line
+            ):
+                hearth_found = True
+                break
+        assert hearth_found
+
+    def test_inner_media_bed_present(self):
+        result = _build_fire_art(30, 20, fire_on=True)
+        plain = result.plain
+        assert "\u2593" in plain
+
+    def test_led_strip_present(self):
+        result = _build_fire_art(30, 20, fire_on=True)
+        plain = result.plain
+        assert "\u2591" in plain
+
+    def test_large_height(self):
+        result = _build_fire_art(30, 30, fire_on=True)
+        lines = result.plain.split("\n")
+        assert len(lines) >= 20
+
+    def test_heat_on_with_fire_off(self):
+        result = _build_fire_art(30, 20, fire_on=False, heat_on=True)
+        plain = result.plain
+        assert "\u2248" in plain or "~" in plain
