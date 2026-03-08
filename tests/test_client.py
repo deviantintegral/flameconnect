@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import dataclasses
 import json
 import logging
 from pathlib import Path
@@ -13,7 +14,11 @@ from aioresponses import aioresponses as aioresponses_mock
 from yarl import URL
 
 from flameconnect.auth import TokenAuth
-from flameconnect.client import FlameConnectClient, _get_parameter_id
+from flameconnect.client import (
+    FlameConnectClient,
+    _get_parameter_id,
+    _parse_fire_features,
+)
 from flameconnect.const import API_BASE, DEFAULT_HEADERS
 from flameconnect.exceptions import ApiError
 from flameconnect.models import (
@@ -1472,3 +1477,683 @@ class TestGetFireOverviewUrlEncoding:
             overview = await client.get_fire_overview(fire_id)
 
         assert overview.fire.fire_id == fire_id
+
+
+# -------------------------------------------------------------------
+# Direct unit tests for _parse_fire_features
+# -------------------------------------------------------------------
+
+_FEATURES_MAP = [
+    ("Sound", "sound"),
+    ("SimpleHeat", "simple_heat"),
+    ("AdvancedHeat", "advanced_heat"),
+    ("SevenDayTimer", "seven_day_timer"),
+    ("CountDownTimer", "count_down_timer"),
+    ("Moods", "moods"),
+    ("FlameHeight", "flame_height"),
+    ("RgbFlameAccent", "rgb_flame_accent"),
+    ("FlameDimming", "flame_dimming"),
+    ("RgbFuelBed", "rgb_fuel_bed"),
+    ("FuelBedDimming", "fuel_bed_dimming"),
+    ("FlameFanSpeed", "flame_fan_speed"),
+    ("RgbBackLight", "rgb_back_light"),
+    ("FrontLightAmber", "front_light_amber"),
+    ("PirToggleSmartSense", "pir_toggle_smart_sense"),
+    ("Lgt1To5", "lgt1_to_5"),
+    ("RequiresWarmUp", "requires_warm_up"),
+    ("ApplyFlameOnlyFirst", "apply_flame_only_first"),
+    ("FlameAmber", "flame_amber"),
+    ("CheckIfRemoteWasUsed", "check_if_remote_was_used"),
+    ("MediaAccent", "media_accent"),
+    ("PowerBoost", "power_boost"),
+    ("FanOnly", "fan_only"),
+    ("RgbLogEffect", "rgb_log_effect"),
+]
+
+
+class TestParseFireFeaturesDirect:
+    """Direct unit tests for _parse_fire_features to kill mutants."""
+
+    def test_all_features_true(self):
+        """When all JSON keys are True, every field must be True."""
+        data = {json_key: True for json_key, _ in _FEATURES_MAP}
+        result = _parse_fire_features(data)
+        for _, attr_name in _FEATURES_MAP:
+            assert getattr(result, attr_name) is True, f"{attr_name} should be True"
+
+    def test_empty_dict_all_false(self):
+        """When given an empty dict, every field defaults to False."""
+        result = _parse_fire_features({})
+        for field in dataclasses.fields(result):
+            assert getattr(result, field.name) is False, f"{field.name} should be False"
+
+    @pytest.mark.parametrize(
+        ("json_key", "attr_name"),
+        _FEATURES_MAP,
+        ids=[attr for _, attr in _FEATURES_MAP],
+    )
+    def test_single_feature_true(self, json_key: str, attr_name: str):
+        """Setting only one JSON key True must set only that attribute."""
+        result = _parse_fire_features({json_key: True})
+        assert getattr(result, attr_name) is True
+        for field in dataclasses.fields(result):
+            if field.name != attr_name:
+                assert getattr(result, field.name) is False, (
+                    f"{field.name} should be False when only {attr_name} is True"
+                )
+
+
+# -------------------------------------------------------------------
+# Direct unit tests for get_fire_overview feature sourcing
+# -------------------------------------------------------------------
+
+
+class TestGetFireOverviewFeatureSource:
+    """Test FireFeature data sourcing: FireDetails vs WifiFireOverview."""
+
+    async def test_features_from_fire_details(self, mock_api, token_auth):
+        """FireDetails.FireFeature is the primary source for features."""
+        fire_id = "feat-src"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {
+            "FireDetails": {
+                "FireFeature": {"Sound": True, "SimpleHeat": True},
+            },
+            "WifiFireOverview": {
+                "FireId": fire_id,
+                "FireFeature": {"Moods": True},
+                "Parameters": [],
+            },
+        }
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            overview = await client.get_fire_overview(fire_id)
+
+        assert overview.fire.features.sound is True
+        assert overview.fire.features.simple_heat is True
+        # WifiFireOverview.FireFeature should NOT be used
+        assert overview.fire.features.moods is False
+
+    async def test_features_fallback_to_wifi(self, mock_api, token_auth):
+        """When FireDetails has no FireFeature, fall back to WifiFireOverview."""
+        fire_id = "feat-fallback"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {
+            "WifiFireOverview": {
+                "FireId": fire_id,
+                "FireFeature": {"Moods": True, "FanOnly": True},
+                "Parameters": [],
+            },
+        }
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            overview = await client.get_fire_overview(fire_id)
+
+        assert overview.fire.features.moods is True
+        assert overview.fire.features.fan_only is True
+        assert overview.fire.features.sound is False
+
+    async def test_features_fallback_when_fire_details_empty(
+        self, mock_api, token_auth
+    ):
+        """When FireDetails exists but FireFeature is empty, fall back."""
+        fire_id = "feat-empty-details"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {
+            "FireDetails": {"FireFeature": {}},
+            "WifiFireOverview": {
+                "FireId": fire_id,
+                "FireFeature": {"PowerBoost": True},
+                "Parameters": [],
+            },
+        }
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            overview = await client.get_fire_overview(fire_id)
+
+        assert overview.fire.features.power_boost is True
+
+
+# -------------------------------------------------------------------
+# Direct unit tests for get_fires field mapping
+# -------------------------------------------------------------------
+
+
+class TestGetFiresFieldMapping:
+    """Test every Fire field is correctly mapped from JSON."""
+
+    async def test_all_fire_fields(self, mock_api, token_auth):
+        """Verify each Fire field is mapped from the correct JSON key."""
+        url = f"{API_BASE}/api/Fires/GetFires"
+        payload = [
+            {
+                "FireId": "fire-abc",
+                "FriendlyName": "Kitchen",
+                "Brand": "Faber",
+                "ProductType": "Symphony XT",
+                "ProductModel": "SYM-30",
+                "ItemCode": "XYZ789",
+                "IoTConnectionState": 0,
+                "WithHeat": False,
+                "IsIotFire": False,
+                "FireFeature": {
+                    "Sound": True,
+                    "FlameHeight": True,
+                },
+            }
+        ]
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            fires = await client.get_fires()
+
+        assert len(fires) == 1
+        fire = fires[0]
+        assert fire.fire_id == "fire-abc"
+        assert fire.friendly_name == "Kitchen"
+        assert fire.brand == "Faber"
+        assert fire.product_type == "Symphony XT"
+        assert fire.product_model == "SYM-30"
+        assert fire.item_code == "XYZ789"
+        assert fire.connection_state == ConnectionState.UNKNOWN
+        assert fire.with_heat is False
+        assert fire.is_iot_fire is False
+        assert fire.features.sound is True
+        assert fire.features.flame_height is True
+        assert fire.features.moods is False
+
+    async def test_get_fires_missing_fire_feature_key(self, mock_api, token_auth):
+        """When FireFeature key is absent, features default to all False."""
+        url = f"{API_BASE}/api/Fires/GetFires"
+        payload = [
+            {
+                "FireId": "no-feat",
+                "FriendlyName": "Office",
+                "Brand": "Real Flame",
+                "ProductType": "PT",
+                "ProductModel": "PM",
+                "ItemCode": "IC",
+                "IoTConnectionState": 2,
+                "WithHeat": True,
+                "IsIotFire": True,
+            }
+        ]
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            fires = await client.get_fires()
+
+        fire = fires[0]
+        assert fire.features == FireFeatures()
+
+    async def test_get_fires_multiple_entries(self, mock_api, token_auth):
+        """Multiple fires are all parsed."""
+        url = f"{API_BASE}/api/Fires/GetFires"
+        entry = {
+            "FireId": "f",
+            "FriendlyName": "n",
+            "Brand": "b",
+            "ProductType": "pt",
+            "ProductModel": "pm",
+            "ItemCode": "ic",
+            "IoTConnectionState": 0,
+            "WithHeat": False,
+            "IsIotFire": False,
+        }
+        mock_api.get(url, payload=[entry, {**entry, "FireId": "f2"}])
+
+        async with FlameConnectClient(token_auth) as client:
+            fires = await client.get_fires()
+
+        assert len(fires) == 2
+        assert fires[0].fire_id == "f"
+        assert fires[1].fire_id == "f2"
+
+
+# -------------------------------------------------------------------
+# Direct unit tests for _request boundary checks
+# -------------------------------------------------------------------
+
+
+class TestRequestBoundaryStatus:
+    """Test _request status code boundary checks."""
+
+    async def test_status_199_raises(self, mock_api, token_auth):
+        """Status 199 (< 200) must raise ApiError."""
+        url = f"{API_BASE}/api/Fires/GetFires"
+        mock_api.get(url, status=199, body="Too early")
+
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(ApiError) as exc_info:
+                await client.get_fires()
+
+        assert exc_info.value.status == 199
+
+    async def test_status_200_succeeds(self, mock_api, token_auth):
+        """Status 200 must succeed."""
+        url = f"{API_BASE}/api/Fires/GetFires"
+        mock_api.get(url, status=200, payload=[])
+
+        async with FlameConnectClient(token_auth) as client:
+            fires = await client.get_fires()
+
+        assert fires == []
+
+    async def test_status_299_succeeds(self, mock_api, token_auth):
+        """Status 299 is still 2xx and must succeed."""
+        url = f"{API_BASE}/api/Fires/GetFires"
+        mock_api.get(url, status=299, payload=[])
+
+        async with FlameConnectClient(token_auth) as client:
+            fires = await client.get_fires()
+
+        assert fires == []
+
+    async def test_status_300_raises(self, mock_api, token_auth):
+        """Status 300 (>= 300) must raise ApiError."""
+        url = f"{API_BASE}/api/Fires/GetFires"
+        mock_api.get(url, status=300, body="Redirect")
+
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(ApiError) as exc_info:
+                await client.get_fires()
+
+        assert exc_info.value.status == 300
+
+
+# -------------------------------------------------------------------
+# Direct unit tests for write_parameters payload
+# -------------------------------------------------------------------
+
+
+class TestWriteParametersPayload:
+    """Test exact payload structure of write_parameters."""
+
+    async def test_payload_has_fire_id_and_parameters(self, mock_api, token_auth):
+        """Verify the top-level keys of the POST body."""
+        url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mock_api.post(url, payload={})
+
+        mode = ModeParam(mode=FireMode.MANUAL, target_temperature=22.0)
+        async with FlameConnectClient(token_auth) as client:
+            await client.write_parameters("fire-xyz", [mode])
+
+        key = ("POST", URL(url))
+        body = mock_api.requests[key][0].kwargs["json"]
+        assert body["FireId"] == "fire-xyz"
+        assert "Parameters" in body
+        assert len(body["Parameters"]) == 1
+
+    async def test_wire_param_structure(self, mock_api, token_auth):
+        """Each wire param must have ParameterId (int) and Value (str)."""
+        url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mock_api.post(url, payload={})
+
+        sound = SoundParam(volume=50, sound_file=1)
+        async with FlameConnectClient(token_auth) as client:
+            await client.write_parameters("fire-xyz", [sound])
+
+        key = ("POST", URL(url))
+        body = mock_api.requests[key][0].kwargs["json"]
+        wire = body["Parameters"][0]
+        assert wire["ParameterId"] == 369
+        assert isinstance(wire["Value"], str)
+        # Value must be valid base64
+        base64.b64decode(wire["Value"])
+
+    async def test_multiple_wire_params_order(self, mock_api, token_auth):
+        """Multiple params produce multiple wire entries."""
+        url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mock_api.post(url, payload={})
+
+        mode = ModeParam(mode=FireMode.MANUAL, target_temperature=22.0)
+        temp_unit = TempUnitParam(unit=TempUnit.CELSIUS)
+        async with FlameConnectClient(token_auth) as client:
+            await client.write_parameters("f1", [mode, temp_unit])
+
+        key = ("POST", URL(url))
+        body = mock_api.requests[key][0].kwargs["json"]
+        ids = [p["ParameterId"] for p in body["Parameters"]]
+        assert ids == [321, 236]
+
+    async def test_write_url_exact(self, mock_api, token_auth):
+        """Verify the exact URL used for write_parameters."""
+        url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mock_api.post(url, payload={})
+
+        mode = ModeParam(mode=FireMode.MANUAL, target_temperature=22.0)
+        async with FlameConnectClient(token_auth) as client:
+            await client.write_parameters("f1", [mode])
+
+        key = ("POST", URL(url))
+        assert key in mock_api.requests
+
+
+# -------------------------------------------------------------------
+# Direct unit tests for turn_on / turn_off
+# -------------------------------------------------------------------
+
+
+class TestTurnOnDirect:
+    """Direct tests for turn_on covering mutant scenarios."""
+
+    async def test_turn_on_mode_is_manual(
+        self, mock_api, token_auth, get_fire_overview_payload
+    ):
+        """turn_on must set mode to MANUAL."""
+        fire_id = "test-fire-001"
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mock_api.get(overview_url, payload=get_fire_overview_payload)
+        mock_api.post(write_url, payload={})
+
+        async with FlameConnectClient(token_auth) as client:
+            await client.turn_on(fire_id)
+
+        key = ("POST", URL(write_url))
+        body = mock_api.requests[key][0].kwargs["json"]
+        mode_wire = next(p for p in body["Parameters"] if p["ParameterId"] == 321)
+        raw = base64.b64decode(mode_wire["Value"])
+        assert raw[3] == FireMode.MANUAL
+
+    async def test_turn_on_writes_to_correct_fire_id(
+        self, mock_api, token_auth, get_fire_overview_payload
+    ):
+        """turn_on must write to the correct fire_id."""
+        fire_id = "test-fire-001"
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mock_api.get(overview_url, payload=get_fire_overview_payload)
+        mock_api.post(write_url, payload={})
+
+        async with FlameConnectClient(token_auth) as client:
+            await client.turn_on(fire_id)
+
+        key = ("POST", URL(write_url))
+        body = mock_api.requests[key][0].kwargs["json"]
+        assert body["FireId"] == fire_id
+
+    async def test_turn_on_with_only_mode_no_flame(self, mock_api, token_auth):
+        """When overview has ModeParam but no FlameEffectParam, only mode is written."""
+        fire_id = "mode-only"
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mode_val = encode_parameter(
+            ModeParam(mode=FireMode.STANDBY, target_temperature=25.0)
+        )
+        payload = _make_overview_payload(
+            fire_id=fire_id,
+            parameters=[{"ParameterId": 321, "Value": mode_val}],
+        )
+        mock_api.get(overview_url, payload=payload)
+        mock_api.post(write_url, payload={})
+
+        async with FlameConnectClient(token_auth) as client:
+            await client.turn_on(fire_id)
+
+        key = ("POST", URL(write_url))
+        body = mock_api.requests[key][0].kwargs["json"]
+        # Only ModeParam written
+        assert len(body["Parameters"]) == 1
+        assert body["Parameters"][0]["ParameterId"] == 321
+        # Temperature preserved from existing ModeParam
+        raw = base64.b64decode(body["Parameters"][0]["Value"])
+        temp = float(raw[4]) + float(raw[5]) / 10.0
+        assert temp == pytest.approx(25.0)
+
+
+class TestTurnOffDirect:
+    """Direct tests for turn_off covering mutant scenarios."""
+
+    async def test_turn_off_mode_is_standby(
+        self, mock_api, token_auth, get_fire_overview_payload
+    ):
+        """turn_off must set mode to STANDBY."""
+        fire_id = "test-fire-001"
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mock_api.get(overview_url, payload=get_fire_overview_payload)
+        mock_api.post(write_url, payload={})
+
+        async with FlameConnectClient(token_auth) as client:
+            await client.turn_off(fire_id)
+
+        key = ("POST", URL(write_url))
+        body = mock_api.requests[key][0].kwargs["json"]
+        assert len(body["Parameters"]) == 1
+        raw = base64.b64decode(body["Parameters"][0]["Value"])
+        assert raw[3] == FireMode.STANDBY
+
+    async def test_turn_off_writes_to_correct_fire_id(
+        self, mock_api, token_auth, get_fire_overview_payload
+    ):
+        """turn_off must write to the correct fire_id."""
+        fire_id = "test-fire-001"
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mock_api.get(overview_url, payload=get_fire_overview_payload)
+        mock_api.post(write_url, payload={})
+
+        async with FlameConnectClient(token_auth) as client:
+            await client.turn_off(fire_id)
+
+        key = ("POST", URL(write_url))
+        body = mock_api.requests[key][0].kwargs["json"]
+        assert body["FireId"] == fire_id
+
+    async def test_turn_off_only_writes_mode_param(
+        self, mock_api, token_auth, get_fire_overview_payload
+    ):
+        """turn_off only writes ModeParam, not FlameEffectParam."""
+        fire_id = "test-fire-001"
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mock_api.get(overview_url, payload=get_fire_overview_payload)
+        mock_api.post(write_url, payload={})
+
+        async with FlameConnectClient(token_auth) as client:
+            await client.turn_off(fire_id)
+
+        key = ("POST", URL(write_url))
+        body = mock_api.requests[key][0].kwargs["json"]
+        assert len(body["Parameters"]) == 1
+        assert body["Parameters"][0]["ParameterId"] == 321
+
+    async def test_turn_off_break_not_continue(self, mock_api, token_auth):
+        """turn_off breaks after finding ModeParam (doesn't continue scanning).
+
+        When overview has ModeParam and FlameEffectParam, turn_off should
+        use the ModeParam temperature and only write one param.
+        """
+        fire_id = "multi-param"
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mode_val = encode_parameter(
+            ModeParam(mode=FireMode.MANUAL, target_temperature=19.0)
+        )
+        flame_val = encode_parameter(
+            FlameEffectParam(
+                flame_effect=FlameEffect.ON,
+                flame_speed=3,
+                brightness=Brightness.LOW,
+                pulsating_effect=PulsatingEffect.OFF,
+                media_theme=MediaTheme.USER_DEFINED,
+                media_light=LightStatus.OFF,
+                media_color=RGBWColor(0, 0, 0, 0),
+                overhead_light=LightStatus.OFF,
+                overhead_color=RGBWColor(0, 0, 0, 0),
+                light_status=LightStatus.OFF,
+                flame_color=FlameEffect.OFF,
+                ambient_sensor=LightStatus.OFF,
+            )
+        )
+        payload = _make_overview_payload(
+            fire_id=fire_id,
+            parameters=[
+                {"ParameterId": 321, "Value": mode_val},
+                {"ParameterId": 322, "Value": flame_val},
+            ],
+        )
+        mock_api.get(overview_url, payload=payload)
+        mock_api.post(write_url, payload={})
+
+        async with FlameConnectClient(token_auth) as client:
+            await client.turn_off(fire_id)
+
+        key = ("POST", URL(write_url))
+        body = mock_api.requests[key][0].kwargs["json"]
+        raw = base64.b64decode(body["Parameters"][0]["Value"])
+        temp = float(raw[4]) + float(raw[5]) / 10.0
+        assert temp == pytest.approx(19.0)
+
+
+# -------------------------------------------------------------------
+# Direct unit tests for __init__, __aenter__, __aexit__
+# -------------------------------------------------------------------
+
+
+class TestContextManagerDirect:
+    """Direct tests for __init__, __aenter__, __aexit__ mutants."""
+
+    async def test_aenter_creates_session_when_none(self, token_auth):
+        """__aenter__ must create a session when none is provided."""
+        client = FlameConnectClient(token_auth)
+        assert client._session is None
+        async with client:
+            assert client._session is not None
+            assert isinstance(client._session, aiohttp.ClientSession)
+
+    async def test_aenter_returns_self(self, token_auth):
+        """__aenter__ must return the client itself."""
+        client = FlameConnectClient(token_auth)
+        async with client as returned:
+            assert returned is client
+
+    async def test_aenter_preserves_external_session(self, token_auth):
+        """__aenter__ must not replace an externally provided session."""
+        session = aiohttp.ClientSession()
+        try:
+            client = FlameConnectClient(token_auth, session=session)
+            async with client:
+                assert client._session is session
+        finally:
+            await session.close()
+
+    async def test_init_none_session_stored_as_none(self, token_auth):
+        """When no session provided, _session is None before __aenter__."""
+        client = FlameConnectClient(token_auth)
+        assert client._session is None
+        assert client._external_session is False
+
+    async def test_init_auth_stored(self, token_auth):
+        """Auth object must be stored."""
+        client = FlameConnectClient(token_auth)
+        assert client._auth is token_auth
+
+
+# -------------------------------------------------------------------
+# Direct unit tests for get_fire_overview field defaults
+# -------------------------------------------------------------------
+
+
+class TestGetFireOverviewFieldDefaults:
+    """Test each Fire field default in get_fire_overview individually."""
+
+    async def test_friendly_name_defaults_to_fire_id(self, mock_api, token_auth):
+        """FriendlyName defaults to FireId when missing."""
+        fire_id = "id-as-name"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {"WifiFireOverview": {"FireId": fire_id}}
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            overview = await client.get_fire_overview(fire_id)
+
+        assert overview.fire.friendly_name == fire_id
+
+    async def test_brand_defaults_to_empty(self, mock_api, token_auth):
+        """Brand defaults to empty string when missing."""
+        fire_id = "no-brand"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {"WifiFireOverview": {"FireId": fire_id}}
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            overview = await client.get_fire_overview(fire_id)
+
+        assert overview.fire.brand == ""
+
+    async def test_product_type_defaults_to_empty(self, mock_api, token_auth):
+        """ProductType defaults to empty string when missing."""
+        fire_id = "no-pt"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {"WifiFireOverview": {"FireId": fire_id}}
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            overview = await client.get_fire_overview(fire_id)
+
+        assert overview.fire.product_type == ""
+
+    async def test_product_model_defaults_to_empty(self, mock_api, token_auth):
+        """ProductModel defaults to empty string when missing."""
+        fire_id = "no-pm"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {"WifiFireOverview": {"FireId": fire_id}}
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            overview = await client.get_fire_overview(fire_id)
+
+        assert overview.fire.product_model == ""
+
+    async def test_item_code_defaults_to_empty(self, mock_api, token_auth):
+        """ItemCode defaults to empty string when missing."""
+        fire_id = "no-ic"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {"WifiFireOverview": {"FireId": fire_id}}
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            overview = await client.get_fire_overview(fire_id)
+
+        assert overview.fire.item_code == ""
+
+    async def test_connection_state_defaults_to_unknown(self, mock_api, token_auth):
+        """IoTConnectionState defaults to 0 (UNKNOWN) when missing."""
+        fire_id = "no-conn"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {"WifiFireOverview": {"FireId": fire_id}}
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            overview = await client.get_fire_overview(fire_id)
+
+        assert overview.fire.connection_state == ConnectionState.UNKNOWN
+
+    async def test_with_heat_defaults_to_false(self, mock_api, token_auth):
+        """WithHeat defaults to False when missing."""
+        fire_id = "no-heat"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {"WifiFireOverview": {"FireId": fire_id}}
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            overview = await client.get_fire_overview(fire_id)
+
+        assert overview.fire.with_heat is False
+
+    async def test_is_iot_fire_defaults_to_false(self, mock_api, token_auth):
+        """IsIotFire defaults to False when missing."""
+        fire_id = "no-iot"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {"WifiFireOverview": {"FireId": fire_id}}
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            overview = await client.get_fire_overview(fire_id)
+
+        assert overview.fire.is_iot_fire is False
