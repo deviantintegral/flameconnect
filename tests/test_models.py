@@ -258,6 +258,42 @@ class TestTempSuffix:
         assert temp_suffix(TempUnitParam(unit=TempUnit.FAHRENHEIT)) == "F"
 
 
+class TestKebabName:
+    """Tests for kebab_name()."""
+
+    def test_single_word(self):
+        from flameconnect.models import kebab_name
+
+        assert kebab_name(FireMode.STANDBY) == "standby"
+
+    def test_multi_word_underscore(self):
+        from flameconnect.models import kebab_name
+
+        assert kebab_name(HeatMode.FAN_ONLY) == "fan-only"
+
+    def test_underscore_replaced_with_hyphen(self):
+        from flameconnect.models import kebab_name
+
+        result = kebab_name(FlameColor.YELLOW_RED)
+        assert "_" not in result
+        assert "-" in result
+        assert result == "yellow-red"
+
+    def test_lowercased(self):
+        from flameconnect.models import kebab_name
+
+        result = kebab_name(HeatControl.SOFTWARE_DISABLED)
+        assert result == result.lower()
+        assert result == "software-disabled"
+
+    def test_all_enum_members(self):
+        from flameconnect.models import kebab_name
+
+        for member in MediaTheme:
+            result = kebab_name(member)
+            assert result == member.name.lower().replace("_", "-")
+
+
 class TestDisplayName:
     """Tests for display_name()."""
 
