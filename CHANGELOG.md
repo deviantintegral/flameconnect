@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.3](https://github.com/deviantintegral/flameconnect/compare/v0.5.2...v0.5.3) (2026-03-08)
+
+
+### Bug Fixes
+
+* rename display strings from "FlameConnect" to "Flame Connect" ([#72](https://github.com/deviantintegral/flameconnect/issues/72)) ([e2e06fb](https://github.com/deviantintegral/flameconnect/commit/e2e06fb10a6cfe76bba5962277b601e625a94378))
+
 ## [0.5.2](https://github.com/deviantintegral/flameconnect/compare/v0.5.1...v0.5.2) (2026-03-06)
 
 
