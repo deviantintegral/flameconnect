@@ -1,4 +1,4 @@
-"""Media theme selection modal for the FlameConnect TUI."""
+"""Media theme selection modal for the Flame Connect TUI."""
 
 from __future__ import annotations
 

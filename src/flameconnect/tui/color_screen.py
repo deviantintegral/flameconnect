@@ -1,4 +1,4 @@
-"""Reusable RGBW colour picker modal for the FlameConnect TUI."""
+"""Reusable RGBW colour picker modal for the Flame Connect TUI."""
 
 from __future__ import annotations
 

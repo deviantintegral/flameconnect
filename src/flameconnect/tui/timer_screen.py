@@ -1,4 +1,4 @@
-"""Timer duration modal for the FlameConnect TUI."""
+"""Timer duration modal for the Flame Connect TUI."""
 
 from __future__ import annotations
 
