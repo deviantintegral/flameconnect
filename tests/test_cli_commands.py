@@ -1732,3 +1732,1158 @@ class TestCmdStatusAllParams:
         assert "[236] Temperature Unit" in out
         assert "[369] Sound" in out
         assert "[370] Log Effect" in out
+
+
+# ===================================================================
+# Mutation-killing tests: build_parser
+# ===================================================================
+
+
+class TestBuildParserMutants:
+    """Precise tests for build_parser to kill string/config mutations."""
+
+    def test_parser_description_not_none(self):
+        parser = build_parser()
+        assert parser.description is not None
+
+    def test_parser_description_contains_expected_text(self):
+        parser = build_parser()
+        assert "Control" in parser.description
+        assert "Dimplex" in parser.description
+        assert "Faber" in parser.description
+        assert "Real Flame" in parser.description
+        assert "Flame Connect" in parser.description
+        assert "cloud API" in parser.description
+
+    def test_parser_description_exact(self):
+        parser = build_parser()
+        expected = (
+            "Control Dimplex, Faber, and Real Flame fireplaces"
+            " via the Flame Connect cloud API"
+        )
+        assert parser.description == expected
+
+    def test_parser_prog(self):
+        parser = build_parser()
+        assert parser.prog == "flameconnect"
+
+    def test_verbose_flag_help(self):
+        parser = build_parser()
+        for action in parser._actions:
+            if "--verbose" in getattr(action, "option_strings", []):
+                assert action.help == "Enable debug logging"
+                assert "-v" in action.option_strings
+                break
+        else:
+            pytest.fail("--verbose action not found")
+
+    def test_verbose_flag_is_store_true(self):
+        parser = build_parser()
+        for action in parser._actions:
+            if "--verbose" in getattr(action, "option_strings", []):
+                assert action.const is True
+                break
+
+    def test_subcommand_names(self):
+        parser = build_parser()
+        choices = parser._subparsers._group_actions[0].choices
+        assert set(choices.keys()) == {"list", "status", "on", "off", "set", "tui"}
+
+    def test_list_help(self):
+        parser = build_parser()
+        sp_actions = parser._subparsers._group_actions[0]
+        for ca in sp_actions._choices_actions:
+            if ca.dest == "list":
+                assert ca.help == "List registered fireplaces"
+                break
+
+    def test_status_help(self):
+        parser = build_parser()
+        sp_actions = parser._subparsers._group_actions[0]
+        for ca in sp_actions._choices_actions:
+            if ca.dest == "status":
+                assert ca.help == "Show current fireplace status"
+                break
+
+    def test_on_help(self):
+        parser = build_parser()
+        sp_actions = parser._subparsers._group_actions[0]
+        for ca in sp_actions._choices_actions:
+            if ca.dest == "on":
+                assert ca.help == "Turn on a fireplace"
+                break
+
+    def test_off_help(self):
+        parser = build_parser()
+        sp_actions = parser._subparsers._group_actions[0]
+        for ca in sp_actions._choices_actions:
+            if ca.dest == "off":
+                assert ca.help == "Turn off a fireplace"
+                break
+
+    def test_set_help(self):
+        parser = build_parser()
+        sp_actions = parser._subparsers._group_actions[0]
+        for ca in sp_actions._choices_actions:
+            if ca.dest == "set":
+                assert ca.help == "Set a fireplace parameter"
+                break
+
+    def test_tui_help(self):
+        parser = build_parser()
+        sp_actions = parser._subparsers._group_actions[0]
+        for ca in sp_actions._choices_actions:
+            if ca.dest == "tui":
+                assert ca.help == "Launch the interactive TUI"
+                break
+
+    def test_status_fire_id_help(self):
+        parser = build_parser()
+        choices = parser._subparsers._group_actions[0].choices
+        sp_status = choices["status"]
+        for action in sp_status._actions:
+            if action.dest == "fire_id":
+                assert action.help == "Fireplace ID"
+                break
+        else:
+            pytest.fail("fire_id action not found in status subparser")
+
+    def test_on_fire_id_help(self):
+        parser = build_parser()
+        choices = parser._subparsers._group_actions[0].choices
+        sp_on = choices["on"]
+        for action in sp_on._actions:
+            if action.dest == "fire_id":
+                assert action.help == "Fireplace ID"
+                break
+        else:
+            pytest.fail("fire_id action not found in on subparser")
+
+    def test_off_fire_id_help(self):
+        parser = build_parser()
+        choices = parser._subparsers._group_actions[0].choices
+        sp_off = choices["off"]
+        for action in sp_off._actions:
+            if action.dest == "fire_id":
+                assert action.help == "Fireplace ID"
+                break
+        else:
+            pytest.fail("fire_id action not found in off subparser")
+
+    def test_set_fire_id_help(self):
+        parser = build_parser()
+        choices = parser._subparsers._group_actions[0].choices
+        sp_set = choices["set"]
+        for action in sp_set._actions:
+            if action.dest == "fire_id":
+                assert action.help == "Fireplace ID"
+                break
+        else:
+            pytest.fail("fire_id action not found in set subparser")
+
+    def test_set_param_help(self):
+        parser = build_parser()
+        choices = parser._subparsers._group_actions[0].choices
+        sp_set = choices["set"]
+        for action in sp_set._actions:
+            if action.dest == "param":
+                assert "Parameter name" in action.help
+                assert "mode" in action.help
+                assert "flame-speed" in action.help
+                assert "brightness" in action.help
+                assert "pulsating" in action.help
+                assert "flame-color" in action.help
+                assert "media-theme" in action.help
+                assert "heat-status" in action.help
+                assert "heat-mode" in action.help
+                assert "heat-temp" in action.help
+                assert "timer" in action.help
+                assert "temp-unit" in action.help
+                assert "flame-effect" in action.help
+                assert "media-light" in action.help
+                assert "media-color" in action.help
+                assert "overhead-light" in action.help
+                assert "overhead-color" in action.help
+                assert "ambient-sensor" in action.help
+                break
+        else:
+            pytest.fail("param action not found in set subparser")
+
+    def test_set_value_help(self):
+        parser = build_parser()
+        choices = parser._subparsers._group_actions[0].choices
+        sp_set = choices["set"]
+        for action in sp_set._actions:
+            if action.dest == "value":
+                assert action.help == "Value to set"
+                break
+        else:
+            pytest.fail("value action not found in set subparser")
+
+    def test_subparsers_dest_is_command(self):
+        parser = build_parser()
+        sp_action = parser._subparsers._group_actions[0]
+        assert sp_action.dest == "command"
+
+    def test_set_has_three_positional_args(self):
+        """set subparser has fire_id, param, value."""
+        parser = build_parser()
+        choices = parser._subparsers._group_actions[0].choices
+        sp_set = choices["set"]
+        positional_dests = [a.dest for a in sp_set._actions if not a.option_strings]
+        assert "fire_id" in positional_dests
+        assert "param" in positional_dests
+        assert "value" in positional_dests
+
+
+# ===================================================================
+# Mutation-killing tests: _display_mode precise output
+# ===================================================================
+
+
+class TestDisplayModeMutants:
+    """Precise output checks for _display_mode to kill string mutants."""
+
+    def test_header_exact(self, capsys):
+        param = _make_mode_param()
+        _display_mode(param)
+        out = capsys.readouterr().out
+        assert "[321] Mode" in out
+        assert "─" * 40 in out
+
+    def test_label_mode(self, capsys):
+        param = _make_mode_param(mode=FireMode.MANUAL)
+        _display_mode(param)
+        out = capsys.readouterr().out
+        assert "    Mode:           On" in out
+
+    def test_label_target_temp(self, capsys):
+        param = _make_mode_param(target_temperature=20.0)
+        _display_mode(param)
+        out = capsys.readouterr().out
+        assert "    Target Temp:    20.0°" in out
+
+    def test_no_unit_suffix_when_none(self, capsys):
+        param = _make_mode_param(target_temperature=20.0)
+        _display_mode(param)
+        out = capsys.readouterr().out
+        # When temp_unit is None, suffix should be empty string
+        assert "20.0°\n" in out or "20.0°" in out
+        assert "°C" not in out
+        assert "°F" not in out
+
+    def test_celsius_suffix(self, capsys):
+        param = _make_mode_param(target_temperature=20.0)
+        tu = TempUnitParam(unit=TempUnit.CELSIUS)
+        _display_mode(param, tu)
+        out = capsys.readouterr().out
+        assert "20.0°C" in out
+
+    def test_fahrenheit_suffix(self, capsys):
+        param = _make_mode_param(target_temperature=20.0)
+        tu = TempUnitParam(unit=TempUnit.FAHRENHEIT)
+        _display_mode(param, tu)
+        out = capsys.readouterr().out
+        assert "°F" in out
+
+
+# ===================================================================
+# Mutation-killing tests: _display_flame_effect precise output
+# ===================================================================
+
+
+class TestDisplayFlameEffectMutants:
+    """Precise output checks for _display_flame_effect."""
+
+    def test_header(self, capsys):
+        param = _make_flame_effect_param()
+        _display_flame_effect(param)
+        out = capsys.readouterr().out
+        assert "[322] Flame Effect" in out
+        assert "─" * 40 in out
+
+    def test_flame_label(self, capsys):
+        param = _make_flame_effect_param(flame_effect=FlameEffect.ON)
+        _display_flame_effect(param)
+        out = capsys.readouterr().out
+        assert "    Flame:          On" in out
+
+    def test_flame_speed_label(self, capsys):
+        param = _make_flame_effect_param(flame_speed=3)
+        _display_flame_effect(param)
+        out = capsys.readouterr().out
+        assert "    Flame Speed:    3 / 5" in out
+
+    def test_brightness_label(self, capsys):
+        param = _make_flame_effect_param(brightness=Brightness.HIGH)
+        _display_flame_effect(param)
+        out = capsys.readouterr().out
+        assert "    Brightness:     High" in out
+
+    def test_flame_color_label(self, capsys):
+        param = _make_flame_effect_param(flame_color=FlameColor.ALL)
+        _display_flame_effect(param)
+        out = capsys.readouterr().out
+        assert "    Flame Color:    All" in out
+
+    def test_media_light_label(self, capsys):
+        param = _make_flame_effect_param(
+            media_theme=MediaTheme.USER_DEFINED,
+            media_color=RGBWColor(red=10, green=20, blue=30, white=40),
+        )
+        _display_flame_effect(param)
+        out = capsys.readouterr().out
+        assert "    Media Light:    User Defined | RGBW(10, 20, 30, 40)" in out
+
+    def test_overhead_light_label(self, capsys):
+        param = _make_flame_effect_param(light_status=LightStatus.OFF)
+        _display_flame_effect(param)
+        out = capsys.readouterr().out
+        assert "    Overhead Light: Off" in out
+
+    def test_overhead_pulsating_label(self, capsys):
+        param = _make_flame_effect_param(pulsating_effect=PulsatingEffect.OFF)
+        _display_flame_effect(param)
+        out = capsys.readouterr().out
+        assert "    Overhead Pulsating: Off" in out
+
+    def test_overhead_color_label(self, capsys):
+        param = _make_flame_effect_param(
+            overhead_color=RGBWColor(red=50, green=60, blue=70, white=80)
+        )
+        _display_flame_effect(param)
+        out = capsys.readouterr().out
+        assert "    Overhead Color: RGBW(50, 60, 70, 80)" in out
+
+    def test_ambient_sensor_label(self, capsys):
+        param = _make_flame_effect_param(ambient_sensor=LightStatus.ON)
+        _display_flame_effect(param)
+        out = capsys.readouterr().out
+        assert "    Ambient Sensor: On" in out
+
+
+# ===================================================================
+# Mutation-killing tests: _display_heat precise output
+# ===================================================================
+
+
+class TestDisplayHeatMutants:
+    """Precise output checks for _display_heat."""
+
+    def test_header(self, capsys):
+        param = _make_heat_param()
+        _display_heat(param)
+        out = capsys.readouterr().out
+        assert "[323] Heat Settings" in out
+        assert "─" * 40 in out
+
+    def test_heat_label(self, capsys):
+        param = _make_heat_param(heat_status=HeatStatus.ON)
+        _display_heat(param)
+        out = capsys.readouterr().out
+        assert "    Heat:           On" in out
+
+    def test_heat_mode_label(self, capsys):
+        param = _make_heat_param(heat_mode=HeatMode.NORMAL)
+        _display_heat(param)
+        out = capsys.readouterr().out
+        assert "    Heat Mode:      Normal" in out
+
+    def test_setpoint_temp_label(self, capsys):
+        param = _make_heat_param(setpoint_temperature=22.0)
+        _display_heat(param)
+        out = capsys.readouterr().out
+        assert "    Setpoint Temp:  22.0°" in out
+
+    def test_boost_duration_label(self, capsys):
+        param = _make_heat_param(boost_duration=15)
+        _display_heat(param)
+        out = capsys.readouterr().out
+        assert "    Boost Duration: 15" in out
+
+    def test_no_unit_suffix_when_none(self, capsys):
+        param = _make_heat_param(setpoint_temperature=22.0)
+        _display_heat(param)
+        out = capsys.readouterr().out
+        assert "22.0°\n" in out or out.count("°C") == 0
+
+    def test_celsius_unit(self, capsys):
+        param = _make_heat_param(setpoint_temperature=22.0)
+        tu = TempUnitParam(unit=TempUnit.CELSIUS)
+        _display_heat(param, tu)
+        out = capsys.readouterr().out
+        assert "22.0°C" in out
+
+    def test_fahrenheit_unit(self, capsys):
+        param = _make_heat_param(setpoint_temperature=22.0)
+        tu = TempUnitParam(unit=TempUnit.FAHRENHEIT)
+        _display_heat(param, tu)
+        out = capsys.readouterr().out
+        assert "°F" in out
+
+
+# ===================================================================
+# Mutation-killing tests: _display_heat_mode precise output
+# ===================================================================
+
+
+class TestDisplayHeatModeMutants:
+    """Precise output checks for _display_heat_mode."""
+
+    def test_header(self, capsys):
+        param = HeatModeParam(heat_control=HeatControl.ENABLED)
+        _display_heat_mode(param)
+        out = capsys.readouterr().out
+        assert "[325] Heat Mode" in out
+        assert "─" * 40 in out
+
+    def test_heat_control_label(self, capsys):
+        param = HeatModeParam(heat_control=HeatControl.ENABLED)
+        _display_heat_mode(param)
+        out = capsys.readouterr().out
+        assert "    Heat Control:   Enabled" in out
+
+
+# ===================================================================
+# Mutation-killing tests: _display_timer precise output
+# ===================================================================
+
+
+class TestDisplayTimerMutants:
+    """Precise tests for _display_timer to kill arithmetic mutants."""
+
+    def test_header(self, capsys):
+        param = TimerParam(timer_status=TimerStatus.DISABLED, duration=0)
+        _display_timer(param)
+        out = capsys.readouterr().out
+        assert "[326] Timer Mode" in out
+        assert "─" * 40 in out
+
+    def test_timer_label(self, capsys):
+        param = TimerParam(timer_status=TimerStatus.DISABLED, duration=0)
+        _display_timer(param)
+        out = capsys.readouterr().out
+        assert "    Timer:          Disabled" in out
+
+    def test_duration_90_minutes(self, capsys):
+        """90 // 60 = 1, 90 % 60 = 30. Kills //2 and %2 mutants."""
+        param = TimerParam(timer_status=TimerStatus.ENABLED, duration=90)
+        _display_timer(param)
+        out = capsys.readouterr().out
+        assert "    Duration:       90 min (1h 30m)" in out
+
+    def test_duration_120_minutes(self, capsys):
+        """120 // 60 = 2, 120 % 60 = 0. Kills //2 (=60) and %2 (=0) mutants."""
+        param = TimerParam(timer_status=TimerStatus.ENABLED, duration=120)
+        _display_timer(param)
+        out = capsys.readouterr().out
+        assert "    Duration:       120 min (2h 0m)" in out
+
+    def test_duration_45_minutes(self, capsys):
+        """45 // 60 = 0, 45 % 60 = 45. Different from //2=22, %2=1."""
+        param = TimerParam(timer_status=TimerStatus.ENABLED, duration=45)
+        _display_timer(param)
+        out = capsys.readouterr().out
+        assert "    Duration:       45 min (0h 45m)" in out
+
+    def test_duration_61_minutes(self, capsys):
+        """61 // 60 = 1, 61 % 60 = 1. With //2 it'd be 30, %2 it'd be 1."""
+        param = TimerParam(timer_status=TimerStatus.ENABLED, duration=61)
+        _display_timer(param)
+        out = capsys.readouterr().out
+        assert "    Duration:       61 min (1h 1m)" in out
+
+    def test_off_at_shown_when_enabled_with_duration(self, capsys):
+        param = TimerParam(timer_status=TimerStatus.ENABLED, duration=30)
+        _display_timer(param)
+        out = capsys.readouterr().out
+        assert "    Off at:" in out
+
+    def test_off_at_not_shown_when_disabled(self, capsys):
+        param = TimerParam(timer_status=TimerStatus.DISABLED, duration=30)
+        _display_timer(param)
+        out = capsys.readouterr().out
+        assert "Off at:" not in out
+
+    def test_off_at_not_shown_when_enabled_zero(self, capsys):
+        param = TimerParam(timer_status=TimerStatus.ENABLED, duration=0)
+        _display_timer(param)
+        out = capsys.readouterr().out
+        assert "Off at:" not in out
+
+    def test_off_at_format(self, capsys):
+        """Verify the Off at line includes HH:MM format."""
+        from datetime import datetime, timedelta
+
+        param = TimerParam(timer_status=TimerStatus.ENABLED, duration=60)
+        _display_timer(param)
+        out = capsys.readouterr().out
+        expected_time = datetime.now() + timedelta(minutes=60)
+        expected_str = expected_time.strftime("%H:%M")
+        assert expected_str in out
+
+
+# ===================================================================
+# Mutation-killing tests: _display_software_version precise output
+# ===================================================================
+
+
+class TestDisplaySoftwareVersionMutants:
+    """Precise output checks for _display_software_version."""
+
+    def test_header(self, capsys):
+        param = SoftwareVersionParam(
+            ui_major=1,
+            ui_minor=2,
+            ui_test=3,
+            control_major=4,
+            control_minor=5,
+            control_test=6,
+            relay_major=7,
+            relay_minor=8,
+            relay_test=9,
+        )
+        _display_software_version(param)
+        out = capsys.readouterr().out
+        assert "[327] Software Version" in out
+        assert "─" * 40 in out
+
+    def test_ui_version_label(self, capsys):
+        param = SoftwareVersionParam(
+            ui_major=1,
+            ui_minor=2,
+            ui_test=3,
+            control_major=4,
+            control_minor=5,
+            control_test=6,
+            relay_major=7,
+            relay_minor=8,
+            relay_test=9,
+        )
+        _display_software_version(param)
+        out = capsys.readouterr().out
+        assert "    UI Version:      1.2.3" in out
+
+    def test_control_version_label(self, capsys):
+        param = SoftwareVersionParam(
+            ui_major=1,
+            ui_minor=2,
+            ui_test=3,
+            control_major=4,
+            control_minor=5,
+            control_test=6,
+            relay_major=7,
+            relay_minor=8,
+            relay_test=9,
+        )
+        _display_software_version(param)
+        out = capsys.readouterr().out
+        assert "    Control Version: 4.5.6" in out
+
+    def test_relay_version_label(self, capsys):
+        param = SoftwareVersionParam(
+            ui_major=1,
+            ui_minor=2,
+            ui_test=3,
+            control_major=4,
+            control_minor=5,
+            control_test=6,
+            relay_major=7,
+            relay_minor=8,
+            relay_test=9,
+        )
+        _display_software_version(param)
+        out = capsys.readouterr().out
+        assert "    Relay Version:   7.8.9" in out
+
+    def test_version_components_distinct(self, capsys):
+        """Ensure each version component is from the correct field."""
+        param = SoftwareVersionParam(
+            ui_major=10,
+            ui_minor=20,
+            ui_test=30,
+            control_major=40,
+            control_minor=50,
+            control_test=60,
+            relay_major=70,
+            relay_minor=80,
+            relay_test=90,
+        )
+        _display_software_version(param)
+        out = capsys.readouterr().out
+        assert "10.20.30" in out
+        assert "40.50.60" in out
+        assert "70.80.90" in out
+
+
+# ===================================================================
+# Mutation-killing tests: _display_error precise output
+# ===================================================================
+
+
+class TestDisplayErrorMutants:
+    """Precise output checks for _display_error."""
+
+    def test_header(self, capsys):
+        param = ErrorParam(error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=0)
+        _display_error(param)
+        out = capsys.readouterr().out
+        assert "[329] Error" in out
+        assert "─" * 40 in out
+
+    def test_error_byte_hex_and_binary(self, capsys):
+        param = ErrorParam(
+            error_byte1=0xFF, error_byte2=0, error_byte3=0, error_byte4=0
+        )
+        _display_error(param)
+        out = capsys.readouterr().out
+        assert "0xFF" in out
+        assert "11111111" in out
+
+    def test_error_byte_labels_with_numbers(self, capsys):
+        param = ErrorParam(error_byte1=1, error_byte2=2, error_byte3=4, error_byte4=8)
+        _display_error(param)
+        out = capsys.readouterr().out
+        assert "    Error Byte 1:   0x01 (00000001)" in out
+        assert "    Error Byte 2:   0x02 (00000010)" in out
+        assert "    Error Byte 3:   0x04 (00000100)" in out
+        assert "    Error Byte 4:   0x08 (00001000)" in out
+
+    def test_active_faults_yes(self, capsys):
+        param = ErrorParam(error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=1)
+        _display_error(param)
+        out = capsys.readouterr().out
+        assert "    Active Faults:  Yes" in out
+
+    def test_active_faults_none(self, capsys):
+        param = ErrorParam(error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=0)
+        _display_error(param)
+        out = capsys.readouterr().out
+        assert "    Active Faults:  None" in out
+
+    def test_all_bytes_zero_format(self, capsys):
+        param = ErrorParam(error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=0)
+        _display_error(param)
+        out = capsys.readouterr().out
+        assert "    Error Byte 1:   0x00 (00000000)" in out
+        assert "    Error Byte 2:   0x00 (00000000)" in out
+        assert "    Error Byte 3:   0x00 (00000000)" in out
+        assert "    Error Byte 4:   0x00 (00000000)" in out
+
+    def test_enumerate_start_1(self, capsys):
+        """Ensure enumeration starts at 1, not 0 or 2."""
+        param = ErrorParam(
+            error_byte1=0xAA, error_byte2=0xBB, error_byte3=0xCC, error_byte4=0xDD
+        )
+        _display_error(param)
+        out = capsys.readouterr().out
+        assert "Error Byte 1:" in out
+        assert "Error Byte 2:" in out
+        assert "Error Byte 3:" in out
+        assert "Error Byte 4:" in out
+        assert "Error Byte 0:" not in out
+        assert "Error Byte 5:" not in out
+
+    def test_error_only_byte2_set(self, capsys):
+        """Faults detected via OR of all bytes."""
+        param = ErrorParam(
+            error_byte1=0,
+            error_byte2=0x10,
+            error_byte3=0,
+            error_byte4=0,
+        )
+        _display_error(param)
+        out = capsys.readouterr().out
+        assert "    Active Faults:  Yes" in out
+
+    def test_error_only_byte3_set(self, capsys):
+        param = ErrorParam(
+            error_byte1=0,
+            error_byte2=0,
+            error_byte3=0x01,
+            error_byte4=0,
+        )
+        _display_error(param)
+        out = capsys.readouterr().out
+        assert "    Active Faults:  Yes" in out
+
+
+# ===================================================================
+# Mutation-killing tests: _display_temp_unit precise output
+# ===================================================================
+
+
+class TestDisplayTempUnitMutants:
+    """Precise output checks for _display_temp_unit."""
+
+    def test_header(self, capsys):
+        param = TempUnitParam(unit=TempUnit.CELSIUS)
+        _display_temp_unit(param)
+        out = capsys.readouterr().out
+        assert "[236] Temperature Unit" in out
+        assert "─" * 40 in out
+
+    def test_unit_label(self, capsys):
+        param = TempUnitParam(unit=TempUnit.CELSIUS)
+        _display_temp_unit(param)
+        out = capsys.readouterr().out
+        assert "    Unit:           Celsius" in out
+
+    def test_unit_fahrenheit_label(self, capsys):
+        param = TempUnitParam(unit=TempUnit.FAHRENHEIT)
+        _display_temp_unit(param)
+        out = capsys.readouterr().out
+        assert "    Unit:           Fahrenheit" in out
+
+
+# ===================================================================
+# Mutation-killing tests: _display_sound precise output
+# ===================================================================
+
+
+class TestDisplaySoundMutants:
+    """Precise output checks for _display_sound."""
+
+    def test_header(self, capsys):
+        param = SoundParam(volume=128, sound_file=3)
+        _display_sound(param)
+        out = capsys.readouterr().out
+        assert "[369] Sound" in out
+        assert "─" * 40 in out
+
+    def test_volume_label(self, capsys):
+        param = SoundParam(volume=128, sound_file=3)
+        _display_sound(param)
+        out = capsys.readouterr().out
+        assert "    Volume:         128 / 255" in out
+
+    def test_sound_file_label(self, capsys):
+        param = SoundParam(volume=128, sound_file=3)
+        _display_sound(param)
+        out = capsys.readouterr().out
+        assert "    Sound File:     3" in out
+
+    def test_different_values(self, capsys):
+        param = SoundParam(volume=0, sound_file=7)
+        _display_sound(param)
+        out = capsys.readouterr().out
+        assert "    Volume:         0 / 255" in out
+        assert "    Sound File:     7" in out
+
+
+# ===================================================================
+# Mutation-killing tests: _display_log_effect precise output
+# ===================================================================
+
+
+class TestDisplayLogEffectMutants:
+    """Precise output checks for _display_log_effect."""
+
+    def test_header(self, capsys):
+        param = LogEffectParam(log_effect=LogEffect.ON, color=_DEFAULT_RGBW, pattern=0)
+        _display_log_effect(param)
+        out = capsys.readouterr().out
+        assert "[370] Log Effect" in out
+        assert "─" * 40 in out
+
+    def test_log_effect_label(self, capsys):
+        param = LogEffectParam(log_effect=LogEffect.ON, color=_DEFAULT_RGBW, pattern=0)
+        _display_log_effect(param)
+        out = capsys.readouterr().out
+        assert "    Log Effect:     On" in out
+
+    def test_colors_label(self, capsys):
+        param = LogEffectParam(
+            log_effect=LogEffect.ON,
+            color=RGBWColor(red=1, green=2, blue=3, white=4),
+            pattern=0,
+        )
+        _display_log_effect(param)
+        out = capsys.readouterr().out
+        assert "    Colors:         RGBW(1, 2, 3, 4)" in out
+
+    def test_pattern_label(self, capsys):
+        param = LogEffectParam(log_effect=LogEffect.ON, color=_DEFAULT_RGBW, pattern=5)
+        _display_log_effect(param)
+        out = capsys.readouterr().out
+        assert "    Pattern:        5" in out
+
+
+# ===================================================================
+# Mutation-killing tests: _display_features precise output
+# ===================================================================
+
+
+class TestDisplayFeaturesMutants:
+    """Precise output checks for _display_features."""
+
+    def test_header(self, capsys):
+        _display_features(FireFeatures())
+        out = capsys.readouterr().out
+        assert "Supported Features" in out
+        assert "─" * 40 in out
+
+    def test_yes_no_values(self, capsys):
+        features = FireFeatures(sound=True, advanced_heat=False)
+        _display_features(features)
+        out = capsys.readouterr().out
+        assert "Sound:" in out
+        assert "Advanced Heat:" in out
+        lines = out.strip().split("\n")
+        for line in lines:
+            if "Sound:" in line:
+                assert "Yes" in line
+            if "Advanced Heat:" in line:
+                assert "No" in line
+
+    def test_all_feature_labels_present(self, capsys):
+        """Verify every label from _FEATURE_LABELS is present."""
+        features = FireFeatures(
+            sound=True,
+            simple_heat=True,
+            advanced_heat=True,
+            seven_day_timer=True,
+            count_down_timer=True,
+            moods=True,
+            flame_height=True,
+            rgb_flame_accent=True,
+            flame_dimming=True,
+            rgb_fuel_bed=True,
+            fuel_bed_dimming=True,
+            flame_fan_speed=True,
+            rgb_back_light=True,
+            front_light_amber=True,
+            pir_toggle_smart_sense=True,
+            lgt1_to_5=True,
+            requires_warm_up=True,
+            apply_flame_only_first=True,
+            flame_amber=True,
+            check_if_remote_was_used=True,
+            media_accent=True,
+            power_boost=True,
+            fan_only=True,
+            rgb_log_effect=True,
+        )
+        _display_features(features)
+        out = capsys.readouterr().out
+        expected = [
+            "Sound:",
+            "Simple Heat:",
+            "Advanced Heat:",
+            "7-Day Timer:",
+            "Countdown Timer:",
+            "Moods:",
+            "Flame Height:",
+            "RGB Flame Accent:",
+            "Flame Dimming:",
+            "RGB Fuel Bed:",
+            "Fuel Bed Dimming:",
+            "Flame Fan Speed:",
+            "RGB Back Light:",
+            "Front Light Amber:",
+            "PIR Smart Sense:",
+            "LGT 1-5:",
+            "Requires Warm Up:",
+            "Apply Flame Only First:",
+            "Flame Amber:",
+            "Check If Remote Was Used:",
+            "Media Accent:",
+            "Power Boost:",
+            "Fan Only:",
+            "RGB Log Effect:",
+        ]
+        for label in expected:
+            assert label in out, f"Missing label: {label}"
+        assert out.count("Yes") == 24
+
+    def test_field_value_alignment(self, capsys):
+        """Test that labels are left-aligned with :<28s formatting."""
+        features = FireFeatures(sound=True)
+        _display_features(features)
+        out = capsys.readouterr().out
+        assert "Sound:                      Yes" in out
+
+
+# ===================================================================
+# Mutation-killing tests: _masked_input
+# ===================================================================
+
+
+class TestMaskedInputMutants:
+    """Precise tests for _masked_input to kill surviving mutants."""
+
+    @staticmethod
+    def _run_masked_with_mocks(
+        chars: list[str], prompt: str = "Password: "
+    ) -> tuple[str, MagicMock, MagicMock, MagicMock, MagicMock]:
+        """Run _masked_input with mocked terminal I/O."""
+        from flameconnect.cli import _masked_input
+
+        mock_stdin = MagicMock()
+        mock_stdout = MagicMock()
+        mock_stdin.read.side_effect = chars
+        mock_stdin.fileno.return_value = 0
+
+        mock_termios = MagicMock()
+        mock_termios.tcgetattr.return_value = ["old_settings"]
+        mock_termios.TCSADRAIN = 1
+        mock_tty = MagicMock()
+
+        with (
+            patch("sys.stdin", mock_stdin),
+            patch("sys.stdout", mock_stdout),
+            patch.dict("sys.modules", {"termios": mock_termios, "tty": mock_tty}),
+        ):
+            result = _masked_input(prompt)
+
+        return result, mock_stdin, mock_stdout, mock_termios, mock_tty
+
+    def test_prompt_written(self):
+        """Prompt is written to stdout."""
+        result, _, mock_stdout, _, _ = self._run_masked_with_mocks(
+            ["\n"], prompt="Enter: "
+        )
+        mock_stdout.write.assert_any_call("Enter: ")
+
+    def test_asterisks_written(self):
+        """Each character should produce a '*' on stdout."""
+        result, _, mock_stdout, _, _ = self._run_masked_with_mocks(
+            ["a", "b", "c", "\n"]
+        )
+        write_calls = [c.args[0] for c in mock_stdout.write.call_args_list]
+        assert write_calls.count("*") == 3
+
+    def test_backspace_sequence_written(self):
+        """Backspace should write '\\b \\b' sequence."""
+        result, _, mock_stdout, _, _ = self._run_masked_with_mocks(["a", "\x7f", "\n"])
+        mock_stdout.write.assert_any_call("\b \b")
+
+    def test_backspace_on_empty_no_write(self):
+        """Backspace on empty input should not write anything extra."""
+        result, _, mock_stdout, _, _ = self._run_masked_with_mocks(["\x7f", "\n"])
+        write_calls = [c.args[0] for c in mock_stdout.write.call_args_list]
+        assert "\b \b" not in write_calls
+
+    def test_newline_written_at_end(self):
+        """After the loop, a newline is written."""
+        result, _, mock_stdout, _, _ = self._run_masked_with_mocks(["a", "\n"])
+        write_calls = [c.args[0] for c in mock_stdout.write.call_args_list]
+        assert write_calls[-1] == "\n"
+
+    def test_termios_restored(self):
+        """Terminal settings are restored in finally block."""
+        result, mock_stdin, _, mock_termios, _ = self._run_masked_with_mocks(
+            ["a", "\n"]
+        )
+        mock_termios.tcsetattr.assert_called_once_with(
+            0, mock_termios.TCSADRAIN, ["old_settings"]
+        )
+
+    def test_tty_setraw_called(self):
+        """tty.setraw is called with stdin fd."""
+        result, _, _, _, mock_tty = self._run_masked_with_mocks(["a", "\n"])
+        mock_tty.setraw.assert_called_once_with(0)
+
+    def test_fileno_called(self):
+        """stdin.fileno() is called to get the file descriptor."""
+        result, mock_stdin, _, _, _ = self._run_masked_with_mocks(["a", "\n"])
+        mock_stdin.fileno.assert_called_once()
+
+    def test_flush_called_for_prompt(self):
+        """stdout.flush() called after writing the prompt."""
+        result, _, mock_stdout, _, _ = self._run_masked_with_mocks(["\n"])
+        assert mock_stdout.flush.call_count >= 2  # prompt + final newline
+
+    def test_flush_called_for_each_char(self):
+        """stdout.flush() called for each character typed."""
+        result, _, mock_stdout, _, _ = self._run_masked_with_mocks(["a", "b", "\n"])
+        # prompt flush + 2 char flushes + final newline flush = at least 4
+        assert mock_stdout.flush.call_count >= 4
+
+    def test_ctrl_c_raises_keyboard_interrupt(self):
+        from flameconnect.cli import _masked_input
+
+        mock_stdin = MagicMock()
+        mock_stdout = MagicMock()
+        mock_stdin.read.side_effect = ["\x03"]
+        mock_stdin.fileno.return_value = 0
+
+        mock_termios = MagicMock()
+        mock_termios.tcgetattr.return_value = ["old"]
+        mock_termios.TCSADRAIN = 1
+        mock_tty = MagicMock()
+
+        with (
+            patch("sys.stdin", mock_stdin),
+            patch("sys.stdout", mock_stdout),
+            patch.dict("sys.modules", {"termios": mock_termios, "tty": mock_tty}),
+            pytest.raises(KeyboardInterrupt),
+        ):
+            _masked_input()
+
+    def test_ctrl_c_still_restores_termios(self):
+        """Even on Ctrl-C, terminal settings should be restored."""
+        from flameconnect.cli import _masked_input
+
+        mock_stdin = MagicMock()
+        mock_stdout = MagicMock()
+        mock_stdin.read.side_effect = ["\x03"]
+        mock_stdin.fileno.return_value = 0
+
+        mock_termios = MagicMock()
+        mock_termios.tcgetattr.return_value = ["saved"]
+        mock_termios.TCSADRAIN = 1
+        mock_tty = MagicMock()
+
+        with (
+            patch("sys.stdin", mock_stdin),
+            patch("sys.stdout", mock_stdout),
+            patch.dict("sys.modules", {"termios": mock_termios, "tty": mock_tty}),
+            pytest.raises(KeyboardInterrupt),
+        ):
+            _masked_input()
+
+        mock_termios.tcsetattr.assert_called_once_with(
+            0, mock_termios.TCSADRAIN, ["saved"]
+        )
+
+    def test_carriage_return_ends_input(self):
+        result, _, _, _, _ = self._run_masked_with_mocks(["x", "y", "\r"])
+        assert result == "xy"
+
+    def test_newline_ends_input(self):
+        result, _, _, _, _ = self._run_masked_with_mocks(["x", "y", "\n"])
+        assert result == "xy"
+
+    def test_delete_char_0x08(self):
+        """\\x08 (BS) also works as backspace."""
+        result, _, mock_stdout, _, _ = self._run_masked_with_mocks(
+            ["a", "b", "\x08", "c", "\n"]
+        )
+        assert result == "ac"
+        mock_stdout.write.assert_any_call("\b \b")
+
+    def test_empty_input(self):
+        result, _, _, _, _ = self._run_masked_with_mocks(["\n"])
+        assert result == ""
+
+    def test_custom_prompt(self):
+        result, _, mock_stdout, _, _ = self._run_masked_with_mocks(
+            ["\n"], prompt="Secret: "
+        )
+        mock_stdout.write.assert_any_call("Secret: ")
+
+    def test_default_prompt(self):
+        result, _, mock_stdout, _, _ = self._run_masked_with_mocks(
+            ["\n"], prompt="Password: "
+        )
+        mock_stdout.write.assert_any_call("Password: ")
+
+    def test_multiple_backspaces(self):
+        """Multiple backspaces remove multiple chars."""
+        result, _, _, _, _ = self._run_masked_with_mocks(
+            ["a", "b", "c", "\x7f", "\x7f", "\n"]
+        )
+        assert result == "a"
+
+    def test_tcgetattr_called_before_setraw(self):
+        """tcgetattr is called to save settings before setraw."""
+        result, _, _, mock_termios, mock_tty = self._run_masked_with_mocks(["\n"])
+        mock_termios.tcgetattr.assert_called_once_with(0)
+
+    def test_return_value_is_join(self):
+        """Return value is the joined chars list."""
+        result, _, _, _, _ = self._run_masked_with_mocks(
+            ["h", "e", "l", "l", "o", "\n"]
+        )
+        assert result == "hello"
+
+    def test_read_one_char_at_a_time(self):
+        """stdin.read is called with 1 for each character."""
+        result, mock_stdin, _, _, _ = self._run_masked_with_mocks(["a", "b", "\n"])
+        for call in mock_stdin.read.call_args_list:
+            assert call.args[0] == 1
+
+
+# ===================================================================
+# Mutation-killing tests: main
+# ===================================================================
+
+
+class TestMainMutants:
+    """Precise tests for main() to kill remaining mutants."""
+
+    def test_main_calls_parse_args(self):
+        """Ensure parser.parse_args() is called."""
+        with (
+            patch("flameconnect.cli.build_parser") as mock_parser_fn,
+            patch("flameconnect.cli.asyncio"),
+            patch("flameconnect.cli.async_main", new=MagicMock()),
+        ):
+            mock_parser = MagicMock()
+            mock_args = argparse.Namespace(command="list", verbose=False)
+            mock_parser.parse_args.return_value = mock_args
+            mock_parser_fn.return_value = mock_parser
+
+            main()
+
+            mock_parser.parse_args.assert_called_once()
+
+    def test_main_verbose_sets_debug(self):
+        """Verbose flag should set logging to DEBUG."""
+        import logging as real_logging
+
+        with (
+            patch("flameconnect.cli.build_parser") as mock_parser_fn,
+            patch("flameconnect.cli.asyncio"),
+            patch("flameconnect.cli.async_main", new=MagicMock()),
+            patch("flameconnect.cli.logging") as mock_logging,
+        ):
+            mock_parser = MagicMock()
+            mock_args = argparse.Namespace(command="list", verbose=True)
+            mock_parser.parse_args.return_value = mock_args
+            mock_parser_fn.return_value = mock_parser
+            mock_logging.DEBUG = real_logging.DEBUG
+            mock_logging.WARNING = real_logging.WARNING
+
+            main()
+
+            mock_logging.basicConfig.assert_called_once_with(level=real_logging.DEBUG)
+
+    def test_main_no_verbose_sets_warning(self):
+        """No verbose flag should set logging to WARNING."""
+        import logging as real_logging
+
+        with (
+            patch("flameconnect.cli.build_parser") as mock_parser_fn,
+            patch("flameconnect.cli.asyncio"),
+            patch("flameconnect.cli.async_main", new=MagicMock()),
+            patch("flameconnect.cli.logging") as mock_logging,
+        ):
+            mock_parser = MagicMock()
+            mock_args = argparse.Namespace(command="list", verbose=False)
+            mock_parser.parse_args.return_value = mock_args
+            mock_parser_fn.return_value = mock_parser
+            mock_logging.DEBUG = real_logging.DEBUG
+            mock_logging.WARNING = real_logging.WARNING
+
+            main()
+
+            mock_logging.basicConfig.assert_called_once_with(level=real_logging.WARNING)
+
+    def test_main_passes_args_to_async_main(self):
+        """async_main receives the parsed args."""
+        with (
+            patch("flameconnect.cli.build_parser") as mock_parser_fn,
+            patch("flameconnect.cli.asyncio") as mock_asyncio,
+            patch("flameconnect.cli.async_main") as mock_async_main,
+        ):
+            mock_parser = MagicMock()
+            mock_args = argparse.Namespace(command="status", verbose=False)
+            mock_parser.parse_args.return_value = mock_args
+            mock_parser_fn.return_value = mock_parser
+
+            main()
+
+            mock_asyncio.run.assert_called_once()
+            mock_async_main.assert_called_once_with(mock_args)
