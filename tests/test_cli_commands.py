@@ -355,13 +355,14 @@ class TestDisplayTimer:
     def test_timer_enabled_with_duration(self, capsys):
         from datetime import datetime, timedelta
 
-        param = TimerParam(timer_status=TimerStatus.ENABLED, duration=90)
+        param = TimerParam(timer_status=TimerStatus.ENABLED, duration=120)
         before = datetime.now()
         _display_timer(param)
         after = datetime.now()
         out = capsys.readouterr().out
         assert "    Timer:          Enabled" in out
-        assert "    Duration:       90 min (1h 30m)" in out
+        # 120 // 60 = 2h (kills // 60 → // 61 since 120//61 = 1)
+        assert "    Duration:       120 min (2h 0m)" in out
         assert "    Off at:" in out
         # Verify the off-at time is in the future (kills + → − mutant)
         off_line = [line for line in out.split("\n") if "Off at:" in line][0]
@@ -372,9 +373,9 @@ class TestDisplayTimer:
         hour, minute = int(off_time_str[:2]), int(off_time_str[3:])
         assert 0 <= hour <= 23
         assert 0 <= minute <= 59
-        # Verify time is approximately now + 90 min (kills + → − and // 60 → // 61)
-        expected_min = (before + timedelta(minutes=90)).strftime("%H:%M")
-        expected_max = (after + timedelta(minutes=90)).strftime("%H:%M")
+        # Verify time is approximately now + 120 min (kills + → − and // 60 → // 61)
+        expected_min = (before + timedelta(minutes=120)).strftime("%H:%M")
+        expected_max = (after + timedelta(minutes=120)).strftime("%H:%M")
         assert off_time_str in (expected_min, expected_max)
 
     def test_timer_enabled_zero_duration(self, capsys):

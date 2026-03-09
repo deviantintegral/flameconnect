@@ -288,8 +288,11 @@ class TestLogResponse:
         resp = self._make_resp()
         with caplog.at_level(logging.DEBUG, "flameconnect"):
             _log_response(resp, "Hello body")
-        # Exact format prefix (kills "<<<   body: %s" → "XX<<<   body: %sXX")
-        assert "<<<   body: Hello body" in caplog.text
+        # Check exact log record message (kills "<<<   body: %s" → "XX...")
+        body_records = [r for r in caplog.records if "body" in r.getMessage().lower()]
+        assert body_records
+        msg = body_records[0].getMessage()
+        assert msg == "<<<   body: Hello body"
 
     def test_long_body_truncated(self, caplog):
         resp = self._make_resp()
