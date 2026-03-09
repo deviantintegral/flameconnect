@@ -56,6 +56,7 @@ from flameconnect.models import (
     temp_suffix,
 )
 from flameconnect.tui.widgets import (
+    FormattedParam,
     _format_connection_state,
     _format_error,
     _format_flame_effect,
@@ -226,13 +227,13 @@ class TestFormatMode:
         result = _format_mode(param)
         assert len(result) == 2
         label, value, action = result[0]
-        assert "Mode" in label
+        assert label == "[bold]Mode:[/bold] "
         assert value == "Standby"
         assert action == "toggle_power"
         # Temperature with no unit suffix
         label_t, value_t, action_t = result[1]
-        assert "Target Temp" in label_t
-        assert "20.0\u00b0" in value_t
+        assert label_t == "[bold]Target Temp:[/bold] "
+        assert value_t == "20.0\u00b0"
         assert action_t == "set_temperature"
 
     def test_manual_mode_display(self):
@@ -244,13 +245,13 @@ class TestFormatMode:
         param = ModeParam(mode=FireMode.MANUAL, target_temperature=22.0)
         tu = TempUnitParam(unit=TempUnit.CELSIUS)
         result = _format_mode(param, temp_unit=tu)
-        assert "22.0\u00b0C" in result[1][1]
+        assert result[1][1] == "22.0\u00b0C"
 
     def test_with_fahrenheit_unit(self):
         param = ModeParam(mode=FireMode.MANUAL, target_temperature=22.0)
         tu = TempUnitParam(unit=TempUnit.FAHRENHEIT)
         result = _format_mode(param, temp_unit=tu)
-        assert "71.6\u00b0F" in result[1][1]
+        assert result[1][1] == "71.6\u00b0F"
 
 
 # ---------------------------------------------------------------------------
@@ -272,19 +273,22 @@ class TestFormatFlameEffect:
     def test_flame_effect_labels_and_actions(self):
         param = _sample_flame_effect()
         result = _format_flame_effect(param)
-        labels_and_actions = [(r[0], r[2]) for r in result]
-        assert "Flame Effect" in labels_and_actions[0][0]
-        assert labels_and_actions[0][1] == "toggle_flame_effect"
-        assert labels_and_actions[1][1] == "set_flame_color"
-        assert labels_and_actions[2][1] == "set_flame_speed"
-        assert labels_and_actions[3][1] == "toggle_brightness"
-        assert labels_and_actions[4][1] == "set_media_theme"
-        assert labels_and_actions[5][1] == "toggle_media_light"
-        assert labels_and_actions[6][1] == "set_media_color"
-        assert labels_and_actions[7][1] == "toggle_overhead_light"
-        assert labels_and_actions[8][1] == "toggle_pulsating"
-        assert labels_and_actions[9][1] == "set_overhead_color"
-        assert labels_and_actions[10][1] == "toggle_ambient_sensor"
+        expected = [
+            ("[bold]Flame Effect:[/bold] ", "toggle_flame_effect"),
+            ("  Flame Color: ", "set_flame_color"),
+            ("  Speed: ", "set_flame_speed"),
+            ("  Brightness: ", "toggle_brightness"),
+            ("  Media Theme: ", "set_media_theme"),
+            ("  Media Light: ", "toggle_media_light"),
+            ("  Media Color: ", "set_media_color"),
+            ("  Overhead Light: ", "toggle_overhead_light"),
+            ("  Overhead Pulsating: ", "toggle_pulsating"),
+            ("  Overhead Color: ", "set_overhead_color"),
+            ("  Ambient Sensor: ", "toggle_ambient_sensor"),
+        ]
+        for i, (exp_label, exp_action) in enumerate(expected):
+            assert result[i][0] == exp_label, f"Label mismatch at index {i}"
+            assert result[i][2] == exp_action, f"Action mismatch at index {i}"
 
     def test_flame_effect_values(self):
         param = _sample_flame_effect(
@@ -342,12 +346,12 @@ class TestFormatHeat:
         )
         result = _format_heat(param)
         assert len(result) == 4
-        assert result[0][1] == "On"
-        assert result[0][2] == "toggle_heat"
-        assert result[1][1] == "Normal"
-        assert result[1][2] == "set_heat_mode"
-        assert "22.0\u00b0" in result[2][1]
-        assert result[3][1] == "Off"  # Boost off when not BOOST mode
+        assert result[0] == FormattedParam("[bold]Heat:[/bold] ", "On", "toggle_heat")
+        assert result[1] == FormattedParam("  Mode: ", "Normal", "set_heat_mode")
+        assert result[2] == FormattedParam(
+            "  Setpoint: ", "22.0\u00b0", "set_heat_mode"
+        )
+        assert result[3] == FormattedParam("  Boost: ", "Off", "set_heat_mode")
 
     def test_boost_mode(self):
         param = HeatParam(
@@ -379,7 +383,7 @@ class TestFormatHeat:
         )
         tu = TempUnitParam(unit=TempUnit.CELSIUS)
         result = _format_heat(param, temp_unit=tu)
-        assert "22.0\u00b0C" in result[2][1]
+        assert result[2][1] == "22.0\u00b0C"
 
     def test_heat_with_fahrenheit(self):
         param = HeatParam(
@@ -390,7 +394,7 @@ class TestFormatHeat:
         )
         tu = TempUnitParam(unit=TempUnit.FAHRENHEIT)
         result = _format_heat(param, temp_unit=tu)
-        assert "71.6\u00b0F" in result[2][1]
+        assert result[2][1] == "71.6\u00b0F"
 
     def test_fan_only_mode(self):
         param = HeatParam(
@@ -425,9 +429,9 @@ class TestFormatHeatMode:
         param = HeatModeParam(heat_control=HeatControl.ENABLED)
         result = _format_heat_mode(param)
         assert len(result) == 1
-        assert "Heat Control" in result[0][0]
-        assert result[0][1] == "Enabled"
-        assert result[0][2] is None
+        assert result[0] == FormattedParam(
+            "[bold]Heat Control:[/bold] ", "Enabled", None
+        )
 
     def test_software_disabled(self):
         param = HeatModeParam(heat_control=HeatControl.SOFTWARE_DISABLED)
@@ -452,33 +456,37 @@ class TestFormatTimer:
         param = TimerParam(timer_status=TimerStatus.DISABLED, duration=0)
         result = _format_timer(param)
         assert len(result) == 1
-        assert "Timer" in result[0][0]
-        assert "Disabled" in result[0][1]
-        assert "Duration: 0min" in result[0][1]
+        assert result[0][0] == "[bold]Timer:[/bold] "
+        assert result[0][1] == "Disabled  Duration: 0min"
         assert result[0][2] == "toggle_timer"
 
     def test_enabled_timer_with_duration(self):
         param = TimerParam(timer_status=TimerStatus.ENABLED, duration=30)
         result = _format_timer(param)
-        assert "Enabled" in result[0][1]
-        assert "Duration: 30min" in result[0][1]
-        # Should include "Off at HH:MM"
-        assert "Off at" in result[0][1]
+        value = result[0][1]
+        assert value.startswith("Enabled  Duration: 30min  Off at ")
+        # HH:MM format
+        off_at = value.split("Off at ")[1]
+        assert len(off_at) == 5  # HH:MM
+        assert off_at[2] == ":"
 
     def test_enabled_timer_zero_duration(self):
         """Enabled timer with 0 duration should not show off-at time."""
         param = TimerParam(timer_status=TimerStatus.ENABLED, duration=0)
         result = _format_timer(param)
-        assert "Enabled" in result[0][1]
-        assert "Off at" not in result[0][1]
+        assert result[0][1] == "Enabled  Duration: 0min"
 
     def test_disabled_timer_nonzero_duration(self):
         """Disabled timer with leftover duration should not show off-at."""
         param = TimerParam(timer_status=TimerStatus.DISABLED, duration=45)
         result = _format_timer(param)
-        assert "Disabled" in result[0][1]
-        assert "Duration: 45min" in result[0][1]
-        assert "Off at" not in result[0][1]
+        assert result[0][1] == "Disabled  Duration: 45min"
+
+    def test_enabled_timer_duration_1(self):
+        """Duration=1 boundary: should show off-at time (kills > 0 vs > 1)."""
+        param = TimerParam(timer_status=TimerStatus.ENABLED, duration=1)
+        result = _format_timer(param)
+        assert "Off at" in result[0][1]
 
 
 # ---------------------------------------------------------------------------
@@ -503,11 +511,11 @@ class TestFormatSoftwareVersion:
         )
         result = _format_software_version(param)
         assert len(result) == 1
-        assert "Software" in result[0][0]
-        assert "UI 1.2.3" in result[0][1]
-        assert "Control 4.5.6" in result[0][1]
-        assert "Relay 7.8.9" in result[0][1]
-        assert result[0][2] is None
+        assert result[0] == FormattedParam(
+            "[bold]Software:[/bold] ",
+            "UI 1.2.3  Control 4.5.6  Relay 7.8.9",
+            None,
+        )
 
     def test_zero_version(self):
         param = SoftwareVersionParam(
@@ -538,9 +546,9 @@ class TestFormatError:
     def test_no_errors(self):
         param = ErrorParam(error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=0)
         result = _format_error(param)
-        assert len(result) == 1
-        assert "No Errors Recorded" in result[0][1]
-        assert result[0][2] is None
+        assert result == [
+            FormattedParam("[bold]Errors:[/bold] ", "No Errors Recorded", None)
+        ]
 
     def test_has_error_byte1(self):
         param = ErrorParam(
@@ -548,9 +556,9 @@ class TestFormatError:
         )
         result = _format_error(param)
         assert len(result) == 1
-        assert "Error" in result[0][0]
-        assert "0xFF" in result[0][1]
-        assert "0x00" in result[0][1]
+        assert result[0][0] == "[bold red]Error:[/bold red] "
+        assert result[0][1] == "0xFF 0x00 0x00 0x00"
+        assert result[0][2] is None
 
     def test_has_error_all_bytes(self):
         param = ErrorParam(
@@ -560,26 +568,22 @@ class TestFormatError:
             error_byte4=0x78,
         )
         result = _format_error(param)
-        assert "0x12" in result[0][1]
-        assert "0x34" in result[0][1]
-        assert "0x56" in result[0][1]
-        assert "0x78" in result[0][1]
+        assert result[0][1] == "0x12 0x34 0x56 0x78"
+
+    def test_error_only_byte2(self):
+        param = ErrorParam(error_byte1=0, error_byte2=1, error_byte3=0, error_byte4=0)
+        result = _format_error(param)
+        assert result[0][0] == "[bold red]Error:[/bold red] "
+
+    def test_error_only_byte3(self):
+        param = ErrorParam(error_byte1=0, error_byte2=0, error_byte3=1, error_byte4=0)
+        result = _format_error(param)
+        assert result[0][0] == "[bold red]Error:[/bold red] "
 
     def test_error_only_byte4(self):
         param = ErrorParam(error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=1)
         result = _format_error(param)
-        # Any non-zero byte should flag an error
-        assert "Error" in result[0][0]
-
-    def test_no_error_label_bold(self):
-        param = ErrorParam(error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=0)
-        result = _format_error(param)
-        assert "[bold]Errors:[/bold]" in result[0][0]
-
-    def test_error_label_bold_red(self):
-        param = ErrorParam(error_byte1=1, error_byte2=0, error_byte3=0, error_byte4=0)
-        result = _format_error(param)
-        assert "bold red" in result[0][0]
+        assert result[0][0] == "[bold red]Error:[/bold red] "
 
 
 # ---------------------------------------------------------------------------
@@ -593,15 +597,16 @@ class TestFormatTempUnit:
     def test_celsius(self):
         param = TempUnitParam(unit=TempUnit.CELSIUS)
         result = _format_temp_unit(param)
-        assert len(result) == 1
-        assert "Temp Unit" in result[0][0]
-        assert result[0][1] == "Celsius"
-        assert result[0][2] == "toggle_temp_unit"
+        assert result == [
+            FormattedParam("[bold]Temp Unit:[/bold] ", "Celsius", "toggle_temp_unit")
+        ]
 
     def test_fahrenheit(self):
         param = TempUnitParam(unit=TempUnit.FAHRENHEIT)
         result = _format_temp_unit(param)
-        assert result[0][1] == "Fahrenheit"
+        assert result == [
+            FormattedParam("[bold]Temp Unit:[/bold] ", "Fahrenheit", "toggle_temp_unit")
+        ]
 
 
 # ---------------------------------------------------------------------------
@@ -615,17 +620,14 @@ class TestFormatSound:
     def test_basic(self):
         param = SoundParam(volume=5, sound_file=3)
         result = _format_sound(param)
-        assert len(result) == 1
-        assert "Sound" in result[0][0]
-        assert "Volume 5" in result[0][1]
-        assert "File: 3" in result[0][1]
-        assert result[0][2] is None
+        assert result == [
+            FormattedParam("[bold]Sound:[/bold] ", "Volume 5  File: 3", None)
+        ]
 
     def test_zero_volume(self):
         param = SoundParam(volume=0, sound_file=0)
         result = _format_sound(param)
-        assert "Volume 0" in result[0][1]
-        assert "File: 0" in result[0][1]
+        assert result[0][1] == "Volume 0  File: 0"
 
 
 # ---------------------------------------------------------------------------
@@ -640,18 +642,19 @@ class TestFormatLogEffect:
         color = RGBWColor(red=128, green=64, blue=32, white=16)
         param = LogEffectParam(log_effect=LogEffect.ON, color=color, pattern=2)
         result = _format_log_effect(param)
-        assert len(result) == 1
-        assert "Log Effect" in result[0][0]
-        assert "On" in result[0][1]
-        assert "R:128 G:64 B:32 W:16" in result[0][1]
-        assert "Pattern: 2" in result[0][1]
-        assert result[0][2] is None
+        assert result == [
+            FormattedParam(
+                "[bold]Log Effect:[/bold] ",
+                "On  Color: R:128 G:64 B:32 W:16  Pattern: 2",
+                None,
+            )
+        ]
 
     def test_off(self):
         color = _black()
         param = LogEffectParam(log_effect=LogEffect.OFF, color=color, pattern=0)
         result = _format_log_effect(param)
-        assert "Off" in result[0][1]
+        assert result[0][1] == "Off  Color: R:0 G:0 B:0 W:0  Pattern: 0"
 
 
 # ---------------------------------------------------------------------------
@@ -664,23 +667,19 @@ class TestFormatConnectionState:
 
     def test_connected(self):
         result = _format_connection_state(ConnectionState.CONNECTED)
-        assert "green" in result
-        assert "Connected" in result
+        assert result == "[green]Connected[/green]"
 
     def test_not_connected(self):
         result = _format_connection_state(ConnectionState.NOT_CONNECTED)
-        assert "red" in result
-        assert "Not Connected" in result
+        assert result == "[red]Not Connected[/red]"
 
     def test_updating_firmware(self):
         result = _format_connection_state(ConnectionState.UPDATING_FIRMWARE)
-        assert "yellow" in result
-        assert "Updating Firmware" in result
+        assert result == "[yellow]Updating Firmware[/yellow]"
 
     def test_unknown(self):
         result = _format_connection_state(ConnectionState.UNKNOWN)
-        assert "dim" in result
-        assert "Unknown" in result
+        assert result == "[dim]Unknown[/dim]"
 
 
 # ---------------------------------------------------------------------------
@@ -720,14 +719,15 @@ class TestFormatParameters:
 
     def test_empty_params(self):
         result = format_parameters([])
-        assert len(result) == 1
-        assert "No parameters available" in result[0][0]
+        assert result == [
+            FormattedParam("[dim]No parameters available[/dim]", "", None)
+        ]
 
     def test_single_mode_param(self):
         params = [ModeParam(mode=FireMode.MANUAL, target_temperature=22.0)]
         result = format_parameters(params)
-        assert len(result) == 2  # mode + target_temp
-        assert "Mode" in result[0][0]
+        assert len(result) == 2
+        assert result[0][0] == "[bold]Mode:[/bold] "
         assert result[0][1] == "On"
 
     def test_single_heat_param(self):
@@ -740,22 +740,22 @@ class TestFormatParameters:
             )
         ]
         result = format_parameters(params)
-        assert any("Heat" in r[0] for r in result)
+        assert result[0][0] == "[bold]Heat:[/bold] "
 
     def test_single_heat_mode_param(self):
         params = [HeatModeParam(heat_control=HeatControl.ENABLED)]
         result = format_parameters(params)
-        assert any("Heat Control" in r[0] for r in result)
+        assert result[0][0] == "[bold]Heat Control:[/bold] "
 
     def test_single_flame_effect_param(self):
         params = [_sample_flame_effect()]
         result = format_parameters(params)
-        assert any("Flame Effect" in r[0] for r in result)
+        assert result[0][0] == "[bold]Flame Effect:[/bold] "
 
     def test_single_timer_param(self):
         params = [TimerParam(timer_status=TimerStatus.DISABLED, duration=0)]
         result = format_parameters(params)
-        assert any("Timer" in r[0] for r in result)
+        assert result[0][0] == "[bold]Timer:[/bold] "
 
     def test_single_software_version_param(self):
         params = [

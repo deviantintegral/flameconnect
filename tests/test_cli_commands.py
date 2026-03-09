@@ -209,28 +209,28 @@ class TestDisplayMode:
         param = _make_mode_param(mode=FireMode.STANDBY, target_temperature=20.0)
         _display_mode(param)
         out = capsys.readouterr().out
-        assert "[321] Mode" in out
-        assert "Standby" in out
-        assert "20.0" in out
-        # No unit suffix when temp_unit is None
-        assert "\u00b0" in out
+        lines = out.strip().split("\n")
+        assert lines[0].strip() == "[321] Mode"
+        assert "─" * 40 in lines[1]
+        assert "Mode:           Standby" in out
+        assert "Target Temp:    20.0\u00b0" in out
+        # No unit suffix when temp_unit is None (empty string)
+        assert "20.0\u00b0\n" in out or out.endswith("20.0\u00b0")
 
     def test_manual_with_celsius(self, capsys):
         param = _make_mode_param(mode=FireMode.MANUAL, target_temperature=22.0)
         tu = TempUnitParam(unit=TempUnit.CELSIUS)
         _display_mode(param, tu)
         out = capsys.readouterr().out
-        assert "On" in out
-        assert "22.0" in out
-        assert "\u00b0C" in out
+        assert "Mode:           On" in out
+        assert "Target Temp:    22.0\u00b0C" in out
 
     def test_manual_with_fahrenheit(self, capsys):
         param = _make_mode_param(mode=FireMode.MANUAL, target_temperature=22.0)
         tu = TempUnitParam(unit=TempUnit.FAHRENHEIT)
         _display_mode(param, tu)
         out = capsys.readouterr().out
-        assert "71.6" in out
-        assert "\u00b0F" in out
+        assert "Target Temp:    71.6\u00b0F" in out
 
 
 class TestDisplayFlameEffect:
@@ -251,23 +251,24 @@ class TestDisplayFlameEffect:
         )
         _display_flame_effect(param)
         out = capsys.readouterr().out
-        assert "[322] Flame Effect" in out
-        assert "Flame:          On" in out
-        assert "4 / 5" in out
-        assert "Low" in out
-        assert "Overhead Pulsating: On" in out
-        assert "Blue" in out
-        assert "Prism" in out
-        assert "RGBW(10, 20, 30, 40)" in out
-        assert "Overhead Light: On" in out
-        assert "RGBW(50, 60, 70, 80)" in out
-        assert "Ambient Sensor: On" in out
+        lines = out.strip().split("\n")
+        assert lines[0].strip() == "[322] Flame Effect"
+        assert "─" * 40 in lines[1]
+        assert "    Flame:          On" in out
+        assert "    Flame Speed:    4 / 5" in out
+        assert "    Brightness:     Low" in out
+        assert "    Flame Color:    Blue" in out
+        assert "    Media Light:    Prism | RGBW(10, 20, 30, 40)" in out
+        assert "    Overhead Light: On" in out
+        assert "    Overhead Pulsating: On" in out
+        assert "    Overhead Color: RGBW(50, 60, 70, 80)" in out
+        assert "    Ambient Sensor: On" in out
 
     def test_flame_off(self, capsys):
         param = _make_flame_effect_param(flame_effect=FlameEffect.OFF)
         _display_flame_effect(param)
         out = capsys.readouterr().out
-        assert "Flame:          Off" in out
+        assert "    Flame:          Off" in out
 
 
 class TestDisplayHeat:
@@ -282,31 +283,33 @@ class TestDisplayHeat:
         )
         _display_heat(param)
         out = capsys.readouterr().out
-        assert "[323] Heat Settings" in out
-        assert "On" in out
-        assert "Boost" in out
-        assert "25.0" in out
-        assert "15" in out
+        lines = out.strip().split("\n")
+        assert lines[0].strip() == "[323] Heat Settings"
+        assert "─" * 40 in lines[1]
+        assert "    Heat:           On" in out
+        assert "    Heat Mode:      Boost" in out
+        assert "    Setpoint Temp:  25.0\u00b0" in out
+        assert "    Boost Duration: 15" in out
 
     def test_heat_with_celsius(self, capsys):
         param = _make_heat_param(setpoint_temperature=22.0)
         tu = TempUnitParam(unit=TempUnit.CELSIUS)
         _display_heat(param, tu)
         out = capsys.readouterr().out
-        assert "22.0\u00b0C" in out
+        assert "    Setpoint Temp:  22.0\u00b0C" in out
 
     def test_heat_with_fahrenheit(self, capsys):
         param = _make_heat_param(setpoint_temperature=22.0)
         tu = TempUnitParam(unit=TempUnit.FAHRENHEIT)
         _display_heat(param, tu)
         out = capsys.readouterr().out
-        assert "71.6\u00b0F" in out
+        assert "    Setpoint Temp:  71.6\u00b0F" in out
 
     def test_heat_off(self, capsys):
         param = _make_heat_param(heat_status=HeatStatus.OFF)
         _display_heat(param)
         out = capsys.readouterr().out
-        assert "Off" in out
+        assert "    Heat:           Off" in out
 
 
 class TestDisplayHeatMode:
@@ -316,20 +319,22 @@ class TestDisplayHeatMode:
         param = HeatModeParam(heat_control=HeatControl.ENABLED)
         _display_heat_mode(param)
         out = capsys.readouterr().out
-        assert "[325] Heat Mode" in out
-        assert "Enabled" in out
+        lines = out.strip().split("\n")
+        assert lines[0].strip() == "[325] Heat Mode"
+        assert "─" * 40 in lines[1]
+        assert "    Heat Control:   Enabled" in out
 
     def test_software_disabled(self, capsys):
         param = HeatModeParam(heat_control=HeatControl.SOFTWARE_DISABLED)
         _display_heat_mode(param)
         out = capsys.readouterr().out
-        assert "Software Disabled" in out
+        assert "    Heat Control:   Software Disabled" in out
 
     def test_hardware_disabled(self, capsys):
         param = HeatModeParam(heat_control=HeatControl.HARDWARE_DISABLED)
         _display_heat_mode(param)
         out = capsys.readouterr().out
-        assert "Hardware Disabled" in out
+        assert "    Heat Control:   Hardware Disabled" in out
 
 
 class TestDisplayTimer:
@@ -339,27 +344,35 @@ class TestDisplayTimer:
         param = TimerParam(timer_status=TimerStatus.DISABLED, duration=0)
         _display_timer(param)
         out = capsys.readouterr().out
-        assert "[326] Timer Mode" in out
-        assert "Disabled" in out
-        assert "0 min (0h 0m)" in out
-        # Should NOT show "Off at:" when disabled
+        lines = out.strip().split("\n")
+        assert lines[0].strip() == "[326] Timer Mode"
+        assert "─" * 40 in lines[1]
+        assert "    Timer:          Disabled" in out
+        assert "    Duration:       0 min (0h 0m)" in out
         assert "Off at:" not in out
 
     def test_timer_enabled_with_duration(self, capsys):
         param = TimerParam(timer_status=TimerStatus.ENABLED, duration=90)
         _display_timer(param)
         out = capsys.readouterr().out
-        assert "Enabled" in out
-        assert "90 min (1h 30m)" in out
-        assert "Off at:" in out
+        assert "    Timer:          Enabled" in out
+        assert "    Duration:       90 min (1h 30m)" in out
+        assert "    Off at:" in out
 
     def test_timer_enabled_zero_duration(self, capsys):
-        # Enabled but 0 duration: no "Off at:" line
         param = TimerParam(timer_status=TimerStatus.ENABLED, duration=0)
         _display_timer(param)
         out = capsys.readouterr().out
-        assert "Enabled" in out
+        assert "    Timer:          Enabled" in out
+        assert "    Duration:       0 min (0h 0m)" in out
         assert "Off at:" not in out
+
+    def test_timer_enabled_duration_1(self, capsys):
+        """Boundary: duration=1 should show off-at (kills > 0 vs > 1)."""
+        param = TimerParam(timer_status=TimerStatus.ENABLED, duration=1)
+        _display_timer(param)
+        out = capsys.readouterr().out
+        assert "    Off at:" in out
 
 
 class TestDisplaySoftwareVersion:
@@ -379,10 +392,12 @@ class TestDisplaySoftwareVersion:
         )
         _display_software_version(param)
         out = capsys.readouterr().out
-        assert "[327] Software Version" in out
-        assert "1.2.3" in out
-        assert "4.5.6" in out
-        assert "7.8.9" in out
+        lines = out.strip().split("\n")
+        assert lines[0].strip() == "[327] Software Version"
+        assert "─" * 40 in lines[1]
+        assert "    UI Version:      1.2.3" in out
+        assert "    Control Version: 4.5.6" in out
+        assert "    Relay Version:   7.8.9" in out
 
 
 class TestDisplayError:
@@ -392,9 +407,11 @@ class TestDisplayError:
         param = ErrorParam(error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=0)
         _display_error(param)
         out = capsys.readouterr().out
-        assert "[329] Error" in out
-        assert "None" in out
-        assert "Active Faults:  None" in out
+        lines = out.strip().split("\n")
+        assert lines[0].strip() == "[329] Error"
+        assert "─" * 40 in lines[1]
+        assert "    Error Byte 1:   0x00 (00000000)" in out
+        assert "    Active Faults:  None" in out
 
     def test_with_errors(self, capsys):
         param = ErrorParam(
@@ -402,18 +419,18 @@ class TestDisplayError:
         )
         _display_error(param)
         out = capsys.readouterr().out
-        assert "Active Faults:  Yes" in out
-        assert "0xFF" in out
+        assert "    Active Faults:  Yes" in out
+        assert "    Error Byte 1:   0xFF (11111111)" in out
 
     def test_error_bytes_formatted(self, capsys):
         param = ErrorParam(error_byte1=1, error_byte2=2, error_byte3=4, error_byte4=8)
         _display_error(param)
         out = capsys.readouterr().out
-        assert "Error Byte 1:" in out
-        assert "Error Byte 2:" in out
-        assert "Error Byte 3:" in out
-        assert "Error Byte 4:" in out
-        assert "Active Faults:  Yes" in out
+        assert "    Error Byte 1:   0x01 (00000001)" in out
+        assert "    Error Byte 2:   0x02 (00000010)" in out
+        assert "    Error Byte 3:   0x04 (00000100)" in out
+        assert "    Error Byte 4:   0x08 (00001000)" in out
+        assert "    Active Faults:  Yes" in out
 
 
 class TestDisplayTempUnit:
@@ -423,14 +440,16 @@ class TestDisplayTempUnit:
         param = TempUnitParam(unit=TempUnit.CELSIUS)
         _display_temp_unit(param)
         out = capsys.readouterr().out
-        assert "[236] Temperature Unit" in out
-        assert "Celsius" in out
+        lines = out.strip().split("\n")
+        assert lines[0].strip() == "[236] Temperature Unit"
+        assert "─" * 40 in lines[1]
+        assert "    Unit:           Celsius" in out
 
     def test_fahrenheit(self, capsys):
         param = TempUnitParam(unit=TempUnit.FAHRENHEIT)
         _display_temp_unit(param)
         out = capsys.readouterr().out
-        assert "Fahrenheit" in out
+        assert "    Unit:           Fahrenheit" in out
 
 
 class TestDisplaySound:
@@ -440,9 +459,11 @@ class TestDisplaySound:
         param = SoundParam(volume=128, sound_file=3)
         _display_sound(param)
         out = capsys.readouterr().out
-        assert "[369] Sound" in out
-        assert "128 / 255" in out
-        assert "3" in out
+        lines = out.strip().split("\n")
+        assert lines[0].strip() == "[369] Sound"
+        assert "─" * 40 in lines[1]
+        assert "    Volume:         128 / 255" in out
+        assert "    Sound File:     3" in out
 
 
 class TestDisplayLogEffect:
@@ -456,10 +477,12 @@ class TestDisplayLogEffect:
         )
         _display_log_effect(param)
         out = capsys.readouterr().out
-        assert "[370] Log Effect" in out
-        assert "On" in out
-        assert "RGBW(1, 0, 255, 128)" in out
-        assert "5" in out
+        lines = out.strip().split("\n")
+        assert lines[0].strip() == "[370] Log Effect"
+        assert "─" * 40 in lines[1]
+        assert "    Log Effect:     On" in out
+        assert "    Colors:         RGBW(1, 0, 255, 128)" in out
+        assert "    Pattern:        5" in out
 
     def test_off(self, capsys):
         param = LogEffectParam(
@@ -469,7 +492,7 @@ class TestDisplayLogEffect:
         )
         _display_log_effect(param)
         out = capsys.readouterr().out
-        assert "Off" in out
+        assert "    Log Effect:     Off" in out
 
 
 # ===================================================================
