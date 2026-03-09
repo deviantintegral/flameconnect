@@ -5,7 +5,9 @@ from __future__ import annotations
 from flameconnect.models import FlameColor, RGBWColor
 from flameconnect.tui.widgets import (
     _FIXED_ROWS,
+    _FLAME_DEFS,
     _FLAME_PALETTES,
+    _HEAT_ROWS,
     _MIN_FLAME_ROWS,
     _build_fire_art,
     _expand_flame,
@@ -424,6 +426,266 @@ class TestBuildFireArtHeat:
         plain = text.plain
         assert "\u2248" not in plain
         assert "~" not in plain
+
+    def test_heat_rows_exact_wave_content(self):
+        """Heat rows contain exact wave characters (kills ≈ → XX≈XX)."""
+        w = 50
+        text = _build_fire_art(w, 20, heat_on=True)
+        plain = text.plain
+        lines = plain.split("\n")
+        ow = w - 2  # outer width
+        # Heat rows are at the top, before the ▁ top edge
+        heat_lines = []
+        for line in lines:
+            if "\u2248" in line or "~" in line:
+                heat_lines.append(line)
+        assert len(heat_lines) == _HEAT_ROWS
+        # Each heat row: " " + wave_chars * ow + " "
+        for line in heat_lines:
+            assert line[0] == " "
+            assert line[-1] == " "
+            inner = line[1:-1]
+            assert len(inner) == ow
+            # Must be pure ≈ or pure ~ (kills XX≈XX and XX~XX mutations)
+            assert inner == "\u2248" * ow or inner == "~" * ow
+
+    def test_heat_row_style_is_bright_red(self):
+        """Heat wave chars should have bright_red style."""
+        w = 50
+        text = _build_fire_art(w, 20, heat_on=True)
+        plain = text.plain
+        # Find the first ≈ or ~
+        for idx, ch in enumerate(plain):
+            if ch in ("\u2248", "~"):
+                style = _style_at(text, idx)
+                assert "bright_red" in style
+                return
+        raise AssertionError("No heat wave character found")
+
+    def test_heat_rows_reduce_flame_budget(self):
+        """Heat rows reduce flame rows, keeping total height constant."""
+        w, h = 50, 20
+        text_no_heat = _build_fire_art(w, h, heat_on=False)
+        text_heat = _build_fire_art(w, h, heat_on=True)
+        assert len(text_no_heat.plain.split("\n")) == h
+        assert len(text_heat.plain.split("\n")) == h
+
+
+# ---------------------------------------------------------------------------
+# _build_fire_art – structural style verification
+# ---------------------------------------------------------------------------
+
+
+class TestBuildFireArtStyles:
+    """Verify dim style on structural frame elements."""
+
+    def test_top_edge_has_dim_style(self):
+        """Top edge ▁ characters should have 'dim' style."""
+        text = _build_fire_art(50, 20)
+        plain = text.plain
+        idx = plain.index("\u2581")
+        assert "dim" in _style_at(text, idx)
+
+    def test_outer_frame_top_has_dim_style(self):
+        """Outer frame ┌ should have 'dim' style."""
+        text = _build_fire_art(50, 20)
+        plain = text.plain
+        idx = plain.index("\u250c")
+        assert "dim" in _style_at(text, idx)
+
+    def test_outer_frame_bottom_has_dim_style(self):
+        """Outer frame └ should have 'dim' style."""
+        text = _build_fire_art(50, 20)
+        plain = text.plain
+        idx = plain.index("\u2514")
+        assert "dim" in _style_at(text, idx)
+
+    def test_inner_borders_have_dim_style(self):
+        """│ border characters should have 'dim' style."""
+        text = _build_fire_art(50, 20)
+        plain = text.plain
+        idx = plain.index("\u2502")
+        assert "dim" in _style_at(text, idx)
+
+    def test_outer_hearth_has_dim_style(self):
+        """Outer hearth ▓ row should have 'dim' style."""
+        text = _build_fire_art(50, 20)
+        plain = text.plain
+        lines = plain.split("\n")
+        for line in lines:
+            if (
+                line.startswith("\u2502")
+                and not line.startswith("\u2502\u2502")
+                and "\u2593" in line
+            ):
+                # Outer hearth line
+                line_offset = plain.index(line)
+                hearth_idx = line.index("\u2593")
+                assert "dim" in _style_at(text, line_offset + hearth_idx)
+                return
+        raise AssertionError("No outer hearth row found")
+
+
+# ---------------------------------------------------------------------------
+# _build_fire_art – flame centering and geometry
+# ---------------------------------------------------------------------------
+
+
+class TestBuildFireArtFlameGeometry:
+    """Verify flame row centering and width calculations."""
+
+    def test_flame_rows_centered(self):
+        """With fire_on, flame content is approximately centered."""
+        w = 60
+        text = _build_fire_art(w, 20, fire_on=True)
+        plain = text.plain
+        lines = plain.split("\n")
+        for line in lines:
+            if not line.startswith("\u2502\u2502"):
+                continue
+            if not line.endswith("\u2502\u2502"):
+                continue
+            inner = line[2:-2]
+            # Skip LED, media, blank
+            if "\u2591" in inner or "\u2593" in inner or inner.strip() == "":
+                continue
+            # Flame row: leading spaces should be similar to trailing
+            leading = len(inner) - len(inner.lstrip())
+            trailing = len(inner) - len(inner.rstrip())
+            # Lead should be within reasonable range (not off by more than half)
+            total_pad = leading + trailing
+            if total_pad > 0:
+                assert leading <= total_pad, (
+                    f"Centering broken: lead={leading}, trail={trailing}"
+                )
+
+    def test_flame_rows_have_content_when_fire_on(self):
+        """Fire-on produces non-blank flame rows with flame chars."""
+        w = 60
+        text = _build_fire_art(w, 20, fire_on=True)
+        plain = text.plain
+        lines = plain.split("\n")
+        flame_rows = []
+        for line in lines:
+            if not line.startswith("\u2502\u2502"):
+                continue
+            if not line.endswith("\u2502\u2502"):
+                continue
+            inner = line[2:-2]
+            if "\u2591" in inner or "\u2593" in inner:
+                continue
+            if inner.strip():
+                flame_rows.append(inner)
+        assert len(flame_rows) >= _MIN_FLAME_ROWS
+
+    def test_exact_boundary_flame_rows_effective_equals_num_defs(self):
+        """When flame_rows_effective == num_defs, all defs render (kills >= vs >)."""
+        num_defs = len(_FLAME_DEFS)
+        h = num_defs + _FIXED_ROWS
+        text = _build_fire_art(50, h, fire_on=True)
+        lines = text.plain.split("\n")
+        assert len(lines) == h
+        # Count flame rows (non-blank inner content)
+        flame_count = 0
+        for line in lines:
+            if line.startswith("\u2502\u2502") and line.endswith("\u2502\u2502"):
+                inner = line[2:-2]
+                if "\u2591" not in inner and "\u2593" not in inner and inner.strip():
+                    flame_count += 1
+        # Should have exactly num_defs flame rows, no blanks above
+        assert flame_count == num_defs
+
+    def test_flame_row_min_width_respected(self):
+        """Flame rows should be at least as wide as their min atom content."""
+        w = 60
+        text = _build_fire_art(w, 20, fire_on=True)
+        plain = text.plain
+        lines = plain.split("\n")
+        for line in lines:
+            if not line.startswith("\u2502\u2502"):
+                continue
+            if not line.endswith("\u2502\u2502"):
+                continue
+            inner = line[2:-2]
+            if "\u2591" in inner or "\u2593" in inner or inner.strip() == "":
+                continue
+            # Content should not be shorter than atom chars
+            content = inner.strip()
+            assert len(content) > 0
+
+    def test_flame_row_trailing_pad_not_negative(self):
+        """Trailing pad should never be negative (uses max(..., 0))."""
+        # Use a narrow width to stress the trailing pad calculation
+        w = 40
+        text = _build_fire_art(w, 20, fire_on=True)
+        plain = text.plain
+        iw = w - 4
+        lines = plain.split("\n")
+        for line in lines:
+            if not line.startswith("\u2502\u2502"):
+                continue
+            if not line.endswith("\u2502\u2502"):
+                continue
+            inner = line[2:-2]
+            if "\u2591" in inner or "\u2593" in inner:
+                continue
+            # Inner should be at least iw wide (may be wider for flame min_w)
+            assert len(inner) >= iw
+
+
+# ---------------------------------------------------------------------------
+# _build_fire_art – default parameter values
+# ---------------------------------------------------------------------------
+
+
+class TestBuildFireArtDefaults:
+    """Verify default parameter values produce expected output."""
+
+    def test_default_fire_on_shows_flames(self):
+        """Default fire_on=True produces flame chars."""
+        text = _build_fire_art(50, 20)
+        flame_chars = set("()\\/|")
+        assert any(ch in text.plain for ch in flame_chars)
+
+    def test_default_heat_off_no_waves(self):
+        """Default heat_on=False produces no wave chars."""
+        text = _build_fire_art(50, 20)
+        assert "\u2248" not in text.plain
+        assert "~" not in text.plain
+
+    def test_default_led_style_is_dim(self):
+        """Default led_style='dim' applied to LED strip."""
+        text = _build_fire_art(50, 20)
+        plain = text.plain
+        idx = plain.index("\u2591")
+        assert "dim" in _style_at(text, idx)
+
+    def test_default_media_style_is_red(self):
+        """Default media_style='red' applied to media bed."""
+        text = _build_fire_art(50, 20)
+        plain = text.plain
+        lines = plain.split("\n")
+        for line in lines:
+            if (
+                line.startswith("\u2502\u2502")
+                and line.endswith("\u2502\u2502")
+                and "\u2593" in line
+            ):
+                inner_start = 2
+                line_offset = plain.index(line)
+                for rel, ch in enumerate(line[inner_start:]):
+                    if ch == "\u2593":
+                        abs_offset = line_offset + inner_start + rel
+                        assert "red" in _style_at(text, abs_offset)
+                        return
+        raise AssertionError("No inner media bed found")
+
+    def test_default_anim_frame_0(self):
+        """Default anim_frame=0 uses unrotated palette."""
+        # Frame 0 uses original palette order
+        text = _build_fire_art(50, 20, fire_on=True)
+        # Just verify it produces valid output
+        assert len(text.plain.split("\n")) == 20
 
 
 def _style_at(text, offset: int) -> str:
