@@ -211,7 +211,7 @@ class TestDisplayMode:
         out = capsys.readouterr().out
         lines = out.strip().split("\n")
         assert lines[0].strip() == "[321] Mode"
-        assert "─" * 40 in lines[1]
+        assert lines[1] == "  " + "─" * 40
         assert "Mode:           Standby" in out
         assert "Target Temp:    20.0\u00b0" in out
         # No unit suffix when temp_unit is None (empty string)
@@ -253,7 +253,7 @@ class TestDisplayFlameEffect:
         out = capsys.readouterr().out
         lines = out.strip().split("\n")
         assert lines[0].strip() == "[322] Flame Effect"
-        assert "─" * 40 in lines[1]
+        assert lines[1] == "  " + "─" * 40
         assert "    Flame:          On" in out
         assert "    Flame Speed:    4 / 5" in out
         assert "    Brightness:     Low" in out
@@ -285,10 +285,11 @@ class TestDisplayHeat:
         out = capsys.readouterr().out
         lines = out.strip().split("\n")
         assert lines[0].strip() == "[323] Heat Settings"
-        assert "─" * 40 in lines[1]
+        assert lines[1] == "  " + "─" * 40
         assert "    Heat:           On" in out
         assert "    Heat Mode:      Boost" in out
-        assert "    Setpoint Temp:  25.0\u00b0" in out
+        # No unit suffix when temp_unit is None (kills "" → "XXXX" mutant)
+        assert "    Setpoint Temp:  25.0\u00b0\n" in out
         assert "    Boost Duration: 15" in out
 
     def test_heat_with_celsius(self, capsys):
@@ -321,7 +322,7 @@ class TestDisplayHeatMode:
         out = capsys.readouterr().out
         lines = out.strip().split("\n")
         assert lines[0].strip() == "[325] Heat Mode"
-        assert "─" * 40 in lines[1]
+        assert lines[1] == "  " + "─" * 40
         assert "    Heat Control:   Enabled" in out
 
     def test_software_disabled(self, capsys):
@@ -346,18 +347,35 @@ class TestDisplayTimer:
         out = capsys.readouterr().out
         lines = out.strip().split("\n")
         assert lines[0].strip() == "[326] Timer Mode"
-        assert "─" * 40 in lines[1]
+        assert lines[1] == "  " + "─" * 40
         assert "    Timer:          Disabled" in out
         assert "    Duration:       0 min (0h 0m)" in out
         assert "Off at:" not in out
 
     def test_timer_enabled_with_duration(self, capsys):
+        from datetime import datetime, timedelta
+
         param = TimerParam(timer_status=TimerStatus.ENABLED, duration=90)
+        before = datetime.now()
         _display_timer(param)
+        after = datetime.now()
         out = capsys.readouterr().out
         assert "    Timer:          Enabled" in out
         assert "    Duration:       90 min (1h 30m)" in out
         assert "    Off at:" in out
+        # Verify the off-at time is in the future (kills + → − mutant)
+        off_line = [line for line in out.split("\n") if "Off at:" in line][0]
+        off_time_str = off_line.strip().split("Off at:")[1].strip()
+        # Must be HH:MM format (kills strftime case mutation)
+        assert len(off_time_str) == 5
+        assert off_time_str[2] == ":"
+        hour, minute = int(off_time_str[:2]), int(off_time_str[3:])
+        assert 0 <= hour <= 23
+        assert 0 <= minute <= 59
+        # Verify time is approximately now + 90 min (kills + → − and // 60 → // 61)
+        expected_min = (before + timedelta(minutes=90)).strftime("%H:%M")
+        expected_max = (after + timedelta(minutes=90)).strftime("%H:%M")
+        assert off_time_str in (expected_min, expected_max)
 
     def test_timer_enabled_zero_duration(self, capsys):
         param = TimerParam(timer_status=TimerStatus.ENABLED, duration=0)
@@ -394,7 +412,7 @@ class TestDisplaySoftwareVersion:
         out = capsys.readouterr().out
         lines = out.strip().split("\n")
         assert lines[0].strip() == "[327] Software Version"
-        assert "─" * 40 in lines[1]
+        assert lines[1] == "  " + "─" * 40
         assert "    UI Version:      1.2.3" in out
         assert "    Control Version: 4.5.6" in out
         assert "    Relay Version:   7.8.9" in out
@@ -409,7 +427,7 @@ class TestDisplayError:
         out = capsys.readouterr().out
         lines = out.strip().split("\n")
         assert lines[0].strip() == "[329] Error"
-        assert "─" * 40 in lines[1]
+        assert lines[1] == "  " + "─" * 40
         assert "    Error Byte 1:   0x00 (00000000)" in out
         assert "    Active Faults:  None" in out
 
@@ -432,6 +450,34 @@ class TestDisplayError:
         assert "    Error Byte 4:   0x08 (00001000)" in out
         assert "    Active Faults:  Yes" in out
 
+    def test_error_only_byte3(self, capsys):
+        """Error in byte3 only: kills byte2|byte3 → byte2&byte3 mutant."""
+        param = ErrorParam(error_byte1=0, error_byte2=0, error_byte3=1, error_byte4=0)
+        _display_error(param)
+        out = capsys.readouterr().out
+        assert "    Active Faults:  Yes" in out
+
+    def test_error_only_byte4(self, capsys):
+        """Error in byte4 only: kills byte3|byte4 → byte3&byte4 mutant."""
+        param = ErrorParam(error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=1)
+        _display_error(param)
+        out = capsys.readouterr().out
+        assert "    Active Faults:  Yes" in out
+
+    def test_active_faults_exact_yes(self, capsys):
+        """Exact match for Active Faults line (kills XX prefix/suffix)."""
+        param = ErrorParam(error_byte1=1, error_byte2=0, error_byte3=0, error_byte4=0)
+        _display_error(param)
+        out = capsys.readouterr().out
+        assert "    Active Faults:  Yes\n" in out
+
+    def test_active_faults_exact_none(self, capsys):
+        """Exact match for Active Faults line (kills XX prefix/suffix)."""
+        param = ErrorParam(error_byte1=0, error_byte2=0, error_byte3=0, error_byte4=0)
+        _display_error(param)
+        out = capsys.readouterr().out
+        assert "    Active Faults:  None\n" in out
+
 
 class TestDisplayTempUnit:
     """Tests for _display_temp_unit()."""
@@ -442,7 +488,7 @@ class TestDisplayTempUnit:
         out = capsys.readouterr().out
         lines = out.strip().split("\n")
         assert lines[0].strip() == "[236] Temperature Unit"
-        assert "─" * 40 in lines[1]
+        assert lines[1] == "  " + "─" * 40
         assert "    Unit:           Celsius" in out
 
     def test_fahrenheit(self, capsys):
@@ -461,7 +507,7 @@ class TestDisplaySound:
         out = capsys.readouterr().out
         lines = out.strip().split("\n")
         assert lines[0].strip() == "[369] Sound"
-        assert "─" * 40 in lines[1]
+        assert lines[1] == "  " + "─" * 40
         assert "    Volume:         128 / 255" in out
         assert "    Sound File:     3" in out
 
@@ -479,7 +525,7 @@ class TestDisplayLogEffect:
         out = capsys.readouterr().out
         lines = out.strip().split("\n")
         assert lines[0].strip() == "[370] Log Effect"
-        assert "─" * 40 in lines[1]
+        assert lines[1] == "  " + "─" * 40
         assert "    Log Effect:     On" in out
         assert "    Colors:         RGBW(1, 0, 255, 128)" in out
         assert "    Pattern:        5" in out
@@ -693,7 +739,10 @@ class TestDisplayFeatures:
     def test_all_false(self, capsys):
         _display_features(FireFeatures())
         out = capsys.readouterr().out
-        assert "Supported Features" in out
+        # Exact header (kills XX prefix/suffix on "\n  Supported Features")
+        assert "\n  Supported Features\n" in out
+        # Exact separator (kills '─' → 'XX─XX' and * 40 → * 41)
+        assert "  " + "─" * 40 + "\n" in out
         # All should show No
         assert "Yes" not in out
         assert out.count("No") == 24
@@ -704,6 +753,17 @@ class TestDisplayFeatures:
         out = capsys.readouterr().out
         assert out.count("Yes") == 3
         assert out.count("No") == 21
+
+    def test_exact_yes_no_values(self, capsys):
+        """Exact Yes/No values (kills 'Yes' → 'XXYesXX', 'No' → 'XXNoXX')."""
+        features = FireFeatures(sound=True)
+        _display_features(features)
+        out = capsys.readouterr().out
+        lines = out.strip().split("\n")
+        # Each feature line: "    Label:              Value"
+        for line in lines[2:]:  # skip header and separator
+            value = line.rsplit(None, 1)[-1]
+            assert value in ("Yes", "No"), f"Unexpected value: {value!r}"
 
     def test_all_labels_present(self, capsys):
         _display_features(FireFeatures())
@@ -1442,10 +1502,11 @@ class TestMain:
     """Tests for the synchronous main() entry point."""
 
     def test_main_calls_async_main(self):
+        mock_async_main = MagicMock()
         with (
             patch("flameconnect.cli.build_parser") as mock_parser_fn,
             patch("flameconnect.cli.asyncio") as mock_asyncio,
-            patch("flameconnect.cli.async_main", new=MagicMock()),
+            patch("flameconnect.cli.async_main", new=mock_async_main),
         ):
             mock_parser = MagicMock()
             mock_args = argparse.Namespace(command="list", verbose=False)
@@ -1454,7 +1515,10 @@ class TestMain:
 
             main()
 
-            mock_asyncio.run.assert_called_once()
+            # Verify async_main is called with args (kills → None mutant)
+            mock_async_main.assert_called_once_with(mock_args)
+            # Verify asyncio.run receives the coroutine (kills → None mutant)
+            mock_asyncio.run.assert_called_once_with(mock_async_main.return_value)
 
     def test_main_verbose_logging(self):
         with (

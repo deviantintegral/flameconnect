@@ -288,8 +288,8 @@ class TestLogResponse:
         resp = self._make_resp()
         with caplog.at_level(logging.DEBUG, "flameconnect"):
             _log_response(resp, "Hello body")
-        assert "body" in caplog.text.lower()
-        assert "Hello body" in caplog.text
+        # Exact format prefix (kills "<<<   body: %s" → "XX<<<   body: %sXX")
+        assert "<<<   body: Hello body" in caplog.text
 
     def test_long_body_truncated(self, caplog):
         resp = self._make_resp()
@@ -298,6 +298,8 @@ class TestLogResponse:
             _log_response(resp, long_body)
         assert "bytes total" in caplog.text
         assert "3000" in caplog.text
+        # Body preview includes first 2000 chars (kills += → = mutant)
+        assert "x" * 2000 in caplog.text
 
     def test_body_exactly_2000_no_truncation(self, caplog):
         resp = self._make_resp()

@@ -461,14 +461,22 @@ class TestFormatTimer:
         assert result[0][2] == "toggle_timer"
 
     def test_enabled_timer_with_duration(self):
+        from datetime import datetime, timedelta
+
         param = TimerParam(timer_status=TimerStatus.ENABLED, duration=30)
+        before = datetime.now()
         result = _format_timer(param)
+        after = datetime.now()
         value = result[0][1]
         assert value.startswith("Enabled  Duration: 30min  Off at ")
         # HH:MM format
         off_at = value.split("Off at ")[1]
         assert len(off_at) == 5  # HH:MM
         assert off_at[2] == ":"
+        # Verify time is now + 30min (kills + → − mutant)
+        expected_min = (before + timedelta(minutes=30)).strftime("%H:%M")
+        expected_max = (after + timedelta(minutes=30)).strftime("%H:%M")
+        assert off_at in (expected_min, expected_max)
 
     def test_enabled_timer_zero_duration(self):
         """Enabled timer with 0 duration should not show off-at time."""

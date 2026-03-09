@@ -755,7 +755,8 @@ class TestTemperatureHelpers:
         from flameconnect.tui.temperature_screen import _convert_to_celsius
 
         result = _convert_to_celsius(72.0)
-        assert abs(result - 22.2) < 0.1
+        # Exact: round((72-32)*5/9, 1) = 22.2 (kills round(_, 1) → round(_, 2))
+        assert result == 22.2
 
     def test_convert_to_celsius_32(self):
         from flameconnect.tui.temperature_screen import _convert_to_celsius

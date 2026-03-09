@@ -368,6 +368,41 @@ class TestExpandFlame:
         gap = plain[1:-1]
         assert gap == " " * len(gap)
 
+    def test_all_zero_weights(self):
+        """All atoms with weight=0: gap uses `or 1` fallback (kills or 1 → or 2)."""
+        atoms = [("A", 0), ("B", 0)]
+        result = _expand_flame(atoms, 6, "red")
+        # total_weight = 0, fallback to 1; gap_w is 0 for both so no gaps
+        assert result.plain == "AB"
+
+    def test_gap_w_zero_skips_spacing(self):
+        """Atom with gap_w=0 doesn't enter spacing branch (kills > 0 → >= 0)."""
+        atoms = [("A", 0), ("B", 1), ("C", 0)]
+        result = _expand_flame(atoms, 7, "red")
+        plain = result.plain
+        # A has weight 0 → no gap after A
+        # B has weight 1 → gets all 4 remaining gap
+        assert plain == "A" + "B" + " " * 4 + "C"
+
+    def test_remaining_weight_reaches_zero(self):
+        """After consuming all weight, remaining atoms get no gap (kills > 0 → >= 0)."""
+        # After first atom: remaining_weight = total_weight - gap_w = 1 - 1 = 0
+        # Second atom has gap_w=0 so it won't enter the branch anyway,
+        # but if it had gap_w > 0, remaining_weight=0 should prevent spacing.
+        atoms = [("A", 1), ("B", 0)]
+        result = _expand_flame(atoms, 10, "red")
+        plain = result.plain
+        # A gets all 8 gap, B gets none
+        assert plain == "A" + " " * 8 + "B"
+
+    def test_and_vs_or_gap_w_zero_remaining_positive(self):
+        """With gap_w=0 but remaining_weight>0, no gap (kills and → or)."""
+        atoms = [("X", 0), ("Y", 2), ("Z", 0)]
+        result = _expand_flame(atoms, 9, "red")
+        plain = result.plain
+        # X: gap_w=0 → skip; Y: gap_w=2, remaining_weight=2, 6*2//2=6; Z: weight=0
+        assert plain == "X" + "Y" + " " * 6 + "Z"
+
 
 # ---------------------------------------------------------------------------
 # _build_fire_art – heat rows
