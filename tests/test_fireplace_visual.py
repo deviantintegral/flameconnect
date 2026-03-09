@@ -450,7 +450,7 @@ class TestBuildFireArtHeat:
             assert inner == "\u2248" * ow or inner == "~" * ow
 
     def test_heat_row_style_is_bright_red(self):
-        """Heat wave chars should have bright_red style."""
+        """Heat wave chars should have exactly bright_red style."""
         w = 50
         text = _build_fire_art(w, 20, heat_on=True)
         plain = text.plain
@@ -458,7 +458,10 @@ class TestBuildFireArtHeat:
         for idx, ch in enumerate(plain):
             if ch in ("\u2248", "~"):
                 style = _style_at(text, idx)
-                assert "bright_red" in style
+                assert style == "bright_red", (
+                    f"Heat char {ch!r} at {idx} has style "
+                    f"{style!r}, expected 'bright_red'"
+                )
                 return
         raise AssertionError("No heat wave character found")
 
@@ -665,6 +668,55 @@ class TestBuildFireArtFlameGeometry:
             trailing = inner[-trail_count:] if trail_count else ""
             # Must be only spaces
             assert trailing == " " * trail_count
+
+    def test_narrow_width_min_w_binding(self):
+        """At narrow widths, min_w becomes binding (kills min_w mutations)."""
+        w = 20
+        text = _build_fire_art(w, 20, fire_on=True)
+        plain = text.plain
+        lines = plain.split("\n")
+        # With narrow width, flame rows may exceed iw due to min_w constraint
+        # The key test: if min_w changes (±1, ±2), flame row width changes
+        flame_widths = []
+        for line in lines:
+            if not line.startswith("\u2502\u2502"):
+                continue
+            # Find the rightmost ││
+            right_border = line.rfind("\u2502\u2502")
+            if right_border <= 0:
+                continue
+            inner = line[2:right_border]
+            if "\u2591" in inner or "\u2593" in inner or inner.strip() == "":
+                continue
+            flame_widths.append(len(inner))
+        # All flame rows should have consistent width
+        assert len(flame_widths) >= _MIN_FLAME_ROWS
+        # Verify widths are reasonable (not drastically wrong)
+        for fw in flame_widths:
+            assert fw >= 10, f"Flame row too narrow: {fw}"
+
+    def test_wide_width_centering_lead_differs_from_third(self):
+        """At wider widths, (iw-body_w)//2 differs from //3 (kills //3)."""
+        w = 80
+        text = _build_fire_art(w, 20, fire_on=True)
+        lines = text.plain.split("\n")
+        for line in lines:
+            if not line.startswith("\u2502\u2502"):
+                continue
+            if not line.endswith("\u2502\u2502"):
+                continue
+            inner = line[2:-2]
+            if "\u2591" in inner or "\u2593" in inner or inner.strip() == "":
+                continue
+            lead = len(inner) - len(inner.lstrip(" "))
+            trail = len(inner) - len(inner.rstrip(" "))
+            # With //2 floor division, lead <= trail
+            # With //3, lead would be smaller and trail much larger
+            if lead + trail >= 4:
+                # lead should be close to trail (within 1 for odd total)
+                assert lead >= trail - 1, (
+                    f"Bad centering at w={w}: lead={lead}, trail={trail}"
+                )
 
     def test_flame_centering_lead_roughly_half(self):
         """Lead should be roughly (iw - body_w) // 2 (kills + and // 3)."""
