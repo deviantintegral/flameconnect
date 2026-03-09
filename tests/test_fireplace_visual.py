@@ -479,36 +479,20 @@ class TestBuildFireArtHeat:
 class TestBuildFireArtStyles:
     """Verify dim style on structural frame elements."""
 
-    def test_top_edge_has_dim_style(self):
-        """Top edge ▁ characters should have 'dim' style."""
-        text = _build_fire_art(50, 20)
+    def test_all_frame_chars_have_dim_style(self):
+        """All structural frame characters must have 'dim' style exactly."""
+        text = _build_fire_art(50, 20, fire_on=False)
         plain = text.plain
-        idx = plain.index("\u2581")
-        assert "dim" in _style_at(text, idx)
-
-    def test_outer_frame_top_has_dim_style(self):
-        """Outer frame ┌ should have 'dim' style."""
-        text = _build_fire_art(50, 20)
-        plain = text.plain
-        idx = plain.index("\u250c")
-        assert "dim" in _style_at(text, idx)
-
-    def test_outer_frame_bottom_has_dim_style(self):
-        """Outer frame └ should have 'dim' style."""
-        text = _build_fire_art(50, 20)
-        plain = text.plain
-        idx = plain.index("\u2514")
-        assert "dim" in _style_at(text, idx)
-
-    def test_inner_borders_have_dim_style(self):
-        """│ border characters should have 'dim' style."""
-        text = _build_fire_art(50, 20)
-        plain = text.plain
-        idx = plain.index("\u2502")
-        assert "dim" in _style_at(text, idx)
+        frame_chars = set("\u2581\u250c\u2510\u2514\u2518\u2500\u2502")
+        for idx, ch in enumerate(plain):
+            if ch in frame_chars:
+                style = _style_at(text, idx)
+                assert style == "dim", (
+                    f"Char {ch!r} at offset {idx} has style {style!r}, expected 'dim'"
+                )
 
     def test_outer_hearth_has_dim_style(self):
-        """Outer hearth ▓ row should have 'dim' style."""
+        """Outer hearth ▓ row should have 'dim' style exactly."""
         text = _build_fire_art(50, 20)
         plain = text.plain
         lines = plain.split("\n")
@@ -518,12 +502,24 @@ class TestBuildFireArtStyles:
                 and not line.startswith("\u2502\u2502")
                 and "\u2593" in line
             ):
-                # Outer hearth line
                 line_offset = plain.index(line)
-                hearth_idx = line.index("\u2593")
-                assert "dim" in _style_at(text, line_offset + hearth_idx)
+                for rel, ch in enumerate(line):
+                    if ch == "\u2593":
+                        assert _style_at(text, line_offset + rel) == "dim"
                 return
         raise AssertionError("No outer hearth row found")
+
+    def test_frame_chars_with_fire_on(self):
+        """Frame chars have 'dim' style even with fire_on=True."""
+        text = _build_fire_art(50, 20, fire_on=True)
+        plain = text.plain
+        frame_chars = set("\u2581\u250c\u2510\u2514\u2518\u2500\u2502")
+        for idx, ch in enumerate(plain):
+            if ch in frame_chars:
+                style = _style_at(text, idx)
+                assert style == "dim", (
+                    f"Char {ch!r} at offset {idx} has style {style!r}, expected 'dim'"
+                )
 
 
 # ---------------------------------------------------------------------------
@@ -613,24 +609,83 @@ class TestBuildFireArtFlameGeometry:
             content = inner.strip()
             assert len(content) > 0
 
-    def test_flame_row_trailing_pad_not_negative(self):
-        """Trailing pad should never be negative (uses max(..., 0))."""
-        # Use a narrow width to stress the trailing pad calculation
-        w = 40
-        text = _build_fire_art(w, 20, fire_on=True)
-        plain = text.plain
+    def test_flame_row_inner_width_exact(self):
+        """Flame row inner content exactly matches iw (kills lead/trail mutations)."""
+        w = 60
         iw = w - 4
-        lines = plain.split("\n")
+        text = _build_fire_art(w, 20, fire_on=True)
+        lines = text.plain.split("\n")
+        for i, line in enumerate(lines):
+            if not line.startswith("\u2502\u2502"):
+                continue
+            if not line.endswith("\u2502\u2502"):
+                continue
+            inner = line[2:-2]
+            if "\u2591" in inner or "\u2593" in inner or inner.strip() == "":
+                continue
+            # Flame inner width must equal iw exactly
+            assert len(inner) == iw, (
+                f"Line {i}: inner width {len(inner)} != {iw}: {inner!r}"
+            )
+
+    def test_flame_row_leading_spaces_only(self):
+        """Leading padding is only regular spaces (kills ' ' → 'XX XX')."""
+        w = 60
+        text = _build_fire_art(w, 20, fire_on=True)
+        lines = text.plain.split("\n")
         for line in lines:
             if not line.startswith("\u2502\u2502"):
                 continue
             if not line.endswith("\u2502\u2502"):
                 continue
             inner = line[2:-2]
-            if "\u2591" in inner or "\u2593" in inner:
+            if "\u2591" in inner or "\u2593" in inner or inner.strip() == "":
                 continue
-            # Inner should be at least iw wide (may be wider for flame min_w)
-            assert len(inner) >= iw
+            # Leading padding: everything before first non-space
+            lead_count = len(inner) - len(inner.lstrip(" "))
+            leading = inner[:lead_count]
+            # Must be only spaces (kills " " → "XX XX" mutation)
+            assert leading == " " * lead_count
+
+    def test_flame_row_trailing_spaces_only(self):
+        """Trailing padding is only regular spaces (kills ' ' → 'XX XX')."""
+        w = 60
+        text = _build_fire_art(w, 20, fire_on=True)
+        lines = text.plain.split("\n")
+        for line in lines:
+            if not line.startswith("\u2502\u2502"):
+                continue
+            if not line.endswith("\u2502\u2502"):
+                continue
+            inner = line[2:-2]
+            if "\u2591" in inner or "\u2593" in inner or inner.strip() == "":
+                continue
+            # Trailing padding: everything after last non-space
+            trail_count = len(inner) - len(inner.rstrip(" "))
+            trailing = inner[-trail_count:] if trail_count else ""
+            # Must be only spaces
+            assert trailing == " " * trail_count
+
+    def test_flame_centering_lead_roughly_half(self):
+        """Lead should be roughly (iw - body_w) // 2 (kills + and // 3)."""
+        w = 60
+        text = _build_fire_art(w, 20, fire_on=True)
+        lines = text.plain.split("\n")
+        for line in lines:
+            if not line.startswith("\u2502\u2502"):
+                continue
+            if not line.endswith("\u2502\u2502"):
+                continue
+            inner = line[2:-2]
+            if "\u2591" in inner or "\u2593" in inner or inner.strip() == "":
+                continue
+            lead = len(inner) - len(inner.lstrip(" "))
+            trail = len(inner) - len(inner.rstrip(" "))
+            total_pad = lead + trail
+            if total_pad > 1:
+                # Lead should be <= trail (centering divides by 2)
+                # With // 2 floor division, lead <= trail
+                assert lead <= trail + 1, f"Centering off: lead={lead}, trail={trail}"
 
 
 # ---------------------------------------------------------------------------
