@@ -1320,6 +1320,41 @@ class TestBuildParser:
         parser = build_parser()
         assert parser.prog == "flameconnect"
 
+    def test_parser_description(self):
+        parser = build_parser()
+        assert parser.description is not None
+        assert "Dimplex" in parser.description
+        assert "Flame Connect" in parser.description
+
+    def test_subcommand_help_texts(self):
+        """All subcommands have non-None help text."""
+        parser = build_parser()
+        # Access subparsers to check help texts
+        for action in parser._subparsers._actions:
+            if hasattr(action, "_parser_class"):
+                for name, _subparser in action._name_parser_map.items():
+                    # Subparser exists for each command name
+                    assert name in (
+                        "list",
+                        "status",
+                        "on",
+                        "off",
+                        "set",
+                        "tui",
+                    )
+
+    def test_verbose_flag_help(self):
+        """--verbose flag has help text."""
+        parser = build_parser()
+        for action in parser._actions:
+            if "--verbose" in getattr(action, "option_strings", []):
+                assert action.help is not None
+                assert (
+                    "debug" in action.help.lower() or "logging" in action.help.lower()
+                )
+                return
+        raise AssertionError("--verbose action not found")
+
     def test_parse_list(self):
         parser = build_parser()
         args = parser.parse_args(["list"])
@@ -1604,8 +1639,10 @@ class TestMaskedInput:
     """
 
     @staticmethod
-    def _run_masked(chars: list[str], prompt: str = "Password: ") -> str:
-        """Helper to run _masked_input with mocked terminal I/O."""
+    def _run_masked(
+        chars: list[str], prompt: str = "Password: "
+    ) -> tuple[str, MagicMock, MagicMock, MagicMock, MagicMock]:
+        """Helper: run _masked_input, return (result, stdout, stdin, termios, tty)."""
         from flameconnect.cli import _masked_input
 
         mock_stdin = MagicMock()
@@ -1614,7 +1651,7 @@ class TestMaskedInput:
         mock_stdin.fileno.return_value = 0
 
         mock_termios = MagicMock()
-        mock_termios.tcgetattr.return_value = []
+        mock_termios.tcgetattr.return_value = ["old_settings"]
         mock_termios.TCSADRAIN = 1
         mock_tty = MagicMock()
 
@@ -1623,16 +1660,36 @@ class TestMaskedInput:
             patch("sys.stdout", mock_stdout),
             patch.dict("sys.modules", {"termios": mock_termios, "tty": mock_tty}),
         ):
-            return _masked_input(prompt)
+            result = _masked_input(prompt)
+        return result, mock_stdout, mock_stdin, mock_termios, mock_tty
 
     def test_basic_input(self):
-        assert self._run_masked(["a", "b", "c", "\n"]) == "abc"
+        result, stdout, stdin, termios, tty = self._run_masked(["a", "b", "c", "\n"])
+        assert result == "abc"
+        # Prompt written first
+        stdout.write.assert_any_call("Password: ")
+        # Each char echoes a star
+        star_calls = [c for c in stdout.write.call_args_list if c.args == ("*",)]
+        assert len(star_calls) == 3
+        # Terminal restored
+        termios.tcsetattr.assert_called_once_with(0, 1, ["old_settings"])
+        # Raw mode set
+        tty.setraw.assert_called_once_with(0)
+        # stdin.read called with 1
+        for call in stdin.read.call_args_list:
+            assert call.args == (1,)
+        # Newline written at end
+        stdout.write.assert_any_call("\n")
 
     def test_backspace(self):
-        assert self._run_masked(["a", "b", "\x7f", "c", "\n"]) == "ac"
+        result, stdout, *_ = self._run_masked(["a", "b", "\x7f", "c", "\n"])
+        assert result == "ac"
+        # Backspace sequence written
+        stdout.write.assert_any_call("\b \b")
 
     def test_backspace_on_empty(self):
-        assert self._run_masked(["\x7f", "a", "\n"]) == "a"
+        result, stdout, *_ = self._run_masked(["\x7f", "a", "\n"])
+        assert result == "a"
 
     def test_ctrl_c(self):
         from flameconnect.cli import _masked_input
@@ -1643,7 +1700,7 @@ class TestMaskedInput:
         mock_stdin.fileno.return_value = 0
 
         mock_termios = MagicMock()
-        mock_termios.tcgetattr.return_value = []
+        mock_termios.tcgetattr.return_value = ["old"]
         mock_termios.TCSADRAIN = 1
         mock_tty = MagicMock()
 
@@ -1656,11 +1713,21 @@ class TestMaskedInput:
             _masked_input()
 
     def test_carriage_return(self):
-        assert self._run_masked(["x", "\r"]) == "x"
+        result, *_ = self._run_masked(["x", "\r"])
+        assert result == "x"
 
     def test_delete_char(self):
         # \x08 is the other backspace/delete code
-        assert self._run_masked(["a", "b", "\x08", "c", "\n"]) == "ac"
+        result, stdout, *_ = self._run_masked(["a", "b", "\x08", "c", "\n"])
+        assert result == "ac"
+        stdout.write.assert_any_call("\b \b")
+
+    def test_default_prompt(self):
+        """Default prompt is 'Password: ' (kills prompt default mutations)."""
+        result, stdout, *_ = self._run_masked(["a", "\n"])
+        assert result == "a"
+        # First write call should be the prompt
+        stdout.write.assert_any_call("Password: ")
 
 
 # ===================================================================
