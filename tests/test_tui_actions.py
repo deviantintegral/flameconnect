@@ -1228,9 +1228,18 @@ class TestResolveVersion:
         from flameconnect import __version__
 
         tag_result = MagicMock(returncode=0, stdout=f"v{__version__}\n")
-        with patch("flameconnect.tui.app.subprocess.run", return_value=tag_result):
+        with patch(
+            "flameconnect.tui.app.subprocess.run", return_value=tag_result
+        ) as mock_run:
             result = _resolve_version()
         assert result == f"v{__version__}"
+        # Verify exact subprocess call
+        mock_run.assert_called_once_with(
+            ["git", "describe", "--tags", "--exact-match", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
 
     def test_returns_short_hash_when_no_tag(self):
         """When no matching tag, return the short git hash."""
@@ -1241,9 +1250,30 @@ class TestResolveVersion:
         with patch(
             "flameconnect.tui.app.subprocess.run",
             side_effect=[tag_result, hash_result, status_result],
-        ):
+        ) as mock_run:
             result = _resolve_version()
         assert result == "abc1234"
+        # Verify all three subprocess calls
+        assert mock_run.call_count == 3
+        calls = mock_run.call_args_list
+        assert calls[0].args[0] == [
+            "git",
+            "describe",
+            "--tags",
+            "--exact-match",
+            "HEAD",
+        ]
+        assert calls[1].args[0] == [
+            "git",
+            "rev-parse",
+            "--short",
+            "HEAD",
+        ]
+        assert calls[2].args[0] == ["git", "status", "--porcelain"]
+        for c in calls:
+            assert c.kwargs["capture_output"] is True
+            assert c.kwargs["text"] is True
+            assert c.kwargs["timeout"] == 2
 
     def test_returns_dirty_hash_when_uncommitted(self):
         """When working tree is dirty, append -dirty to the hash."""
@@ -1257,6 +1287,33 @@ class TestResolveVersion:
         ):
             result = _resolve_version()
         assert result == "abc1234-dirty"
+
+    def test_clean_status_no_dirty_suffix(self):
+        """Clean status output should NOT append -dirty."""
+        tag_result = MagicMock(returncode=128, stdout="")
+        hash_result = MagicMock(returncode=0, stdout="abc1234\n")
+        status_result = MagicMock(returncode=0, stdout="")
+
+        with patch(
+            "flameconnect.tui.app.subprocess.run",
+            side_effect=[tag_result, hash_result, status_result],
+        ):
+            result = _resolve_version()
+        assert result == "abc1234"
+        assert "-dirty" not in result
+
+    def test_status_nonzero_returncode_no_dirty(self):
+        """Non-zero status returncode should not append -dirty."""
+        tag_result = MagicMock(returncode=128, stdout="")
+        hash_result = MagicMock(returncode=0, stdout="abc1234\n")
+        status_result = MagicMock(returncode=1, stdout="M some_file.py\n")
+
+        with patch(
+            "flameconnect.tui.app.subprocess.run",
+            side_effect=[tag_result, hash_result, status_result],
+        ):
+            result = _resolve_version()
+        assert result == "abc1234"
 
     def test_returns_version_when_hash_fails(self):
         """When git rev-parse fails, fall back to v{version}."""
@@ -1282,6 +1339,45 @@ class TestResolveVersion:
         ):
             result = _resolve_version()
         assert result == f"v{__version__}"
+
+    def test_tag_returncode_nonzero_falls_through(self):
+        """Non-zero tag returncode means no tag match, proceed to hash."""
+        tag_result = MagicMock(returncode=1, stdout="")
+        hash_result = MagicMock(returncode=0, stdout="def5678\n")
+        status_result = MagicMock(returncode=0, stdout="")
+
+        with patch(
+            "flameconnect.tui.app.subprocess.run",
+            side_effect=[tag_result, hash_result, status_result],
+        ):
+            result = _resolve_version()
+        assert result == "def5678"
+
+    def test_tag_matches_but_version_not_in_output(self):
+        """Tag returncode=0 but version not in stdout falls through."""
+        tag_result = MagicMock(returncode=0, stdout="v99.99.99\n")
+        hash_result = MagicMock(returncode=0, stdout="aaa1111\n")
+        status_result = MagicMock(returncode=0, stdout="")
+
+        with patch(
+            "flameconnect.tui.app.subprocess.run",
+            side_effect=[tag_result, hash_result, status_result],
+        ):
+            result = _resolve_version()
+        assert result == "aaa1111"
+
+    def test_stdout_stripped(self):
+        """Trailing whitespace/newlines in stdout are stripped."""
+        tag_result = MagicMock(returncode=128, stdout="")
+        hash_result = MagicMock(returncode=0, stdout="  bbb2222  \n")
+        status_result = MagicMock(returncode=0, stdout="")
+
+        with patch(
+            "flameconnect.tui.app.subprocess.run",
+            side_effect=[tag_result, hash_result, status_result],
+        ):
+            result = _resolve_version()
+        assert result == "bbb2222"
 
 
 # ---------------------------------------------------------------------------

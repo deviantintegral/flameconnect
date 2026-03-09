@@ -8,6 +8,7 @@ from flameconnect.tui.widgets import (
     _FLAME_PALETTES,
     _MIN_FLAME_ROWS,
     _build_fire_art,
+    _expand_flame,
     _rgbw_to_style,
 )
 
@@ -302,6 +303,92 @@ class TestFlamePalettesCompleteness:
 # ---------------------------------------------------------------------------
 # Helper
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# _expand_flame – gap distribution
+# ---------------------------------------------------------------------------
+
+
+class TestExpandFlame:
+    """Tests for _expand_flame gap distribution."""
+
+    def test_basic_gap_distribution(self):
+        """Gaps are distributed proportionally among atoms."""
+        atoms = [("A", 1), ("B", 1), ("C", 0)]
+        result = _expand_flame(atoms, 13, "red")
+        plain = result.plain
+        # 3 chars of atoms, 10 chars of gap, split 5/5/0
+        assert len(plain) == 13
+        assert plain.startswith("A")
+        assert plain.endswith("C")
+
+    def test_style_applied(self):
+        """Atoms get the specified style."""
+        atoms = [("AB", 0)]
+        result = _expand_flame(atoms, 2, "bright_red")
+        styles = {str(s.style) for s in result._spans}
+        assert "bright_red" in styles
+
+    def test_gap_weight_zero_no_space(self):
+        """Atom with weight=0 gets no trailing gap."""
+        atoms = [("A", 1), ("B", 0)]
+        result = _expand_flame(atoms, 6, "red")
+        plain = result.plain
+        # Expect "A" + 4 spaces + "B" (no trailing space)
+        assert plain.endswith("B")
+        assert " " * 4 in plain
+
+    def test_exact_width_no_gaps(self):
+        """When body_width equals atom chars, no gaps added."""
+        atoms = [("AB", 1), ("CD", 0)]
+        result = _expand_flame(atoms, 4, "red")
+        assert result.plain == "ABCD"
+
+    def test_remaining_gap_decreases(self):
+        """Each atom consumes its proportional share of remaining gap."""
+        atoms = [("X", 2), ("Y", 1), ("Z", 0)]
+        result = _expand_flame(atoms, 12, "red")
+        plain = result.plain
+        assert len(plain) == 12
+        # X gets 2/3 of 9 gap = 6, Y gets 1/1 of 3 = 3
+        assert plain == "X" + " " * 6 + "Y" + " " * 3 + "Z"
+
+    def test_body_width_smaller_than_chars(self):
+        """When body_width < total atom chars, total_gap=0."""
+        atoms = [("ABCD", 1), ("EF", 0)]
+        result = _expand_flame(atoms, 3, "red")
+        assert result.plain == "ABCDEF"  # no gaps
+
+    def test_gap_spaces_not_other_chars(self):
+        """Gaps between atoms are regular spaces, not other characters."""
+        atoms = [("A", 1), ("B", 0)]
+        result = _expand_flame(atoms, 6, "red")
+        plain = result.plain
+        gap = plain[1:-1]
+        assert gap == " " * len(gap)
+
+
+# ---------------------------------------------------------------------------
+# _build_fire_art – heat rows
+# ---------------------------------------------------------------------------
+
+
+class TestBuildFireArtHeat:
+    """Tests for heat indicator rows in _build_fire_art."""
+
+    def test_heat_on_shows_wave_chars(self):
+        """Heat indicators include wave characters when heat_on=True."""
+        text = _build_fire_art(50, 20, heat_on=True)
+        plain = text.plain
+        assert "\u2248" in plain or "~" in plain
+
+    def test_heat_off_no_wave_chars(self):
+        """No wave characters when heat_on=False."""
+        text = _build_fire_art(50, 20, heat_on=False)
+        plain = text.plain
+        assert "\u2248" not in plain
+        assert "~" not in plain
 
 
 def _style_at(text, offset: int) -> str:
