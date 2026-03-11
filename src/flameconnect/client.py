@@ -19,13 +19,14 @@ from flameconnect.const import (
 
 if TYPE_CHECKING:
     from flameconnect.auth import AbstractAuth
-from flameconnect.exceptions import ApiError
+from flameconnect.exceptions import ApiError, FireUnavailableError
 from flameconnect.models import (
     ConnectionState,
     Fire,
     FireFeatures,
     FireMode,
     FireOverview,
+    FireOverviewResultCode,
     FlameEffect,
     FlameEffectParam,
     HeatModeParam,
@@ -74,6 +75,28 @@ def _parse_fire_features(data: dict[str, Any]) -> FireFeatures:
         power_boost=data.get("PowerBoost", False),
         fan_only=data.get("FanOnly", False),
         rgb_log_effect=data.get("RgbLogEffect", False),
+    )
+
+
+def _parse_fire(data: dict[str, Any], features: FireFeatures | None = None) -> Fire:
+    """Build a Fire dataclass from a JSON dict.
+
+    Used by get_fires, get_fire_overview (success path), and the
+    get_fire_overview error path (FireDetails).
+    """
+    if features is None:
+        features = _parse_fire_features(data.get("FireFeature", {}))
+    return Fire(
+        fire_id=data["FireId"],
+        friendly_name=data.get("FriendlyName", data["FireId"]),
+        brand=data.get("Brand", ""),
+        product_type=data.get("ProductType", ""),
+        product_model=data.get("ProductModel", ""),
+        item_code=data.get("ItemCode", ""),
+        connection_state=ConnectionState(data.get("IoTConnectionState", 0)),
+        with_heat=data.get("WithHeat", False),
+        is_iot_fire=data.get("IsIotFire", False),
+        features=features,
     )
 
 
@@ -195,20 +218,7 @@ class FlameConnectClient:
 
         fires: list[Fire] = []
         for entry in data:
-            features = _parse_fire_features(entry.get("FireFeature", {}))
-            fire = Fire(
-                fire_id=entry["FireId"],
-                friendly_name=entry["FriendlyName"],
-                brand=entry["Brand"],
-                product_type=entry["ProductType"],
-                product_model=entry["ProductModel"],
-                item_code=entry["ItemCode"],
-                connection_state=ConnectionState(entry["IoTConnectionState"]),
-                with_heat=entry["WithHeat"],
-                is_iot_fire=entry["IsIotFire"],
-                features=features,
-            )
-            fires.append(fire)
+            fires.append(_parse_fire(entry))
 
         return fires
 
@@ -220,30 +230,41 @@ class FlameConnectClient:
 
         Returns:
             A FireOverview containing the fire identity and decoded parameters.
+
+        Raises:
+            FireUnavailableError: If the API reports the fireplace as offline,
+                failed, no longer available, or updating firmware
+                (``ResultCode != 0``).  The exception carries the
+                ``result_code`` and, when available, the ``fire`` metadata.
         """
         url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={quote(fire_id, safe='')}"
         data: dict[str, Any] = await self._request("GET", url)
 
+        # Check the result code before accessing nullable fields.
+        raw_code: int = data.get("ResultCode", 0)
+        try:
+            result_code = FireOverviewResultCode(raw_code)
+        except ValueError:
+            result_code = raw_code  # type: ignore[assignment]
+
+        if result_code != FireOverviewResultCode.SUCCESSFUL:
+            fire: Fire | None = None
+            fire_details: dict[str, Any] | None = data.get("FireDetails")
+            if fire_details is not None:
+                try:
+                    fire = _parse_fire(fire_details)
+                except Exception:
+                    _LOGGER.warning("Failed to parse FireDetails for fire %s", fire_id)
+            raise FireUnavailableError(result_code, fire)
+
         wifi: dict[str, Any] = data["WifiFireOverview"]
-        fire_data: dict[str, Any] = wifi
 
         feature_data = data.get("FireDetails", {}).get("FireFeature", {})
         if not feature_data:
             feature_data = wifi.get("FireFeature", {})
         features = _parse_fire_features(feature_data)
 
-        fire = Fire(
-            fire_id=fire_data["FireId"],
-            friendly_name=fire_data.get("FriendlyName", fire_data["FireId"]),
-            brand=fire_data.get("Brand", ""),
-            product_type=fire_data.get("ProductType", ""),
-            product_model=fire_data.get("ProductModel", ""),
-            item_code=fire_data.get("ItemCode", ""),
-            connection_state=ConnectionState(fire_data.get("IoTConnectionState", 0)),
-            with_heat=fire_data.get("WithHeat", False),
-            is_iot_fire=fire_data.get("IsIotFire", False),
-            features=features,
-        )
+        fire_obj = _parse_fire(wifi, features=features)
 
         raw_params: list[dict[str, Any]] = wifi.get("Parameters", [])
         parameters: list[Parameter] = []
@@ -258,7 +279,7 @@ class FlameConnectClient:
                 continue
             parameters.append(param)
 
-        return FireOverview(fire=fire, parameters=parameters)
+        return FireOverview(fire=fire_obj, parameters=parameters)
 
     async def write_parameters(self, fire_id: str, params: list[Parameter]) -> None:
         """Write control parameters to a fireplace.
