@@ -148,6 +148,57 @@ The `_log_request` and `_log_response` functions will be removed from `b2c_login
 ### Technical Infrastructure
 - Existing dev toolchain: `uv`, `ruff`, `mypy`, `pytest`
 
+## Task Dependencies
+
+```mermaid
+graph TD
+    01[Task 01: Shared HTTP logging module] --> 03[Task 03: Integrate HTTP logging]
+    02[Task 02: CLI flags & log level promotion] --> 03
+```
+
+## Execution Blueprint
+
+**Validation Gates:**
+- Reference: `/config/hooks/POST_PHASE.md`
+
+### ✅ Phase 1: Foundation
+**Parallel Tasks:**
+- ✔️ Task 01: Create shared HTTP logging module (`_http_logging.py`)
+- ✔️ Task 02: CLI flag restructuring and log level promotion
+
+### ✅ Phase 2: Integration
+**Parallel Tasks:**
+- ✔️ Task 03: Integrate shared HTTP logging into client and b2c_login (depends on: 01, 02)
+
+### Execution Summary
+- Total Phases: 2
+- Total Tasks: 3
+- Maximum Parallelism: 2 tasks (in Phase 1)
+- Critical Path Length: 2 phases
+
+## Execution Summary
+
+**Status**: Completed Successfully
+**Completed Date**: 2026-03-11
+
+### Results
+All three tasks completed across two phases. The implementation delivers:
+- `src/flameconnect/_http_logging.py` — shared module with `redact_headers`, `redact_body`, `log_request`, `log_response`
+- `--verbose` (INFO) and `--debug` (DEBUG) mutually exclusive CLI flags with correct log level mapping
+- Full HTTP request/response tracing in `client.py._request` at DEBUG level with credential redaction
+- `b2c_login.py` migrated to shared helpers (local copies removed)
+- 5 auth/client messages promoted from DEBUG to INFO for `--verbose` visibility
+- `run_tui()` signature updated from `verbose: bool` to `log_level: int`
+- 23 new tests in `test_http_logging.py`; all 1230 tests pass
+
+### Noteworthy Events
+- One pre-existing test (`TestRequestDebugLog.test_request_debug_log_format` in `test_client.py`) failed after promoting the request summary to INFO — updated to check INFO level instead of DEBUG.
+- `_http_logging.py` `data` parameter type was widened from `Mapping[str, str]` to `Mapping[str, Any]` to accept `client.py`'s JSON body payloads.
+- `client.py._request` was refactored to read `response.text()` first and then `json.loads()` instead of `response.json()`, enabling the response body to be logged before parsing.
+
+### Recommendations
+No follow-up actions required.
+
 ## Notes
 
 ### Change Log
