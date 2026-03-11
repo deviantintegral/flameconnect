@@ -111,7 +111,7 @@ async with FlameConnectClient(auth=auth, session=my_session) as client:
 ## CLI Usage
 
 The `flameconnect` command provides a straightforward interface for controlling your
-fireplace from the terminal. Add `-v` to any command for debug logging.
+fireplace from the terminal. Add `-v` to any command for verbose logging.
 
 All examples below use `flameconnect` directly, but you can substitute
 `uv tool run flameconnect` if you haven't installed the package (e.g.
