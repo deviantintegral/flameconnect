@@ -1438,11 +1438,13 @@ class TestRequestLogging:
             async with FlameConnectClient(token_auth) as client:
                 await client.get_fires()
 
-        # Find the debug message from _request
+        # Find the info-level log that contains method, URL, and status
         found = [
             r
             for r in caplog.records
-            if r.name == "flameconnect.client" and "GET" in r.message
+            if r.name == "flameconnect.client"
+            and r.levelno == logging.INFO
+            and "GET" in r.message
         ]
         assert len(found) >= 1
         msg = found[0].message

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import json as _json
 import logging
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any, Literal, TypedDict
@@ -10,6 +11,7 @@ from urllib.parse import quote
 
 import aiohttp
 
+from flameconnect._http_logging import log_request, log_response
 from flameconnect.const import (
     API_BASE,
     DEFAULT_HEADERS,
@@ -191,16 +193,19 @@ class FlameConnectClient:
             **DEFAULT_HEADERS,
         }
 
+        log_request(_LOGGER, method, url, headers=headers, data=json)
+
         async with self._session.request(
             method, url, headers=headers, json=json
         ) as response:
+            body_text = await response.text()
+            log_response(_LOGGER, response, body_text)
             _LOGGER.info("%s %s -> %s", method, url, response.status)
 
             if response.status < 200 or response.status >= 300:
-                text = await response.text()
-                raise ApiError(response.status, text)
+                raise ApiError(response.status, body_text)
 
-            result: Any = await response.json()
+            result: Any = _json.loads(body_text)
             return result
 
     # ------------------------------------------------------------------

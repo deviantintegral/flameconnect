@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import logging
     from collections.abc import Mapping
+    from typing import Any
 
     import aiohttp
 
@@ -38,7 +39,7 @@ def redact_headers(headers: Mapping[str, str]) -> dict[str, str]:
     return result
 
 
-def redact_body(data: Mapping[str, str]) -> dict[str, str]:
+def redact_body(data: Mapping[str, Any]) -> dict[str, Any]:
     """Return a copy of *data* with the ``password`` key redacted to ``"***"``."""
     return {k: ("***" if k == "password" else v) for k, v in data.items()}
 
@@ -49,7 +50,7 @@ def log_request(
     url: str,
     *,
     headers: Mapping[str, str] | None = None,
-    data: Mapping[str, str] | None = None,
+    data: Mapping[str, Any] | None = None,
     params: Mapping[str, str] | None = None,
 ) -> None:
     """Log an outgoing HTTP request at DEBUG level."""

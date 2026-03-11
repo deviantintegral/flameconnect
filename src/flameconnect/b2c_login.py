@@ -15,6 +15,7 @@ from urllib.parse import urljoin, urlparse
 import aiohttp
 import yarl
 
+from flameconnect._http_logging import log_request, log_response
 from flameconnect.const import CLIENT_ID
 from flameconnect.exceptions import AuthenticationError
 
@@ -114,43 +115,6 @@ def _build_cookie_header(
     return "; ".join(f"{m.key}={m.value}" for m in filtered.values())
 
 
-def _log_request(
-    method: str,
-    url: str,
-    *,
-    headers: dict[str, str] | None = None,
-    data: dict[str, str] | None = None,
-    params: dict[str, str] | None = None,
-) -> None:
-    """Log an outgoing HTTP request at DEBUG level."""
-    _LOGGER.debug(">>> %s %s", method, url)
-    if params:
-        _LOGGER.debug(">>>   params: %s", params)
-    if headers:
-        _LOGGER.debug(">>>   headers: %s", headers)
-    if data:
-        safe = {k: ("***" if k == "password" else v) for k, v in data.items()}
-        _LOGGER.debug(">>>   body: %s", safe)
-
-
-def _log_response(
-    resp: aiohttp.ClientResponse,
-    body: str | None = None,
-) -> None:
-    """Log an incoming HTTP response at DEBUG level."""
-    _LOGGER.debug(
-        "<<< %s %s",
-        resp.status,
-        resp.url,
-    )
-    _LOGGER.debug("<<<   headers: %s", dict(resp.headers))
-    if body is not None:
-        preview = body[:2000]
-        if len(body) > 2000:
-            preview += f"... ({len(body)} bytes total)"
-        _LOGGER.debug("<<<   body: %s", preview)
-
-
 async def b2c_login_with_credentials(auth_uri: str, email: str, password: str) -> str:
     """Submit credentials directly to Azure AD B2C and return the redirect URL.
 
@@ -179,11 +143,11 @@ async def b2c_login_with_credentials(auth_uri: str, email: str, password: str) -
             cookie_jar=jar,
         ) as session:
             # Step 1: GET the auth URI, follow redirects to B2C login page
-            _log_request("GET", auth_uri)
+            log_request(_LOGGER, "GET", auth_uri)
             async with session.get(auth_uri, allow_redirects=True) as resp:
                 login_html = await resp.text()
                 page_url = str(resp.url)
-                _log_response(resp, login_html)
+                log_response(_LOGGER, resp, login_html)
                 if resp.status != 200:
                     raise AuthenticationError(
                         f"B2C login page returned HTTP {resp.status}"
@@ -221,7 +185,8 @@ async def b2c_login_with_credentials(auth_uri: str, email: str, password: str) -
             cookie_header = _build_cookie_header(jar, fields.post_url)
             post_headers["Cookie"] = cookie_header
             _LOGGER.debug(">>>   cookies: %s", cookie_header[:200])
-            _log_request(
+            log_request(
+                _LOGGER,
                 "POST",
                 fields.post_url,
                 headers=post_headers,
@@ -242,7 +207,7 @@ async def b2c_login_with_credentials(auth_uri: str, email: str, password: str) -
                     allow_redirects=False,
                 ) as resp:
                     body = await resp.text()
-                    _log_response(resp, body)
+                    log_response(_LOGGER, resp, body)
                     if resp.status != 200:
                         raise AuthenticationError(
                             f"Credential submission returned HTTP {resp.status}"
@@ -289,14 +254,14 @@ async def b2c_login_with_credentials(auth_uri: str, email: str, password: str) -
                     "Cookie": cookie_header,
                 }
                 for _ in range(20):  # max redirect hops
-                    _log_request("GET", next_url)
+                    log_request(_LOGGER, "GET", next_url)
                     async with raw_session.get(
                         yarl.URL(next_url, encoded=True),
                         headers=confirmed_headers,
                         allow_redirects=False,
                     ) as resp:
                         resp_body = await resp.text()
-                        _log_response(resp, resp_body)
+                        log_response(_LOGGER, resp, resp_body)
                         if resp.status in (301, 302, 303, 307, 308):
                             location = resp.headers.get("Location", "")
                             if not location:

@@ -12,16 +12,17 @@ import pytest
 import yarl
 from multidict import CIMultiDict
 
+from flameconnect._http_logging import log_request, log_response
 from flameconnect.b2c_login import (
     _B2C_POLICY,
     _build_cookie_header,
     _extract_base_path,
-    _log_request,
-    _log_response,
     _parse_login_page,
     b2c_login_with_credentials,
 )
 from flameconnect.exceptions import AuthenticationError
+
+_LOGGER = logging.getLogger("flameconnect.b2c_login")
 
 # -------------------------------------------------------------------
 # Sample B2C HTML used by tests
@@ -214,12 +215,13 @@ class TestLogRequest:
     def test_basic_log(self, caplog):
         """Basic GET log includes method and URL."""
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_request("GET", "https://example.com/api")
+            log_request(_LOGGER, "GET", "https://example.com/api")
         assert ">>> GET https://example.com/api" in caplog.text
 
     def test_params_logged(self, caplog):
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_request(
+            log_request(
+                _LOGGER,
                 "GET",
                 "https://example.com",
                 params={"k": "v"},
@@ -229,7 +231,8 @@ class TestLogRequest:
 
     def test_headers_logged(self, caplog):
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_request(
+            log_request(
+                _LOGGER,
                 "GET",
                 "https://example.com",
                 headers={"Auth": "Bearer tok"},
@@ -240,7 +243,8 @@ class TestLogRequest:
     def test_data_logged_with_password_masked(self, caplog):
         """Password values are masked as '***'."""
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_request(
+            log_request(
+                _LOGGER,
                 "POST",
                 "https://example.com",
                 data={
@@ -256,7 +260,7 @@ class TestLogRequest:
     def test_no_params_no_extra_log(self, caplog):
         """Without params/headers/data, only method+URL logged."""
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_request("GET", "https://example.com")
+            log_request(_LOGGER, "GET", "https://example.com")
         assert "params" not in caplog.text
         assert "headers" not in caplog.text
         assert "body" not in caplog.text
@@ -280,14 +284,14 @@ class TestLogResponse:
     def test_basic_response_logged(self, caplog):
         resp = self._make_resp(status=200)
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_response(resp)
+            log_response(_LOGGER, resp)
         assert "200" in caplog.text
         assert "headers" in caplog.text.lower()
 
     def test_body_logged(self, caplog):
         resp = self._make_resp()
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_response(resp, "Hello body")
+            log_response(_LOGGER, resp, "Hello body")
         # Check exact log record message (kills "<<<   body: %s" → "XX...")
         body_records = [r for r in caplog.records if "body" in r.getMessage().lower()]
         assert body_records
@@ -298,7 +302,7 @@ class TestLogResponse:
         resp = self._make_resp()
         long_body = "x" * 3000
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_response(resp, long_body)
+            log_response(_LOGGER, resp, long_body)
         assert "bytes total" in caplog.text
         assert "3000" in caplog.text
         # Body preview includes first 2000 chars (kills += → = mutant)
@@ -308,21 +312,21 @@ class TestLogResponse:
         resp = self._make_resp()
         body_2000 = "y" * 2000
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_response(resp, body_2000)
+            log_response(_LOGGER, resp, body_2000)
         assert "bytes total" not in caplog.text
 
     def test_body_2001_truncated(self, caplog):
         resp = self._make_resp()
         body_2001 = "z" * 2001
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_response(resp, body_2001)
+            log_response(_LOGGER, resp, body_2001)
         assert "bytes total" in caplog.text
         assert "2001" in caplog.text
 
     def test_none_body_no_body_log(self, caplog):
         resp = self._make_resp()
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_response(resp, None)
+            log_response(_LOGGER, resp, None)
         # Should not have body line (None means no body log)
         # But status and headers are always logged
         assert "200" in caplog.text
@@ -1199,7 +1203,7 @@ class TestLogRequestMutants:
     def test_exact_prefix_format(self, caplog):
         """Kill mutant 7: '>>> %s %s' -> 'XX>>> %s %sXX'."""
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_request("GET", "https://example.com/api")
+            log_request(_LOGGER, "GET", "https://example.com/api")
         assert ">>> GET https://example.com/api" in caplog.text
         # Ensure no XX corruption
         assert "XX" not in caplog.text
@@ -1207,21 +1211,26 @@ class TestLogRequestMutants:
     def test_params_exact_prefix(self, caplog):
         """Mutant 13: params line prefix mutated."""
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_request("GET", "https://example.com", params={"k": "v"})
+            log_request(_LOGGER, "GET", "https://example.com", params={"k": "v"})
         assert ">>>   params:" in caplog.text
         assert "XX" not in caplog.text
 
     def test_headers_exact_prefix(self, caplog):
         """Mutant 19: headers line prefix mutated."""
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_request("GET", "https://example.com", headers={"H": "v"})
+            log_request(_LOGGER, "GET", "https://example.com", headers={"H": "v"})
         assert ">>>   headers:" in caplog.text
         assert "XX" not in caplog.text
 
     def test_password_mask_exact(self, caplog):
         """Mutant 22: '***' -> 'XX***XX'."""
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_request("POST", "https://example.com", data={"password": "secret"})
+            log_request(
+                _LOGGER,
+                "POST",
+                "https://example.com",
+                data={"password": "secret"},
+            )
         # The masked value should be exactly '***', not 'XX***XX'
         assert "'***'" in caplog.text or '"***"' in caplog.text
         assert "XX***XX" not in caplog.text
@@ -1229,7 +1238,7 @@ class TestLogRequestMutants:
     def test_body_exact_prefix(self, caplog):
         """Mutant 30: body line prefix mutated."""
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_request("POST", "https://example.com", data={"k": "v"})
+            log_request(_LOGGER, "POST", "https://example.com", data={"k": "v"})
         assert ">>>   body:" in caplog.text
         assert "XX" not in caplog.text
 
@@ -1251,14 +1260,14 @@ class TestLogResponseMutants:
         """Mutant 3: resp.url -> None."""
         resp = self._make_resp(url="https://specific.example.com/path")
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_response(resp)
+            log_response(_LOGGER, resp)
         assert "https://specific.example.com/path" in caplog.text
 
     def test_exact_status_line_prefix(self, caplog):
         """Mutant 7: '<<< %s %s' -> 'XX<<< %s %sXX'."""
         resp = self._make_resp(status=201)
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_response(resp)
+            log_response(_LOGGER, resp)
         assert "<<< 201" in caplog.text
         assert "XX" not in caplog.text
 
@@ -1266,14 +1275,14 @@ class TestLogResponseMutants:
         """Mutant 10: dict(resp.headers) -> None."""
         resp = self._make_resp()
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_response(resp)
+            log_response(_LOGGER, resp)
         assert "X-Test" in caplog.text
 
     def test_headers_not_removed(self, caplog):
         """Mutant 12: removes dict(resp.headers) arg entirely."""
         resp = self._make_resp()
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_response(resp)
+            log_response(_LOGGER, resp)
         # The dict argument should be present and contain headers
         assert "yes" in caplog.text
 
@@ -1281,7 +1290,7 @@ class TestLogResponseMutants:
         """Mutant 13: '<<<   headers: %s' -> 'XX<<<   headers: %sXX'."""
         resp = self._make_resp()
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_response(resp)
+            log_response(_LOGGER, resp)
         assert "<<<   headers:" in caplog.text
         assert "XX" not in caplog.text
 
@@ -1298,7 +1307,7 @@ class TestLogResponseMutants:
         # Use a unique marker at position 2001 that won't appear elsewhere
         body = "a" * 2000 + "\x07"  # 2001 chars, \x07 (BEL) is the extra char
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_response(resp, body)
+            log_response(_LOGGER, resp, body)
         # With correct code: body[:2000] means preview is 'a' * 2000
         # and '\x07' should NOT be in the preview
         # With mutant code: body[:2001] means '\x07' IS in the preview
@@ -1311,7 +1320,7 @@ class TestLogResponseMutants:
         """Mutants 21, 25, 27 -- various format string mutations."""
         resp = self._make_resp()
         with caplog.at_level(logging.DEBUG, "flameconnect"):
-            _log_response(resp, "test body content")
+            log_response(_LOGGER, resp, "test body content")
         assert "<<<   body:" in caplog.text
         assert "test body content" in caplog.text
 
@@ -1869,7 +1878,7 @@ class TestB2cLoginLogCallMutants:
         assert AUTH_URI in caplog.text
 
     async def test_log_response_body_passed(self, caplog):
-        """Mutants 26, 28: _log_response(resp, login_html) -> (resp, None) or (resp,).
+        """Mutants 26, 28: log_response(resp, login_html) mutations.
 
         When body is None, _log_response skips body logging.
         With the real login_html, body should appear in logs.
@@ -1898,7 +1907,7 @@ class TestB2cLoginLogCallMutants:
         assert "XX...XX" not in caplog.text
 
     async def test_log_request_post_method(self, caplog):
-        """Mutants 118 (None), 127 ('post'): _log_request('POST', ...) mutations."""
+        """Mutants 118, 127: log_request 'POST' mutations."""
         await self._run_flow_with_logging(caplog)
         assert ">>> POST" in caplog.text
 
@@ -1909,7 +1918,7 @@ class TestB2cLoginLogCallMutants:
         assert "XX" not in caplog.text.replace("XMLHttpRequest", "")
 
     async def test_log_response_post_body(self, caplog):
-        """Mutants 155, 157: _log_response(resp, body) -> (resp, None) or (resp,)."""
+        """Mutants 155, 157: log_response(resp, body) mutations."""
         await self._run_flow_with_logging(caplog)
         # The POST response body is '{"status":"200"}', it should be logged
         assert '"status":"200"' in caplog.text
@@ -2308,8 +2317,8 @@ class TestLogNoneDetection:
     """Kill logging mutants M11 and M12 by detecting 'None' in log output."""
 
     async def test_no_none_in_log_method_or_url(self, caplog):
-        """M11: _log_request(None, auth_uri) — logs '>>> None ...'
-        M12: _log_request('GET', None) — logs '>>> GET None'
+        """M11: log_request(_LOGGER,None, auth_uri) — logs '>>> None ...'
+        M12: log_request(_LOGGER,'GET', None) — logs '>>> GET None'
 
         Verify that no log line contains 'None' where a method or URL should be.
         """
