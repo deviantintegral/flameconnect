@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.0](https://github.com/deviantintegral/flameconnect/compare/v0.5.3...v0.6.0) (2026-03-11)
+
+
+### Features
+
+* add --debug flag for HTTP request/response logging with credential redaction ([#80](https://github.com/deviantintegral/flameconnect/issues/80)) ([050e74d](https://github.com/deviantintegral/flameconnect/commit/050e74d110fbc08b367f4973c475743394b29cef))
+
+
+### Bug Fixes
+
+* handle ResultCode in get_fire_overview to prevent crash when offline ([#81](https://github.com/deviantintegral/flameconnect/issues/81)) ([bb3eb7a](https://github.com/deviantintegral/flameconnect/commit/bb3eb7a45402f4749a2d0ef774d295e59cb43341))
+
 ## [0.5.3](https://github.com/deviantintegral/flameconnect/compare/v0.5.2...v0.5.3) (2026-03-08)
 
 
