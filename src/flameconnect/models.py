@@ -126,6 +126,19 @@ class ConnectionState(IntEnum):
     UPDATING_FIRMWARE = 3
 
 
+class FireOverviewResultCode(IntEnum):
+    """Result code from the GetFireOverview API endpoint.
+
+    Maps to the C# ``EWifiFireOverviewResponseCode`` enum in the official app.
+    """
+
+    SUCCESSFUL = 0
+    FIRE_OFFLINE = 1
+    FAILED = 2
+    FIRE_NO_LONGER_AVAILABLE = 3
+    UPDATING_FIRMWARE = 4
+
+
 # ---------------------------------------------------------------------------
 # Value-object dataclasses
 # ---------------------------------------------------------------------------

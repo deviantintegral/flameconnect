@@ -22,6 +22,7 @@ from flameconnect.const import (
 from flameconnect.exceptions import (
     ApiError,
     AuthenticationError,
+    FireUnavailableError,
     FlameConnectError,
     ProtocolError,
 )
@@ -34,6 +35,7 @@ from flameconnect.models import (
     FireFeatures,
     FireMode,
     FireOverview,
+    FireOverviewResultCode,
     FlameColor,
     FlameEffect,
     FlameEffectParam,
@@ -73,12 +75,14 @@ __all__ = [
     # Exceptions
     "ApiError",
     "AuthenticationError",
+    "FireUnavailableError",
     "FlameConnectError",
     "ProtocolError",
     # Enums
     "Brightness",
     "ConnectionState",
     "FireMode",
+    "FireOverviewResultCode",
     "FlameColor",
     "FlameEffect",
     "HeatControl",

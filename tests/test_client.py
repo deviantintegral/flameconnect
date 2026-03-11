@@ -16,10 +16,11 @@ from flameconnect.auth import TokenAuth
 from flameconnect.client import (
     FlameConnectClient,
     _get_parameter_id,
+    _parse_fire,
     _parse_fire_features,
 )
 from flameconnect.const import API_BASE, DEFAULT_HEADERS
-from flameconnect.exceptions import ApiError
+from flameconnect.exceptions import ApiError, FireUnavailableError
 from flameconnect.models import (
     Brightness,
     ConnectionState,
@@ -27,6 +28,7 @@ from flameconnect.models import (
     Fire,
     FireFeatures,
     FireMode,
+    FireOverviewResultCode,
     FlameEffect,
     FlameEffectParam,
     HeatControl,
@@ -85,6 +87,8 @@ def _make_overview_payload(
     with_heat=None,
     is_iot_fire=None,
     parameters=None,
+    result_code=0,
+    fire_details=None,
 ):
     """Build a minimal get_fire_overview response payload.
 
@@ -110,7 +114,10 @@ def _make_overview_payload(
         wifi["IsIotFire"] = is_iot_fire
     if parameters is not None:
         wifi["Parameters"] = parameters
-    return {"WifiFireOverview": wifi}
+    payload: dict = {"ResultCode": result_code, "WifiFireOverview": wifi}
+    if fire_details is not None:
+        payload["FireDetails"] = fire_details
+    return payload
 
 
 # -------------------------------------------------------------------
@@ -428,6 +435,234 @@ class TestGetFireOverview:
         types = [type(p) for p in overview.parameters]
         assert ModeParam in types
         assert HeatModeParam in types
+
+
+# -------------------------------------------------------------------
+# FireUnavailableError / ResultCode handling
+# -------------------------------------------------------------------
+
+
+class TestFireOverviewResultCode:
+    """Test ResultCode handling in get_fire_overview."""
+
+    @pytest.mark.parametrize(
+        ("code", "expected_code"),
+        [
+            (1, FireOverviewResultCode.FIRE_OFFLINE),
+            (2, FireOverviewResultCode.FAILED),
+            (3, FireOverviewResultCode.FIRE_NO_LONGER_AVAILABLE),
+            (4, FireOverviewResultCode.UPDATING_FIRMWARE),
+        ],
+    )
+    async def test_non_success_result_code_raises(
+        self, mock_api, token_auth, code, expected_code
+    ):
+        fire_id = "test-fire-001"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {"ResultCode": code, "WifiFireOverview": None}
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(FireUnavailableError) as exc_info:
+                await client.get_fire_overview(fire_id)
+
+        assert exc_info.value.result_code == expected_code
+        assert exc_info.value.fire is None
+
+    async def test_offline_with_fire_details(self, mock_api, token_auth):
+        fire_id = "test-fire-001"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        fire_details = {
+            "FireId": fire_id,
+            "FriendlyName": "Living Room",
+            "Brand": "Dimplex",
+            "ProductType": "Optiflame V1",
+            "ProductModel": "OPT-V1",
+            "ItemCode": "XYZ",
+            "IoTConnectionState": 1,
+            "WithHeat": False,
+            "IsIotFire": True,
+            "FireFeature": {"Sound": True},
+        }
+        payload = {
+            "ResultCode": 1,
+            "WifiFireOverview": None,
+            "FireDetails": fire_details,
+        }
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(FireUnavailableError) as exc_info:
+                await client.get_fire_overview(fire_id)
+
+        assert exc_info.value.result_code == FireOverviewResultCode.FIRE_OFFLINE
+        assert exc_info.value.fire is not None
+        assert exc_info.value.fire.fire_id == fire_id
+        assert exc_info.value.fire.friendly_name == "Living Room"
+        assert exc_info.value.fire.brand == "Dimplex"
+        assert exc_info.value.fire.features.sound is True
+
+    async def test_offline_without_fire_details(self, mock_api, token_auth):
+        fire_id = "test-fire-001"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {"ResultCode": 1, "WifiFireOverview": None}
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(FireUnavailableError) as exc_info:
+                await client.get_fire_overview(fire_id)
+
+        assert exc_info.value.fire is None
+
+    async def test_offline_with_null_fire_details(self, mock_api, token_auth):
+        fire_id = "test-fire-001"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {
+            "ResultCode": 1,
+            "WifiFireOverview": None,
+            "FireDetails": None,
+        }
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(FireUnavailableError) as exc_info:
+                await client.get_fire_overview(fire_id)
+
+        assert exc_info.value.fire is None
+
+    async def test_malformed_fire_details_degrades_gracefully(
+        self, mock_api, token_auth
+    ):
+        fire_id = "test-fire-001"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {
+            "ResultCode": 1,
+            "WifiFireOverview": None,
+            "FireDetails": {"broken": "data"},  # missing FireId
+        }
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(FireUnavailableError) as exc_info:
+                await client.get_fire_overview(fire_id)
+
+        assert exc_info.value.result_code == FireOverviewResultCode.FIRE_OFFLINE
+        assert exc_info.value.fire is None
+
+    async def test_omitted_result_code_defaults_to_success(self, mock_api, token_auth):
+        """Backward compat: responses without ResultCode work as before."""
+        fire_id = "test-fire-001"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {
+            "WifiFireOverview": {
+                "FireId": fire_id,
+                "Parameters": [],
+            }
+        }
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            overview = await client.get_fire_overview(fire_id)
+
+        assert overview.fire.fire_id == fire_id
+
+    async def test_unknown_result_code_raises(self, mock_api, token_auth):
+        fire_id = "test-fire-001"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {"ResultCode": 99, "WifiFireOverview": None}
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(FireUnavailableError) as exc_info:
+                await client.get_fire_overview(fire_id)
+
+        assert exc_info.value.result_code == 99
+
+    async def test_success_result_code_returns_overview(self, mock_api, token_auth):
+        fire_id = "test-fire-001"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = _make_overview_payload(result_code=0)
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            overview = await client.get_fire_overview(fire_id)
+
+        assert overview.fire.fire_id == fire_id
+
+    async def test_turn_on_propagates_fire_unavailable(self, mock_api, token_auth):
+        fire_id = "test-fire-001"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {"ResultCode": 1, "WifiFireOverview": None}
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(FireUnavailableError):
+                await client.turn_on(fire_id)
+
+    async def test_turn_off_propagates_fire_unavailable(self, mock_api, token_auth):
+        fire_id = "test-fire-001"
+        url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        payload = {"ResultCode": 1, "WifiFireOverview": None}
+        mock_api.get(url, payload=payload)
+
+        async with FlameConnectClient(token_auth) as client:
+            with pytest.raises(FireUnavailableError):
+                await client.turn_off(fire_id)
+
+    async def test_fire_unavailable_error_message_includes_label(self):
+        exc = FireUnavailableError(FireOverviewResultCode.FIRE_OFFLINE)
+        assert "FIRE_OFFLINE" in str(exc)
+
+    async def test_fire_unavailable_error_unknown_code_message(self):
+        exc = FireUnavailableError(99)
+        assert "UNKNOWN(99)" in str(exc)
+
+    async def test_fire_unavailable_inherits_flameconnect_error(self):
+        from flameconnect.exceptions import FlameConnectError
+
+        exc = FireUnavailableError(FireOverviewResultCode.FAILED)
+        assert isinstance(exc, FlameConnectError)
+
+
+class TestParseFireHelper:
+    """Test the _parse_fire helper function."""
+
+    def test_complete_data(self):
+        data = {
+            "FireId": "f-1",
+            "FriendlyName": "Kitchen",
+            "Brand": "Faber",
+            "ProductType": "PT",
+            "ProductModel": "PM",
+            "ItemCode": "IC",
+            "IoTConnectionState": 2,
+            "WithHeat": True,
+            "IsIotFire": True,
+            "FireFeature": {"Sound": True},
+        }
+        fire = _parse_fire(data)
+        assert fire.fire_id == "f-1"
+        assert fire.friendly_name == "Kitchen"
+        assert fire.brand == "Faber"
+        assert fire.connection_state == ConnectionState.CONNECTED
+        assert fire.with_heat is True
+        assert fire.features.sound is True
+
+    def test_minimal_data(self):
+        data = {"FireId": "f-2"}
+        fire = _parse_fire(data)
+        assert fire.fire_id == "f-2"
+        assert fire.friendly_name == "f-2"  # defaults to fire_id
+        assert fire.brand == ""
+        assert fire.connection_state == ConnectionState.UNKNOWN
+        assert fire.with_heat is False
+
+    def test_features_override(self):
+        data = {"FireId": "f-3", "FireFeature": {"Sound": True}}
+        custom = FireFeatures(advanced_heat=True)
+        fire = _parse_fire(data, features=custom)
+        assert fire.features.advanced_heat is True
+        assert fire.features.sound is False  # custom overrides data
 
 
 # -------------------------------------------------------------------
