@@ -1534,21 +1534,21 @@ class TestRequestDebugLog:
     """
 
     async def test_request_debug_log_format(self, mock_api, token_auth, caplog):
-        """Debug log must start with method name, not 'XX'."""
+        """Request summary log must start with method name, not 'XX'."""
         url = f"{API_BASE}/api/Fires/GetFires"
         mock_api.get(url, payload=[])
 
-        with caplog.at_level(logging.DEBUG, logger="flameconnect.client"):
+        with caplog.at_level(logging.INFO, logger="flameconnect.client"):
             async with FlameConnectClient(token_auth) as client:
                 await client.get_fires()
 
-        debug_msgs = [
+        info_msgs = [
             r
             for r in caplog.records
-            if r.name == "flameconnect.client" and r.levelno == logging.DEBUG
+            if r.name == "flameconnect.client" and r.levelno == logging.INFO
         ]
-        assert len(debug_msgs) >= 1
-        msg = debug_msgs[0].getMessage()
+        assert len(info_msgs) >= 1
+        msg = info_msgs[0].getMessage()
         assert msg.startswith("GET ")
         assert "XX" not in msg
 

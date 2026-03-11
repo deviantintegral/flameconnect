@@ -194,7 +194,7 @@ class FlameConnectClient:
         async with self._session.request(
             method, url, headers=headers, json=json
         ) as response:
-            _LOGGER.debug("%s %s -> %s", method, url, response.status)
+            _LOGGER.info("%s %s -> %s", method, url, response.status)
 
             if response.status < 200 or response.status >= 300:
                 text = await response.text()

@@ -906,15 +906,14 @@ class FlameConnectApp(App[None]):
         )
 
 
-async def run_tui(*, verbose: bool = False) -> None:
+async def run_tui(*, log_level: int = logging.WARNING) -> None:
     """Launch the Flame Connect TUI dashboard.
 
     Creates an authenticated client and runs the Textual application.
     The client session is managed via an async context manager.
 
     Args:
-        verbose: When True, set the flameconnect logger to DEBUG so that
-            all log messages appear in the TUI messages panel.
+        log_level: The logging level for the flameconnect logger (default WARNING).
     """
     import asyncio
 
@@ -944,11 +943,9 @@ async def run_tui(*, verbose: bool = False) -> None:
             root_logger.removeHandler(handler)
             saved_handlers.append(handler)
 
-    # Only promote to DEBUG when the user passed -v/--verbose.
     fc_logger = logging.getLogger("flameconnect")
     prev_level = fc_logger.level
-    if verbose:
-        fc_logger.setLevel(logging.DEBUG)
+    fc_logger.setLevel(log_level)
 
     auth = MsalAuth(prompt_callback=_tui_auth_prompt)
     try:
