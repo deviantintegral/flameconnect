@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -1347,13 +1348,33 @@ class TestBuildParser:
         """--verbose flag has help text."""
         parser = build_parser()
         for action in parser._actions:
+            if isinstance(action, argparse._MutuallyExclusiveGroup):
+                for sub_action in action._group_actions:
+                    if "--verbose" in getattr(sub_action, "option_strings", []):
+                        assert sub_action.help is not None
+                        assert "logging" in sub_action.help.lower()
+                        return
             if "--verbose" in getattr(action, "option_strings", []):
                 assert action.help is not None
-                assert (
-                    "debug" in action.help.lower() or "logging" in action.help.lower()
-                )
+                assert "logging" in action.help.lower()
                 return
         raise AssertionError("--verbose action not found")
+
+    def test_debug_flag_help(self):
+        """--debug flag has help text."""
+        parser = build_parser()
+        for action in parser._actions:
+            if isinstance(action, argparse._MutuallyExclusiveGroup):
+                for sub_action in action._group_actions:
+                    if "--debug" in getattr(sub_action, "option_strings", []):
+                        assert sub_action.help is not None
+                        assert "http" in sub_action.help.lower()
+                        return
+            if "--debug" in getattr(action, "option_strings", []):
+                assert action.help is not None
+                assert "http" in action.help.lower()
+                return
+        raise AssertionError("--debug action not found")
 
     def test_parse_list(self):
         parser = build_parser()
@@ -1395,11 +1416,24 @@ class TestBuildParser:
         parser = build_parser()
         args = parser.parse_args(["-v", "list"])
         assert args.verbose is True
+        assert args.debug is False
+
+    def test_parse_debug(self):
+        parser = build_parser()
+        args = parser.parse_args(["--debug", "list"])
+        assert args.debug is True
+        assert args.verbose is False
 
     def test_parse_no_verbose(self):
         parser = build_parser()
         args = parser.parse_args(["list"])
         assert args.verbose is False
+        assert args.debug is False
+
+    def test_verbose_debug_mutually_exclusive(self):
+        parser = build_parser()
+        with pytest.raises(SystemExit):
+            parser.parse_args(["--verbose", "--debug", "list"])
 
     def test_no_command(self):
         parser = build_parser()
@@ -1416,13 +1450,13 @@ class TestAsyncMain:
     """Tests for async_main() dispatch."""
 
     async def test_tui_command(self):
-        args = argparse.Namespace(command="tui", verbose=False)
+        args = argparse.Namespace(command="tui", verbose=False, debug=False)
         with patch("flameconnect.cli.cmd_tui", new_callable=AsyncMock) as mock_tui:
             await async_main(args)
-            mock_tui.assert_awaited_once_with(verbose=False)
+            mock_tui.assert_awaited_once_with(log_level=logging.WARNING)
 
     async def test_none_command_prints_help_without_tui(self, capsys, monkeypatch):
-        args = argparse.Namespace(command=None, verbose=False)
+        args = argparse.Namespace(command=None, verbose=False, debug=False)
         import builtins
 
         real_import = builtins.__import__
@@ -1440,16 +1474,16 @@ class TestAsyncMain:
         assert "usage" in captured.out.lower()
 
     async def test_none_command_launches_tui_with_textual(self):
-        args = argparse.Namespace(command=None, verbose=False)
+        args = argparse.Namespace(command=None, verbose=False, debug=False)
         mock_run_tui = AsyncMock()
         mock_module = MagicMock()
         mock_module.run_tui = mock_run_tui
         with patch.dict("sys.modules", {"flameconnect.tui": mock_module}):
             await async_main(args)
-        mock_run_tui.assert_awaited_once_with(verbose=False)
+        mock_run_tui.assert_awaited_once_with(log_level=logging.WARNING)
 
     async def test_list_command(self):
-        args = argparse.Namespace(command="list", verbose=False)
+        args = argparse.Namespace(command="list", verbose=False, debug=False)
         mock_client = AsyncMock()
         mock_client.get_fires.return_value = []
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -1463,7 +1497,12 @@ class TestAsyncMain:
         mock_client.get_fires.assert_awaited_once()
 
     async def test_status_command(self):
-        args = argparse.Namespace(command="status", fire_id=FIRE_ID, verbose=False)
+        args = argparse.Namespace(
+            command="status",
+            fire_id=FIRE_ID,
+            verbose=False,
+            debug=False,
+        )
         mock_client = AsyncMock()
         overview = FireOverview(fire=_make_fire(), parameters=[])
         mock_client.get_fire_overview.return_value = overview
@@ -1478,7 +1517,12 @@ class TestAsyncMain:
         mock_client.get_fire_overview.assert_awaited_once_with(FIRE_ID)
 
     async def test_on_command(self):
-        args = argparse.Namespace(command="on", fire_id=FIRE_ID, verbose=False)
+        args = argparse.Namespace(
+            command="on",
+            fire_id=FIRE_ID,
+            verbose=False,
+            debug=False,
+        )
         mock_client = AsyncMock()
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
@@ -1491,7 +1535,12 @@ class TestAsyncMain:
         mock_client.turn_on.assert_awaited_once_with(FIRE_ID)
 
     async def test_off_command(self):
-        args = argparse.Namespace(command="off", fire_id=FIRE_ID, verbose=False)
+        args = argparse.Namespace(
+            command="off",
+            fire_id=FIRE_ID,
+            verbose=False,
+            debug=False,
+        )
         mock_client = AsyncMock()
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
@@ -1510,6 +1559,7 @@ class TestAsyncMain:
             param="temp-unit",
             value="celsius",
             verbose=False,
+            debug=False,
         )
         mock_client = AsyncMock()
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -1523,10 +1573,16 @@ class TestAsyncMain:
         mock_client.write_parameters.assert_awaited_once()
 
     async def test_tui_verbose(self):
-        args = argparse.Namespace(command="tui", verbose=True)
+        args = argparse.Namespace(command="tui", verbose=True, debug=False)
         with patch("flameconnect.cli.cmd_tui", new_callable=AsyncMock) as mock_tui:
             await async_main(args)
-            mock_tui.assert_awaited_once_with(verbose=True)
+            mock_tui.assert_awaited_once_with(log_level=logging.INFO)
+
+    async def test_tui_debug(self):
+        args = argparse.Namespace(command="tui", verbose=False, debug=True)
+        with patch("flameconnect.cli.cmd_tui", new_callable=AsyncMock) as mock_tui:
+            await async_main(args)
+            mock_tui.assert_awaited_once_with(log_level=logging.DEBUG)
 
 
 # ===================================================================
@@ -1545,7 +1601,7 @@ class TestMain:
             patch("flameconnect.cli.async_main", new=mock_async_main),
         ):
             mock_parser = MagicMock()
-            mock_args = argparse.Namespace(command="list", verbose=False)
+            mock_args = argparse.Namespace(command="list", verbose=False, debug=False)
             mock_parser.parse_args.return_value = mock_args
             mock_parser_fn.return_value = mock_parser
 
@@ -1566,15 +1622,16 @@ class TestMain:
             import logging as real_logging
 
             mock_parser = MagicMock()
-            mock_args = argparse.Namespace(command="list", verbose=True)
+            mock_args = argparse.Namespace(command="list", verbose=True, debug=False)
             mock_parser.parse_args.return_value = mock_args
             mock_parser_fn.return_value = mock_parser
             mock_logging.DEBUG = real_logging.DEBUG
+            mock_logging.INFO = real_logging.INFO
             mock_logging.WARNING = real_logging.WARNING
 
             main()
 
-            mock_logging.basicConfig.assert_called_once_with(level=real_logging.DEBUG)
+            mock_logging.basicConfig.assert_called_once_with(level=real_logging.INFO)
 
     def test_main_no_verbose_logging(self):
         with (
@@ -1586,15 +1643,37 @@ class TestMain:
             import logging as real_logging
 
             mock_parser = MagicMock()
-            mock_args = argparse.Namespace(command="list", verbose=False)
+            mock_args = argparse.Namespace(command="list", verbose=False, debug=False)
             mock_parser.parse_args.return_value = mock_args
             mock_parser_fn.return_value = mock_parser
             mock_logging.DEBUG = real_logging.DEBUG
+            mock_logging.INFO = real_logging.INFO
             mock_logging.WARNING = real_logging.WARNING
 
             main()
 
             mock_logging.basicConfig.assert_called_once_with(level=real_logging.WARNING)
+
+    def test_main_debug_logging(self):
+        with (
+            patch("flameconnect.cli.build_parser") as mock_parser_fn,
+            patch("flameconnect.cli.asyncio"),
+            patch("flameconnect.cli.async_main", new=MagicMock()),
+            patch("flameconnect.cli.logging") as mock_logging,
+        ):
+            import logging as real_logging
+
+            mock_parser = MagicMock()
+            mock_args = argparse.Namespace(command="list", verbose=False, debug=True)
+            mock_parser.parse_args.return_value = mock_args
+            mock_parser_fn.return_value = mock_parser
+            mock_logging.DEBUG = real_logging.DEBUG
+            mock_logging.INFO = real_logging.INFO
+            mock_logging.WARNING = real_logging.WARNING
+
+            main()
+
+            mock_logging.basicConfig.assert_called_once_with(level=real_logging.DEBUG)
 
 
 # ===================================================================
@@ -1622,8 +1701,8 @@ class TestCmdTui:
         mock_module.run_tui = mock_run_tui
 
         with patch.dict("sys.modules", {"flameconnect.tui": mock_module}):
-            await cmd_tui(verbose=True)
-        mock_run_tui.assert_awaited_once_with(verbose=True)
+            await cmd_tui(log_level=logging.DEBUG)
+        mock_run_tui.assert_awaited_once_with(log_level=logging.DEBUG)
 
 
 # ===================================================================

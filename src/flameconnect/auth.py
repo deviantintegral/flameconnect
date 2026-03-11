@@ -123,7 +123,7 @@ class MsalAuth:
         app, cache = await asyncio.to_thread(self._build_app)
 
         # Try silent token acquisition from cache (uses refresh token)
-        _LOGGER.debug("Attempting silent token acquisition")
+        _LOGGER.info("Attempting silent token acquisition")
         accounts: list[Any] = app.get_accounts()
         if accounts:
             result: dict[str, Any] | None = await asyncio.to_thread(
@@ -131,11 +131,11 @@ class MsalAuth:
             )
             if result and "access_token" in result:
                 await asyncio.to_thread(self._save_cache, cache)
-                _LOGGER.debug("Token acquired silently (refreshed from cache)")
+                _LOGGER.info("Token acquired silently (refreshed from cache)")
                 return str(result["access_token"])
 
         # No cached token — start interactive auth code flow
-        _LOGGER.debug("No cached token, initiating interactive auth code flow")
+        _LOGGER.info("No cached token, initiating interactive auth code flow")
         token = await self._interactive_flow(app, cache)
         return token
 
@@ -186,7 +186,7 @@ class MsalAuth:
             raise AuthenticationError(f"Token exchange failed: {error} — {description}")
 
         await asyncio.to_thread(self._save_cache, cache)
-        _LOGGER.debug("Authentication successful, token acquired")
+        _LOGGER.info("Authentication successful, token acquired")
         return str(result["access_token"])
 
     @staticmethod

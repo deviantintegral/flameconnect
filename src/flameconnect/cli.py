@@ -695,7 +695,7 @@ _SET_HANDLERS: dict[str, Callable[..., Awaitable[None]]] = {
 }
 
 
-async def cmd_tui(*, verbose: bool = False) -> None:
+async def cmd_tui(*, log_level: int = logging.WARNING) -> None:
     """Launch the TUI, showing install message if missing."""
     try:
         from flameconnect.tui import run_tui
@@ -703,7 +703,7 @@ async def cmd_tui(*, verbose: bool = False) -> None:
         print("The TUI requires the 'tui' extra. Run with:")
         print("  uv tool run flameconnect[tui]")
         sys.exit(1)
-    await run_tui(verbose=verbose)
+    await run_tui(log_level=log_level)
 
 
 # ---------------------------------------------------------------------------
@@ -720,11 +720,17 @@ def build_parser() -> argparse.ArgumentParser:
             " via the Flame Connect cloud API"
         ),
     )
-    parser.add_argument(
+    verbosity = parser.add_mutually_exclusive_group()
+    verbosity.add_argument(
         "-v",
         "--verbose",
         action="store_true",
-        help="Enable debug logging",
+        help="Enable verbose logging",
+    )
+    verbosity.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable verbose logging including HTTP requests and responses",
     )
 
     subparsers = parser.add_subparsers(dest="command")
@@ -846,17 +852,24 @@ async def _cli_auth_prompt(auth_uri: str, redirect_uri: str) -> str:
 
 async def async_main(args: argparse.Namespace) -> None:
     """Run the appropriate subcommand."""
+    log_level = (
+        logging.DEBUG
+        if args.debug
+        else logging.INFO
+        if args.verbose
+        else logging.WARNING
+    )
     if args.command is None:
         try:
             from flameconnect.tui import run_tui
         except ImportError:
             build_parser().print_help()
             return
-        await run_tui(verbose=args.verbose)
+        await run_tui(log_level=log_level)
         return
 
     if args.command == "tui":
-        await cmd_tui(verbose=args.verbose)
+        await cmd_tui(log_level=log_level)
         return
 
     auth = MsalAuth(prompt_callback=_cli_auth_prompt)
@@ -889,6 +902,12 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
     logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.WARNING,
+        level=(
+            logging.DEBUG
+            if args.debug
+            else logging.INFO
+            if args.verbose
+            else logging.WARNING
+        ),
     )
     asyncio.run(async_main(args))
