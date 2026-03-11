@@ -74,6 +74,11 @@ class TestRedactBody:
             "user": "bob",
         }
 
+    def test_password_case_insensitive(self) -> None:
+        for key in ("Password", "PASSWORD", "password"):
+            result = redact_body({key: "s3cret"})
+            assert result[key] == "***"
+
     def test_other_keys_unchanged(self) -> None:
         assert redact_body({"email": "a@b.com"}) == {"email": "a@b.com"}
 

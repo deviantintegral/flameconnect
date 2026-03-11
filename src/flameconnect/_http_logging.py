@@ -39,9 +39,17 @@ def redact_headers(headers: Mapping[str, str]) -> dict[str, str]:
     return result
 
 
+_SENSITIVE_BODY_KEYS: frozenset[str] = frozenset({"password"})
+
+
 def redact_body(data: Mapping[str, Any]) -> dict[str, Any]:
-    """Return a copy of *data* with the ``password`` key redacted to ``"***"``."""
-    return {k: ("***" if k == "password" else v) for k, v in data.items()}
+    """Return a copy of *data* with sensitive keys redacted to ``"***"``.
+
+    Keys are matched case-insensitively against :data:`_SENSITIVE_BODY_KEYS`.
+    """
+    return {
+        k: ("***" if k.lower() in _SENSITIVE_BODY_KEYS else v) for k, v in data.items()
+    }
 
 
 def log_request(
