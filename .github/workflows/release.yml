@@ -28,7 +28,7 @@ jobs:
         with:
           ref: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-      - uses: astral-sh/setup-uv@6ee6290f1cbc4156c0bdd66691b2c144ef8df19a # v7
+      - uses: astral-sh/setup-uv@e06108dd0aef18192324c70427afc47652e63a82 # v7
         if: steps.release.outputs.pr && !steps.release.outputs.release_created
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         if: steps.release.outputs.pr && !steps.release.outputs.release_created
