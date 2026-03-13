@@ -6,5 +6,11 @@
     ":enablePreCommit"
   ],
   "automerge": true,
-  "minimumReleaseAge": "3 days"
+  "minimumReleaseAge": "3 days",
+  "packageRules": [
+    {
+      "matchManagers": ["github-actions"],
+      "automerge": false
+    }
+  ]
 }
