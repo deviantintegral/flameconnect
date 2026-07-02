@@ -54,6 +54,7 @@ from flameconnect.models import (
     TempUnitParam,
     TimerParam,
     TimerStatus,
+    convert_from_display,
     convert_temp,
     display_name,
     kebab_name,
@@ -589,7 +590,9 @@ async def _set_heat_temp(client: FlameConnectClient, fire_id: str, value: str) -
         print("Error: no HeatSettings parameter found.")
         sys.exit(1)
     unit_suffix = temp_suffix(temp_unit_param)
-    new_param = replace(current, setpoint_temperature=temp)
+    # The wire always stores Celsius; convert the entered display value first.
+    setpoint_celsius = convert_from_display(temp, unit)
+    new_param = replace(current, setpoint_temperature=setpoint_celsius)
     await client.write_parameters(fire_id, [new_param])
     print(f"Heat temperature set to {temp}\u00b0{unit_suffix}.")
 

@@ -54,7 +54,8 @@ def _decode_temperature(raw: bytes, offset: int) -> float:
 
 def _encode_temperature(temp: float) -> bytes:
     """Encode a float temperature as two bytes: [integer, decimal_tenth]."""
-    return bytes([int(temp), int((temp % 1) * 10)])
+    total_tenths = round(temp * 10)
+    return bytes([total_tenths // 10, total_tenths % 10])
 
 
 # ---------------------------------------------------------------------------

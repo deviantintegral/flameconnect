@@ -14,18 +14,11 @@ from flameconnect.const import (
     MIN_TEMP_CELSIUS,
     MIN_TEMP_FAHRENHEIT,
 )
-from flameconnect.models import TempUnit, convert_temp
+from flameconnect.models import TempUnit, convert_from_display, convert_temp
 from flameconnect.tui.widgets import ArrowNavMixin
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
-
-
-def _convert_to_celsius(
-    fahrenheit: float,
-) -> float:
-    """Convert a Fahrenheit value back to Celsius (rounded to 1 dp)."""
-    return round((fahrenheit - 32) * 5 / 9, 1)
 
 
 _CSS = """
@@ -135,10 +128,8 @@ class TemperatureScreen(ArrowNavMixin, ModalScreen[float | None]):
                 severity="error",
             )
             return
-        # Convert back to Celsius for the device when unit is Fahrenheit.
-        if self._unit == TempUnit.FAHRENHEIT:
-            temp = _convert_to_celsius(temp)
-        self.dismiss(temp)
+        # Convert back to Celsius for the device (no-op when already Celsius).
+        self.dismiss(convert_from_display(temp, self._unit))
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "set-btn":

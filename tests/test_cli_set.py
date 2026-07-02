@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 from pathlib import Path
 
@@ -46,6 +47,17 @@ def mock_api():
 @pytest.fixture
 def overview_payload() -> dict:
     return json.loads((FIXTURES_DIR / "get_fire_overview.json").read_text())
+
+
+@pytest.fixture
+def fahrenheit_overview_payload() -> dict:
+    """Overview payload with the device's display unit set to Fahrenheit."""
+    payload = json.loads((FIXTURES_DIR / "get_fire_overview.json").read_text())
+    for param in payload["WifiFireOverview"]["Parameters"]:
+        # TempUnit (236): flip the payload byte from CELSIUS (1) to FAHRENHEIT (0).
+        if param["ParameterId"] == 236:
+            param["Value"] = base64.b64encode(bytes([236, 0, 1, 0])).decode()
+    return payload
 
 
 # ---------------------------------------------------------------------------
@@ -514,6 +526,25 @@ class TestSetHeatTemp:
         async with FlameConnectClient(token_auth) as client:
             with pytest.raises(ValueError):
                 await _set_heat_temp(client, FIRE_ID, "hot")
+
+    async def test_set_heat_temp_fahrenheit_converts_to_celsius(
+        self, mock_api, token_auth, fahrenheit_overview_payload
+    ):
+        """72°F entered on a Fahrenheit device must write ~22.2°C on the wire."""
+        mock_api.get(OVERVIEW_URL, payload=fahrenheit_overview_payload)
+        mock_api.post(WRITE_URL, payload={})
+
+        async with FlameConnectClient(token_auth) as client:
+            await _set_heat_temp(client, FIRE_ID, "72")
+
+        key = ("POST", URL(WRITE_URL))
+        calls = mock_api.requests[key]
+        assert len(calls) == 1
+        body = calls[0].kwargs["json"]
+        assert body["Parameters"][0]["ParameterId"] == 323
+        # Wire bytes: header (3) + [heat_status, heat_mode, temp_int, temp_tenth, boost]
+        raw = base64.b64decode(body["Parameters"][0]["Value"])
+        assert (raw[5], raw[6]) == (22, 2), "72°F should encode as 22.2°C, not 72°C"
 
 
 # ---------------------------------------------------------------------------
