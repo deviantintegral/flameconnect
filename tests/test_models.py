@@ -24,6 +24,7 @@ from flameconnect.models import (
     TempUnit,
     TempUnitParam,
     TimerStatus,
+    convert_from_display,
     convert_temp,
     display_name,
     temp_suffix,
@@ -243,6 +244,32 @@ class TestConvertTemp:
     def test_fahrenheit_rounding_precision(self):
         """22.3°C -> 72.14°F: round to 1 decimal gives 72.1, not 72.14."""
         assert convert_temp(22.3, TempUnit.FAHRENHEIT) == 72.1
+
+
+class TestConvertFromDisplay:
+    """Tests for convert_from_display() (inverse of convert_temp)."""
+
+    def test_celsius_passthrough(self):
+        assert convert_from_display(22.2, TempUnit.CELSIUS) == 22.2
+
+    def test_fahrenheit_conversion(self):
+        assert convert_from_display(32.0, TempUnit.FAHRENHEIT) == 0.0
+
+    def test_fahrenheit_72(self):
+        # round((72-32)*5/9, 1) == 22.2
+        assert convert_from_display(72.0, TempUnit.FAHRENHEIT) == 22.2
+
+    def test_fahrenheit_negative(self):
+        assert convert_from_display(-40.0, TempUnit.FAHRENHEIT) == -40.0
+
+    def test_round_trips_with_convert_temp(self):
+        # Celsius -> display -> back should be stable at 1-decimal precision.
+        assert (
+            convert_from_display(
+                convert_temp(25.0, TempUnit.FAHRENHEIT), TempUnit.FAHRENHEIT
+            )
+            == 25.0
+        )
 
 
 class TestTempSuffix:

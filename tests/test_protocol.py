@@ -1573,23 +1573,30 @@ class TestDecodeFieldValues:
 # ---------------------------------------------------------------------------
 
 
-class TestEncodeTemperatureMultiplier:
-    """Kill _encode_temperature__mutmut_7: (temp % 1) * 10 -> * 11.
+class TestEncodeTemperatureRounding:
+    """_encode_temperature rounds tenths instead of truncating.
 
-    Due to floating-point imprecision, 20.2 % 1 == 0.1999...
-    With *10: int(0.1999... * 10) = int(1.999...) = 1
-    With *11: int(0.1999... * 11) = int(2.199...) = 2
-    So the original and mutant produce different results for 20.2.
+    Float imprecision means 20.2 % 1 == 0.1999..., so a naive
+    ``int((temp % 1) * 10)`` truncates the tenth to 1. Rounding
+    ``round(temp * 10)`` correctly yields 2.
     """
 
     def test_encode_temperature_20_2(self):
         result = _encode_temperature(20.2)
-        assert result == bytes([20, 1])
+        assert result == bytes([20, 2])
 
     def test_encode_temperature_20_4(self):
-        """Additional case: 20.4 -> original gives 3, mutant gives 4."""
         result = _encode_temperature(20.4)
-        assert result == bytes([20, 3])
+        assert result == bytes([20, 4])
+
+    def test_encode_temperature_22_7(self):
+        """22.7 previously truncated to [22, 6]; rounding gives [22, 7]."""
+        result = _encode_temperature(22.7)
+        assert result == bytes([22, 7])
+
+    def test_encode_temperature_whole_number(self):
+        result = _encode_temperature(25.0)
+        assert result == bytes([25, 0])
 
 
 class TestMakeHeaderSignedUnsigned:

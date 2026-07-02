@@ -326,6 +326,17 @@ def convert_temp(celsius: float, unit: TempUnit) -> float:
     return round(celsius * 9 / 5 + 32, 1)
 
 
+def convert_from_display(value: float, unit: TempUnit) -> float:
+    """Convert a user-entered display value back to Celsius for the wire.
+
+    Inverse of :func:`convert_temp`: returns the value unchanged when *unit*
+    is CELSIUS, or converts Fahrenheit to Celsius (rounded to 1 decimal).
+    """
+    if unit == TempUnit.CELSIUS:
+        return value
+    return round((value - 32) * 5 / 9, 1)
+
+
 def temp_suffix(temp_unit: TempUnitParam | None) -> str:
     """Return the temperature unit suffix (``'C'`` or ``'F'``), or empty."""
     if temp_unit is None:

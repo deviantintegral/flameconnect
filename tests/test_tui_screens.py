@@ -616,7 +616,7 @@ class TestTemperatureScreen:
         app = TemperatureApp(22.0, TempUnit.FAHRENHEIT)
         async with app.run_test(size=(60, 20)):
             range_label = app.screen.query_one("#temp-range", Static)
-            assert "40.0" in str(range_label._Static__content)
+            assert "41.0" in str(range_label._Static__content)
             assert "95.0" in str(range_label._Static__content)
 
     async def test_set_button_validates_and_dismisses_celsius(self):
@@ -751,17 +751,22 @@ class TestTemperatureHelpers:
         result = convert_temp(100.0, TempUnit.FAHRENHEIT)
         assert result == 212.0
 
-    def test_convert_to_celsius(self):
-        from flameconnect.tui.temperature_screen import _convert_to_celsius
+    def test_convert_from_display_fahrenheit(self):
+        from flameconnect.models import convert_from_display
 
-        result = _convert_to_celsius(72.0)
+        result = convert_from_display(72.0, TempUnit.FAHRENHEIT)
         # Exact: round((72-32)*5/9, 1) = 22.2 (kills round(_, 1) → round(_, 2))
         assert result == 22.2
 
-    def test_convert_to_celsius_32(self):
-        from flameconnect.tui.temperature_screen import _convert_to_celsius
+    def test_convert_from_display_fahrenheit_32(self):
+        from flameconnect.models import convert_from_display
 
-        assert _convert_to_celsius(32.0) == 0.0
+        assert convert_from_display(32.0, TempUnit.FAHRENHEIT) == 0.0
+
+    def test_convert_from_display_celsius_returns_same(self):
+        from flameconnect.models import convert_from_display
+
+        assert convert_from_display(22.2, TempUnit.CELSIUS) == 22.2
 
 
 # ===================================================================

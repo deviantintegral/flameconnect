@@ -58,6 +58,7 @@ from flameconnect.models import (
     TempUnitParam,
     TimerParam,
     TimerStatus,
+    convert_from_display,
     convert_temp,
     display_name,
     kebab_name,
@@ -125,6 +126,7 @@ __all__ = [
     # Type aliases
     "Parameter",
     # Utilities
+    "convert_from_display",
     "convert_temp",
     "display_name",
     "kebab_name",
