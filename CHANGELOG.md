@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.2](https://github.com/deviantintegral/flameconnect/compare/v0.6.1...v0.6.2) (2026-09-09)
+
+
+### Bug Fixes
+
+* preserve heat settings when turning on the fireplace ([a2a9e10](https://github.com/deviantintegral/flameconnect/commit/a2a9e10b13a2a046c864003bc11403aefeb875fd))
+
 ## [0.6.1](https://github.com/deviantintegral/flameconnect/compare/v0.6.0...v0.6.1) (2026-07-03)
 
 
