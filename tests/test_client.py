@@ -931,6 +931,99 @@ class TestTurnOn:
         assert len(body["Parameters"]) == 1
         assert body["Parameters"][0]["ParameterId"] == 321
 
+    async def test_turn_on_keeps_heat_off(self, mock_api, token_auth):
+        """turn_on must not start the heater when it is off.
+
+        Powering on writes MANUAL mode; without writing HeatSettings
+        (323) back the heater state is left unconstrained and the fire
+        can start heating even though the heater was off.
+        """
+        fire_id = "heat-off-fire"
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mode_val = encode_parameter(
+            ModeParam(mode=FireMode.STANDBY, target_temperature=20.0)
+        )
+        heat_off_val = encode_parameter(
+            HeatParam(
+                heat_status=HeatStatus.OFF,
+                heat_mode=HeatMode.NORMAL,
+                setpoint_temperature=21.0,
+                boost_duration=1,
+            )
+        )
+        payload = _make_overview_payload(
+            fire_id=fire_id,
+            parameters=[
+                {"ParameterId": 321, "Value": mode_val},
+                {"ParameterId": 323, "Value": heat_off_val},
+            ],
+        )
+        mock_api.get(overview_url, payload=payload)
+        mock_api.post(write_url, payload={})
+
+        async with FlameConnectClient(token_auth) as client:
+            await client.turn_on(fire_id)
+
+        key = ("POST", URL(write_url))
+        body = mock_api.requests[key][0].kwargs["json"]
+        heat_wires = [p for p in body["Parameters"] if p["ParameterId"] == 323]
+        assert heat_wires, "turn_on did not write HeatSettings (323)"
+        raw = base64.b64decode(heat_wires[0]["Value"])
+        # Byte 3 is heat_status: must stay 0 (OFF)
+        assert raw[3] == HeatStatus.OFF
+
+    async def test_turn_on_preserves_heat_settings(
+        self,
+        mock_api,
+        token_auth,
+        get_fire_overview_payload,
+    ):
+        """turn_on writes the current heat settings back unchanged."""
+        fire_id = "test-fire-001"
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mock_api.get(overview_url, payload=get_fire_overview_payload)
+        mock_api.post(write_url, payload={})
+
+        overview_heat = next(
+            p
+            for p in get_fire_overview_payload["WifiFireOverview"]["Parameters"]
+            if p["ParameterId"] == 323
+        )
+
+        async with FlameConnectClient(token_auth) as client:
+            await client.turn_on(fire_id)
+
+        key = ("POST", URL(write_url))
+        body = mock_api.requests[key][0].kwargs["json"]
+        heat_wires = [p for p in body["Parameters"] if p["ParameterId"] == 323]
+        assert heat_wires, "turn_on did not write HeatSettings (323)"
+        assert heat_wires[0]["Value"] == overview_heat["Value"]
+
+    async def test_turn_on_no_heat_param_writes_no_heat(self, mock_api, token_auth):
+        """When the fire reports no HeatParam, none is written."""
+        fire_id = "no-heat-fire"
+        overview_url = f"{API_BASE}/api/Fires/GetFireOverview?FireId={fire_id}"
+        write_url = f"{API_BASE}/api/Fires/WriteWifiParameters"
+        mode_val = encode_parameter(
+            ModeParam(mode=FireMode.STANDBY, target_temperature=20.0)
+        )
+        payload = _make_overview_payload(
+            fire_id=fire_id,
+            parameters=[{"ParameterId": 321, "Value": mode_val}],
+        )
+        mock_api.get(overview_url, payload=payload)
+        mock_api.post(write_url, payload={})
+
+        async with FlameConnectClient(token_auth) as client:
+            await client.turn_on(fire_id)
+
+        key = ("POST", URL(write_url))
+        body = mock_api.requests[key][0].kwargs["json"]
+        param_ids = {p["ParameterId"] for p in body["Parameters"]}
+        assert 323 not in param_ids
+
 
 # -------------------------------------------------------------------
 # turn_off

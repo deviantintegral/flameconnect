@@ -309,11 +309,16 @@ class FlameConnectClient:
         await self._request("POST", url, json=payload)
 
     async def turn_on(self, fire_id: str) -> None:
-        """Turn on the fireplace, preserving current flame effect settings.
+        """Turn on the fireplace, preserving flame effect and heat settings.
 
-        Reads the current state first to preserve existing temperature and
-        flame effect configuration, then sets the mode to MANUAL and the
-        flame effect to ON.
+        Reads the current state first to preserve the existing temperature,
+        flame effect configuration and heat settings, then sets the mode to
+        MANUAL and the flame effect to ON.
+
+        Heat settings (ParameterId 323) are written back unchanged so that
+        powering on cannot start or stop the heater as a side effect: a
+        fireplace whose heater is off stays off, and one whose heater is on
+        keeps its status, mode, setpoint and boost duration.
 
         Args:
             fire_id: The unique identifier of the fireplace.
@@ -323,11 +328,14 @@ class FlameConnectClient:
         # Find current ModeParam to preserve temperature
         current_mode: ModeParam | None = None
         current_flame: FlameEffectParam | None = None
+        current_heat: HeatParam | None = None
         for param in overview.parameters:
             if isinstance(param, ModeParam):
                 current_mode = param
             elif isinstance(param, FlameEffectParam):
                 current_flame = param
+            elif isinstance(param, HeatParam):
+                current_heat = param
 
         temperature = (
             current_mode.target_temperature
@@ -342,6 +350,9 @@ class FlameConnectClient:
         if current_flame is not None:
             new_flame = replace(current_flame, flame_effect=FlameEffect.ON)
             params_to_write.append(new_flame)
+
+        if current_heat is not None:
+            params_to_write.append(current_heat)
 
         await self.write_parameters(fire_id, params_to_write)
 
