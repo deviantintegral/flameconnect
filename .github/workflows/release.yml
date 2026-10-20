@@ -13,7 +13,7 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   release-please:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     environment: main
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
