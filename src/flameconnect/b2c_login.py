@@ -15,7 +15,7 @@ from urllib.parse import urljoin, urlparse
 import aiohttp
 import yarl
 
-from flameconnect._http_logging import log_request, log_response
+from flameconnect._http_logging import log_request, log_response, redact_url
 from flameconnect.const import CLIENT_ID
 from flameconnect.exceptions import AuthenticationError
 
@@ -184,7 +184,11 @@ async def b2c_login_with_credentials(auth_uri: str, email: str, password: str) -
             # requires plain unquoted values.
             cookie_header = _build_cookie_header(jar, fields.post_url)
             post_headers["Cookie"] = cookie_header
-            _LOGGER.debug(">>>   cookies: %s", cookie_header[:200])
+            # Log cookie names only; values are B2C session secrets.
+            _LOGGER.debug(
+                ">>>   cookies: %s",
+                [c.split("=", 1)[0] for c in cookie_header.split("; ") if c],
+            )
             log_request(
                 _LOGGER,
                 "POST",
@@ -275,7 +279,7 @@ async def b2c_login_with_credentials(auth_uri: str, email: str, password: str) -
                             ):
                                 _LOGGER.debug(
                                     "Captured custom-scheme redirect: %s",
-                                    location[:120] + "...",
+                                    redact_url(location),
                                 )
                                 return location
                             # Resolve relative URLs
