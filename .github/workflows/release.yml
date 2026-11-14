@@ -34,7 +34,7 @@ jobs:
         if: steps.release.outputs.pr && !steps.release.outputs.release_created
         with:
           # renovate: ha-python
-          python-version: "3.13"
+          python-version: "3.15"
       - name: Update uv.lock
         if: steps.release.outputs.pr && !steps.release.outputs.release_created
         run: |
