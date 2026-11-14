@@ -79,7 +79,7 @@ import msal
 
 app = msal.PublicClientApplication(
     "1af761dc-085a-411f-9cb9-53e5e2115bd2",
-    authority="https://gdhvb2cflameconnect.b2clogin.com/gdhvb2cflameconnect.onmicrosoft.com/B2C_1A_FirePhoneSignUpOrSignInWithPhoneOrEmail"
+    authority="https://gdhvb2cflameconnect.b2clogin.com/gdhvb2cflameconnect.onmicrosoft.com/B2C_1A_FirePhoneSignUpOrSignInWithPhoneOrEmail",
 )
 
 # Interactive login (opens browser)
@@ -834,6 +834,7 @@ AUTHORITY = "https://gdhvb2cflameconnect.b2clogin.com/gdhvb2cflameconnect.onmicr
 SCOPES = ["https://gdhvb2cflameconnect.onmicrosoft.com/Mobile/read"]
 API_BASE = "https://mobileapi.gdhv-iot.com"
 
+
 # --- Authentication ---
 class FlameConnectAuth:
     def __init__(self):
@@ -846,7 +847,9 @@ class FlameConnectAuth:
         if "access_token" in result:
             self.token_cache = result
             return result["access_token"]
-        raise Exception(f"Auth failed: {result.get('error_description', 'Unknown error')}")
+        raise Exception(
+            f"Auth failed: {result.get('error_description', 'Unknown error')}"
+        )
 
     def get_token(self):
         """Get cached token or refresh if expired."""
@@ -863,19 +866,21 @@ class FlameConnectClient:
     def __init__(self, auth: FlameConnectAuth):
         self.auth = auth
         self.session = requests.Session()
-        self.session.headers.update({
-            "Content-Type": "application/json",
-            "app_name": "FlameConnect",
-            "api_version": "1.0",
-            "app_version": "2.22.0",
-            "app_device_os": "android",
-            "device_version": "14",
-            "device_manufacturer": "Python",
-            "device_model": "API Client",
-            "lang_code": "en",
-            "country": "US",
-            "logging_required_flag": "True",
-        })
+        self.session.headers.update(
+            {
+                "Content-Type": "application/json",
+                "app_name": "FlameConnect",
+                "api_version": "1.0",
+                "app_version": "2.22.0",
+                "app_device_os": "android",
+                "device_version": "14",
+                "device_manufacturer": "Python",
+                "device_model": "API Client",
+                "lang_code": "en",
+                "country": "US",
+                "logging_required_flag": "True",
+            }
+        )
 
     def _headers(self):
         return {"Authorization": f"Bearer {self.auth.get_token()}"}
@@ -893,21 +898,18 @@ class FlameConnectClient:
         r = self.session.get(
             f"{API_BASE}/api/Fires/GetFireOverview",
             params={"FireId": fire_id},
-            headers=self._headers()
+            headers=self._headers(),
         )
         r.raise_for_status()
         return r.json()
 
     def write_parameters(self, fire_id: str, parameters: list):
         """Send control parameters to the fireplace."""
-        payload = {
-            "FireId": fire_id,
-            "Parameters": parameters
-        }
+        payload = {"FireId": fire_id, "Parameters": parameters}
         r = self.session.post(
             f"{API_BASE}/api/Fires/WriteWifiParameters",
             json=payload,
-            headers=self._headers()
+            headers=self._headers(),
         )
         r.raise_for_status()
         return r.json() if r.content else None
@@ -916,12 +918,17 @@ class FlameConnectClient:
 
     def set_mode(self, fire_id: str, mode: int, temperature: float = 21.0):
         """Set fireplace mode. 0=Standby, 1=Manual."""
-        return self.write_parameters(fire_id, [{
-            "ParameterId": 321,
-            "ParameterSize": 3,
-            "Mode": mode,
-            "Temperature": temperature
-        }])
+        return self.write_parameters(
+            fire_id,
+            [
+                {
+                    "ParameterId": 321,
+                    "ParameterSize": 3,
+                    "Mode": mode,
+                    "Temperature": temperature,
+                }
+            ],
+        )
 
     def turn_on(self, fire_id: str):
         """Turn fireplace on (Manual mode)."""
@@ -931,79 +938,152 @@ class FlameConnectClient:
         """Turn fireplace off (Standby mode)."""
         return self.set_mode(fire_id, mode=0, temperature=0.0)
 
-    def set_flame(self, fire_id: str, on: bool = True, speed: int = 3,
-                  brightness: int = 200, flame_color: int = 0,
-                  media_r: int = 255, media_g: int = 128, media_b: int = 0, media_w: int = 0,
-                  overhead_r: int = 255, overhead_g: int = 255, overhead_b: int = 255, overhead_w: int = 128,
-                  overhead_light_on: bool = True, ambient_sensor: bool = False):
+    def set_flame(
+        self,
+        fire_id: str,
+        on: bool = True,
+        speed: int = 3,
+        brightness: int = 200,
+        flame_color: int = 0,
+        media_r: int = 255,
+        media_g: int = 128,
+        media_b: int = 0,
+        media_w: int = 0,
+        overhead_r: int = 255,
+        overhead_g: int = 255,
+        overhead_b: int = 255,
+        overhead_w: int = 128,
+        overhead_light_on: bool = True,
+        ambient_sensor: bool = False,
+    ):
         """Set flame effect parameters."""
-        return self.write_parameters(fire_id, [{
-            "ParameterId": 322,
-            "ParameterSize": 20,
-            "FlameEffect": 1 if on else 0,
-            "FlameSpeed": max(1, min(5, speed)),
-            "Brightness": max(0, min(255, brightness)),
-            "MediaTheme": {
-                "Theme": 0, "Light": 1,
-                "Red": media_r, "Green": media_g, "Blue": media_b, "White": media_w
-            },
-            "OverheadLightTheme": {
-                "Theme": 0, "Light": 2,
-                "Red": overhead_r, "Green": overhead_g, "Blue": overhead_b, "White": overhead_w
-            },
-            "LightStatus": 1 if overhead_light_on else 0,
-            "FlameColor": flame_color,
-            "AmbientSensorStatus": 1 if ambient_sensor else 0
-        }])
+        return self.write_parameters(
+            fire_id,
+            [
+                {
+                    "ParameterId": 322,
+                    "ParameterSize": 20,
+                    "FlameEffect": 1 if on else 0,
+                    "FlameSpeed": max(1, min(5, speed)),
+                    "Brightness": max(0, min(255, brightness)),
+                    "MediaTheme": {
+                        "Theme": 0,
+                        "Light": 1,
+                        "Red": media_r,
+                        "Green": media_g,
+                        "Blue": media_b,
+                        "White": media_w,
+                    },
+                    "OverheadLightTheme": {
+                        "Theme": 0,
+                        "Light": 2,
+                        "Red": overhead_r,
+                        "Green": overhead_g,
+                        "Blue": overhead_b,
+                        "White": overhead_w,
+                    },
+                    "LightStatus": 1 if overhead_light_on else 0,
+                    "FlameColor": flame_color,
+                    "AmbientSensorStatus": 1 if ambient_sensor else 0,
+                }
+            ],
+        )
 
-    def set_heat(self, fire_id: str, on: bool = True, mode: int = 0,
-                 temperature: float = 22.0, boost_duration: int = 0):
+    def set_heat(
+        self,
+        fire_id: str,
+        on: bool = True,
+        mode: int = 0,
+        temperature: float = 22.0,
+        boost_duration: int = 0,
+    ):
         """Set heater parameters. Mode: 0=Normal, 1=Boost, 2=Eco, 3=Fan, 4=Schedule."""
-        return self.write_parameters(fire_id, [{
-            "ParameterId": 323,
-            "ParameterSize": 5,
-            "HeatStatus": 1 if on else 0,
-            "HeatMode": mode,
-            "SetpointTemperature": max(7.0, temperature),
-            "BoostDuration": boost_duration
-        }])
+        return self.write_parameters(
+            fire_id,
+            [
+                {
+                    "ParameterId": 323,
+                    "ParameterSize": 5,
+                    "HeatStatus": 1 if on else 0,
+                    "HeatMode": mode,
+                    "SetpointTemperature": max(7.0, temperature),
+                    "BoostDuration": boost_duration,
+                }
+            ],
+        )
 
-    def set_timer(self, fire_id: str, enabled: bool = True, duration_minutes: int = 120):
+    def set_timer(
+        self, fire_id: str, enabled: bool = True, duration_minutes: int = 120
+    ):
         """Set countdown timer."""
-        return self.write_parameters(fire_id, [{
-            "ParameterId": 326,
-            "ParameterSize": 3,
-            "TimerStatus": 1 if enabled else 0,
-            "Duration": duration_minutes
-        }])
+        return self.write_parameters(
+            fire_id,
+            [
+                {
+                    "ParameterId": 326,
+                    "ParameterSize": 3,
+                    "TimerStatus": 1 if enabled else 0,
+                    "Duration": duration_minutes,
+                }
+            ],
+        )
 
     def set_sound(self, fire_id: str, volume: int = 128, sound_file: int = 1):
         """Set sound effect."""
-        return self.write_parameters(fire_id, [{
-            "ParameterId": 369,
-            "ParameterSize": 2,
-            "Volume": volume,
-            "SoundFile": sound_file
-        }])
+        return self.write_parameters(
+            fire_id,
+            [
+                {
+                    "ParameterId": 369,
+                    "ParameterSize": 2,
+                    "Volume": volume,
+                    "SoundFile": sound_file,
+                }
+            ],
+        )
 
-    def set_log_effect(self, fire_id: str, on: bool = True,
-                       r: int = 255, g: int = 60, b: int = 0, w: int = 0, pattern: int = 1):
+    def set_log_effect(
+        self,
+        fire_id: str,
+        on: bool = True,
+        r: int = 255,
+        g: int = 60,
+        b: int = 0,
+        w: int = 0,
+        pattern: int = 1,
+    ):
         """Set log/ember bed effect."""
-        return self.write_parameters(fire_id, [{
-            "ParameterId": 370,
-            "ParameterSize": 8,
-            "LogEffect": 1 if on else 0,
-            "MediaTheme": {"Theme": 0, "Red": r, "Green": g, "Blue": b, "White": w},
-            "Pattern": pattern
-        }])
+        return self.write_parameters(
+            fire_id,
+            [
+                {
+                    "ParameterId": 370,
+                    "ParameterSize": 8,
+                    "LogEffect": 1 if on else 0,
+                    "MediaTheme": {
+                        "Theme": 0,
+                        "Red": r,
+                        "Green": g,
+                        "Blue": b,
+                        "White": w,
+                    },
+                    "Pattern": pattern,
+                }
+            ],
+        )
 
     def set_temperature_unit(self, fire_id: str, celsius: bool = True):
         """Set temperature display unit."""
-        return self.write_parameters(fire_id, [{
-            "ParameterId": 236,
-            "ParameterSize": 1,
-            "TemperatureUnit": 1 if celsius else 0
-        }])
+        return self.write_parameters(
+            fire_id,
+            [
+                {
+                    "ParameterId": 236,
+                    "ParameterSize": 1,
+                    "TemperatureUnit": 1 if celsius else 0,
+                }
+            ],
+        )
 
 
 # --- Usage Example ---
@@ -1024,9 +1104,17 @@ if __name__ == "__main__":
 
         # Turn on with blue flames
         client.turn_on(fire_id)
-        client.set_flame(fire_id, on=True, speed=4, brightness=255,
-                         flame_color=3,  # Blue
-                         media_r=0, media_g=0, media_b=255, media_w=0)
+        client.set_flame(
+            fire_id,
+            on=True,
+            speed=4,
+            brightness=255,
+            flame_color=3,  # Blue
+            media_r=0,
+            media_g=0,
+            media_b=255,
+            media_w=0,
+        )
 
         # Enable heater at 22°C
         client.set_heat(fire_id, on=True, temperature=22.0)
