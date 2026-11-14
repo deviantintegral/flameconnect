@@ -19,6 +19,8 @@
 8. [Enum Reference](#8-enum-reference)
 9. [Example Workflows](#9-example-workflows)
 10. [Python Reference Implementation](#10-python-reference-implementation)
+- [Notes and Caveats](#notes-and-caveats)
+- [Product Names](#product-names)
 
 ---
 
@@ -133,6 +135,8 @@ The API uses **Newtonsoft.Json** with these settings:
 
 All endpoints are relative to `https://mobileapi.gdhv-iot.com`.
 
+Endpoints marked *(2.28.2)* were added to this list after decompiling app v2.28.2 (November 2026); their HTTP methods come from the app's `ApiService`, but most have not been called directly. Request bodies are only listed where noted.
+
 ### Identity / User Management
 
 | Method | Endpoint | Description |
@@ -146,6 +150,10 @@ All endpoints are relative to `https://mobileapi.gdhv-iot.com`.
 | GET | `/api/Identity/CheckAppUnderMaintenance` | Check if app is under maintenance |
 | GET | `/api/Identity/GetAppUrls` | Get app URLs |
 | GET | `/api/Identity/GetMinimumAppVersionByMobileAppName?mobileAppName={name}` | Get minimum app version |
+| POST | `/api/Identity/UpdatePhoneNumber` | Update the account phone number *(2.28.2)* |
+| POST | `/api/Identity/UpdateMarketingPreferences` | Update marketing preferences *(2.28.2)* |
+| POST | `/api/Identity/UpdateLoggingPreferences` | Update logging preferences *(2.28.2)* |
+| ? | `/api/Identity/AddMobileAppRatingHistory` | Record an app rating prompt *(2.28.2; defined but no caller found)* |
 
 ### Fireplace Management
 
@@ -156,11 +164,19 @@ All endpoints are relative to `https://mobileapi.gdhv-iot.com`.
 | POST | `/api/Fires/DeleteFire` | Delete/unregister a fireplace |
 | POST | `/api/Fires/VerifyFireIdAndCode` | Verify fire ID and PIN code |
 | POST | `/api/Fires/ClaimOwnership` | Claim ownership of a fireplace |
-| GET | `/api/Fires/GetFireUsers?FireId={fireId}` | Get users with access to a fire |
+| GET | `/api/Fires/GetFireUsers?FireId={fireId}` | Get users with access to a fire *(not referenced in 2.28.2)* |
 | POST | `/api/Fires/DeleteFireUsersAccess` | Remove user access |
 | POST | `/api/Fires/AcceptOrRejectRequest` | Accept/reject access request |
-| POST | `/api/Fires/RequestAccessToFire` | Request access to a fire |
-| POST | `/api/Fires/UpdateFireDetails` | Update fire details |
+| POST | `/api/Fires/RequestAccessToFire` | Request access to a fire *(not referenced in 2.28.2)* |
+| POST | `/api/Fires/UpdateFireDetails` | Update fire details *(not referenced in 2.28.2)* |
+| POST | `/api/Fires/RenameFire` | Rename a fire. Body: `FireId`, `NewName`, `TimezoneId` (nullable int) *(2.28.2)* |
+| POST | `/api/Fires/SaveProductVariant` | Set whether the fire has a heater. Body: `FireId`, `WithHeat` (bool) *(2.28.2)* |
+| GET | `/api/Fires/IsFireAccessValid?FireId={fireId}` | Check the current user still has access *(2.28.2)* |
+| POST | `/api/Fires/SaveFireAccessRequest` | Request access to a fire *(2.28.2)* |
+| POST | `/api/Fires/SaveRequestOwnershipRequest` | Request ownership of a fire *(2.28.2)* |
+| POST | `/api/Fires/SaveTransferOwnershipRequest` | Transfer ownership to another user *(2.28.2)* |
+| GET | `/api/Fires/GetTransferUsers?FireId={fireId}` | List users ownership can be transferred to *(2.28.2)* |
+| GET | `/api/Fires/GetProductHelpUrls` | Product catalog: model codes and help links (see [Product Names](#product-names)) *(2.28.2)* |
 
 ### Fireplace Control (Core)
 
@@ -196,6 +212,12 @@ All endpoints are relative to `https://mobileapi.gdhv-iot.com`.
 |--------|----------|-------------|
 | GET | `/api/Fires/GetNotifications?FireId={fireId}` | Get notifications |
 | POST | `/api/Fires/DeleteInAppNotifications` | Delete notifications |
+| GET | `/api/Fires/GetUnreadNotificationCount` | Unread notification count *(2.28.2)* |
+| POST | `/api/Fires/GetUnreadNotificationCountFromDate` | Unread notification count since a date *(2.28.2)* |
+| POST | `/api/Fires/MarkNotificationAsRead` | Mark one notification read *(2.28.2)* |
+| POST | `/api/Fires/MarkNotificationsAsRead` | Mark several notifications read *(2.28.2)* |
+| POST | `/api/Notification/RegisterForNotificationsAndGetRegistrationId` | Register the device for push notifications *(2.28.2)* |
+| POST | `/api/Notification/UnregisterFromNotificationsByRegistrationId` | Unregister from push notifications (guest base URL) *(2.28.2)* |
 
 ### Hubs & Infrastructure
 
@@ -204,6 +226,7 @@ All endpoints are relative to `https://mobileapi.gdhv-iot.com`.
 | GET | `/api/Hubs/FetchTimezoneDetails?FireId={fireId}` | Get timezone details |
 | POST | `/api/Fires/UpdateFirmwareVersion` | Update firmware version |
 | POST | `/api/BluetoothFirmware/AddBluetoothFirmwareHistory` | Add BLE firmware update history |
+| ? | `/api/FeatureToggles/GetFeatureToggles` | Server-side feature flags *(2.28.2; defined but no caller found)* |
 
 ### Guest Endpoints (Unauthenticated)
 
@@ -212,8 +235,16 @@ These use the guest base URL: `https://app-mobileapiext-gdhv.azurewebsites.net`
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/Fires/GetGuestMode?FireId={fireId}` | Get guest mode config |
-| GET | `/api/Fires/GetFireOverview?FireId={fireId}` | Get fire state (guest) |
+| GET | `/api/Fires/GetFireOverview?DeviceId={deviceId}&FireId={fireId}` | Get fire state (guest) |
 | POST | `/api/Fires/WriteWifiParameters` | Send commands (guest) |
+| POST | `/api/Fires/VerifyGuestMode` | Verify guest access to a fire *(2.28.2)* |
+| GET | `/api/Fires/IsGuestAccessValid?DeviceId={deviceId}&FireId={fireId}` | Check a guest's access is still valid *(2.28.2)* |
+| GET | `/api/Fires/GetPreviouslyAccessedFiresForGuest?DeviceId={deviceId}` | Fires this guest device has used before *(2.28.2)* |
+| GET | `/api/Fires/IsGuestAccessAllowed?bleIdentifier={bleIdentifier}` | Whether guest mode is enabled (Bluetooth fires) *(2.28.2)* |
+| GET | `/api/Fires/IsFireGuestAccessAllowed?fireId={fireId}` | Whether guest mode is enabled for a fire *(2.28.2)* |
+| GET | `/api/Fires/IsWiFiGuestAccessAllowed?fireId={fireId}` | Whether guest mode is enabled (Wi-Fi fires) *(2.28.2)* |
+| GET | `/api/Fires/GetProductHelpUrls` | Product catalog (also called while signed out) *(2.28.2)* |
+| GET | `/api/Identity/CheckAppUnderMaintenance`, `/api/Identity/GetAppUrls`, `/api/Identity/GetMinimumAppVersionByMobileAppName` | Also called on the guest base URL *(2.28.2)* |
 
 ---
 
@@ -1139,9 +1170,30 @@ if __name__ == "__main__":
 
 6. **Supported product models**: The app supports multiple product lines:
    - **Brands**: Dimplex, Real Flame, Faber
-   - **Product types**: Optimyst V1/V2, Optiflame V1/V2/V3/V4
-   - **Model identifiers**: XLF (Ignite XL), PLF, ASP, CDFI, ABN, CAS, OLF, 3STEP
+   - **Product types**: Optimyst V1/V2/V3, Optiflame V1/V2/V3/V4
+   - **Model identifiers**: XLF, BXLF, PLF, ASP, CDFI, ABN, CAS, OLF, 3STEP, JUN, VVT, Evolve
+   - See [Product Names](#product-names) for what these fields mean and why the API has no retail names.
 
 7. **Feature availability**: Not all parameters are supported by all fireplace models. The `FireFeature` object returned with fire data indicates which features your specific model supports (Sound, AdvancedHeat, RgbFlameAccent, etc.).
 
 8. **The MQTT port 8883**: This is used by the Azure IoT Hub infrastructure between the cloud backend and the physical fireplace, not by the mobile app. You don't need to interact with MQTT directly - the REST API handles everything.
+
+## Product Names
+
+*Investigated November 2026 against app v2.28.2.*
+
+The API does not return retail product names such as "IgniteXL Bold", in any language. Each fire has three product fields:
+
+| Field | Example | Meaning |
+|-------|---------|---------|
+| `Brand` | `Dimplex` | Brand (Dimplex, Real Flame, Faber, GDC) |
+| `ProductType` | `Optiflame V2` | Flame technology generation. The app uses it to decide features and images, but never displays it. |
+| `ProductModel` | `XLF5017-XD` | Model code, as printed on the product |
+
+`GetFires` also returns `ProductTypeId`, `ProductModelId` (GUIDs), `Region` (for example `AM`) and `SeriesIdentifier` (for example `B`), which the app shows on its product details screen.
+
+`GET /api/Fires/GetProductHelpUrls` returns the full catalog (56 entries at the time of writing), with `ProductModelId`, `ProductModelName`, `ProductTypeName`, `Region`, `Brand` and `HelpUrl`. `ProductModelName` is the same model code as `ProductModel`, and the response is identical whatever `lang_code` is sent.
+
+The official app shows `FriendlyName`, `Brand`, `ProductModel`, `SeriesIdentifier` and a product image chosen from `ProductType`, `Brand` and the model code. It has no table of retail names; its translations cover UI text only. The one exception is the string "Ignite XL BOLD", which is only the title of a QR-code help page shown while adding a fire.
+
+This library follows the app and displays `Brand` and `ProductModel`. It deliberately does not map model codes to retail names, because those names differ between regions and change over time.
