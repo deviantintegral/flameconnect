@@ -1917,6 +1917,29 @@ class TestB2cLoginLogCallMutants:
         assert ">>>   cookies:" in caplog.text
         assert "XX" not in caplog.text.replace("XMLHttpRequest", "")
 
+    async def test_cookies_debug_line_omits_values(self, caplog):
+        """Cookie values are session secrets; only names may be logged."""
+        with patch(
+            "flameconnect.b2c_login._build_cookie_header",
+            return_value="x-ms-cpim-sso=SECRETSSO; x-ms-cpim-trans=SECRETTRANS",
+        ):
+            await self._run_flow_with_logging(caplog)
+        assert ">>>   cookies: ['x-ms-cpim-sso', 'x-ms-cpim-trans']" in caplog.text
+        assert "SECRETSSO" not in caplog.text
+        assert "SECRETTRANS" not in caplog.text
+
+    async def test_auth_code_not_logged(self, caplog):
+        """The OAuth code in the redirect must not reach the logs."""
+        result = await self._run_flow_with_logging(caplog)
+        # Behaviour unchanged: the caller still receives the real code.
+        assert "code=test-auth-code-123" in result
+        assert "test-auth-code-123" not in caplog.text
+        assert (
+            f"Captured custom-scheme redirect: msal{_CLIENT_ID}://auth"
+            "?code=***&state=test-state" in caplog.text
+        )
+        assert f"'Location': 'msal{_CLIENT_ID}://auth?code=***" in caplog.text
+
     async def test_log_response_post_body(self, caplog):
         """Mutants 155, 157: log_response(resp, body) mutations."""
         await self._run_flow_with_logging(caplog)
