@@ -37,6 +37,12 @@
       "automerge": false
     },
     {
+      "description": "Python version is tracked via ha-python; ignore setup-python's built-in extraction",
+      "matchManagers": ["github-actions"],
+      "matchDepNames": ["python"],
+      "enabled": false
+    },
+    {
       "description": "Tagged action releases: cooldown, then automerge",
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["minor", "patch"],
