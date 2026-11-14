@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.3](https://github.com/deviantintegral/flameconnect/compare/v0.6.2...v0.6.3) (2026-11-14)
+
+
+### Bug Fixes
+
+* redact PINs, BLE identifiers and OAuth codes in debug logs ([#168](https://github.com/deviantintegral/flameconnect/issues/168)) ([cc12628](https://github.com/deviantintegral/flameconnect/commit/cc126286e9297da89dec9d02e2cedd61010e2a96))
+
+
+### Documentation
+
+* document new API endpoints and product name findings ([#165](https://github.com/deviantintegral/flameconnect/issues/165)) ([afce9a8](https://github.com/deviantintegral/flameconnect/commit/afce9a868c96f3c0339de17febfd053df689c787))
+
 ## [0.6.2](https://github.com/deviantintegral/flameconnect/compare/v0.6.1...v0.6.2) (2026-09-09)
 
 
